@@ -24,6 +24,7 @@ export default function BestSellersSection() {
   const visualRefs = useRef<Array<HTMLDivElement | null>>([]);
   const glowRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const activeIndexRef = useRef(0);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -37,7 +38,6 @@ export default function BestSellersSection() {
 
   const trackRef = useRef<HTMLDivElement | null>(null);
   const titleRefs = useRef<Array<HTMLHeadingElement | null>>([]);
-  const [trackOffset, setTrackOffset] = useState(0);
 
   useLayoutEffect(() => {
     if (reduceMotion) {
@@ -55,16 +55,20 @@ export default function BestSellersSection() {
         trigger: section,
         start: "top top",
         end: () => `+=${Math.max(bestSellers.length - 1, 1) * window.innerHeight}`,
-        scrub: 1,
+        scrub: 0.6,
         pin: viewport,
-        pinSpacing: false,
+        anticipatePin: 1,
+        fastScrollEnd: true,
         invalidateOnRefresh: true,
         onUpdate: (self) => {
           const nextIndex = Math.min(
             bestSellers.length - 1,
             Math.round(self.progress * (bestSellers.length - 1))
           );
-          setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
+          if (activeIndexRef.current !== nextIndex) {
+            activeIndexRef.current = nextIndex;
+            setActiveIndex(nextIndex);
+          }
         },
       });
 
@@ -130,13 +134,18 @@ export default function BestSellersSection() {
       });
     });
 
-    // Update track offset to center the active title
+    // Update track position directly to avoid an extra React render on scroll
     const activeTitle = titleRefs.current[activeIndex];
     const track = trackRef.current;
     if (activeTitle && track && track.parentElement) {
       const centerOfActive = activeTitle.offsetLeft + activeTitle.offsetWidth / 2;
       const centerOfContainer = track.parentElement.offsetWidth / 2;
-      setTrackOffset(centerOfContainer - centerOfActive);
+      gsap.to(track, {
+        x: centerOfContainer - centerOfActive,
+        duration: 0.45,
+        ease: "power2.out",
+        overwrite: true,
+      });
     }
   }, [activeIndex, reduceMotion]);
 
@@ -146,7 +155,7 @@ export default function BestSellersSection() {
   } as const;
 
   const titleClass =
-    "shrink-0 whitespace-nowrap text-[clamp(2.9rem,5vw,6.6rem)] font-semibold leading-none tracking-[-0.08em] transition-all duration-700 ease-out";
+    "shrink-0 whitespace-nowrap text-[clamp(2.9rem,5vw,6.6rem)] font-semibold leading-none tracking-[-0.08em] transition-all duration-500 ease-out";
 
   if (reduceMotion) {
     return (
@@ -208,7 +217,7 @@ export default function BestSellersSection() {
     <section
       ref={sectionRef}
       className="hidden relative bg-white text-slate-900 lg:block"
-      style={{ height: `${bestSellers.length * 105}vh` }}
+      style={{ height: `${bestSellers.length * 96}vh` }}
     >
       <div
         ref={viewportRef}
@@ -221,8 +230,7 @@ export default function BestSellersSection() {
         <div className="relative mt-2 w-full overflow-visible lg:mt-4" style={titleRailStyle}>
           <div 
             ref={trackRef}
-            className="flex w-max items-center gap-14 py-0.5 transition-transform duration-700 ease-out"
-            style={{ transform: `translateX(${trackOffset}px)` }}
+            className="flex w-max items-center gap-14 py-0.5 transition-transform duration-500 ease-out will-change-transform"
           >
             {bestSellers.map((item, index) => {
               const isActive = index === activeIndex;
@@ -254,7 +262,7 @@ export default function BestSellersSection() {
                   ref={(node) => {
                     cardRefs.current[index] = node;
                   }}
-                  className={`absolute inset-0 flex items-center transition-all duration-700 ease-out ${
+                  className={`absolute inset-0 flex items-center transition-all duration-700 ease-out [will-change:transform,opacity] ${
                     isActive ? "opacity-100 translate-y-0 scale-100" : "pointer-events-none opacity-0 translate-y-6 scale-[0.98]"
                   }`}
                 >
@@ -302,7 +310,7 @@ export default function BestSellersSection() {
                     ref={(node) => {
                       visualRefs.current[index] = node;
                     }}
-                    className={`absolute inset-0 flex items-center justify-center pb-0 transition-all duration-1000 ease-out ${
+                    className={`absolute inset-0 flex items-center justify-center pb-0 transition-all duration-700 ease-out [will-change:transform,opacity] ${
                       isActive
                         ? "opacity-100 translate-y-0 translate-x-0 scale-100"
                         : "opacity-0 translate-y-32 -translate-x-32 scale-[0.94]"
@@ -312,7 +320,7 @@ export default function BestSellersSection() {
                       ref={(node) => {
                         glowRefs.current[index] = node;
                       }}
-                      className={`absolute inset-0 rounded-full blur-3xl pointer-events-none ${
+                      className={`absolute inset-0 rounded-full blur-3xl pointer-events-none [will-change:opacity,transform] ${
                         isActive
                           ? "bg-[radial-gradient(circle,_rgba(10,122,230,0.12)_0%,_rgba(10,122,230,0.04)_40%,_transparent_70%)]"
                           : "bg-transparent"
@@ -322,7 +330,7 @@ export default function BestSellersSection() {
                       src={item.image}
                       alt={item.imageAlt}
                       fill
-                      className="object-contain filter drop-shadow-[0_25px_45px_rgba(15,23,42,0.12)]"
+                      className="object-contain filter drop-shadow-[0_25px_45px_rgba(15,23,42,0.12)] [will-change:transform,opacity]"
                       sizes="(min-width: 1024px) 50vw, 100vw"
                       priority={index === 0}
                     />
