@@ -54,7 +54,7 @@ export default function FaqSection() {
             <details
               key={faq.question}
               className="group border-b border-slate-200"
-              open={index === 0}
+              open={false}
             >
               <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-4 outline-none md:py-5 lg:py-5.5">
                 <span className="text-left text-[clamp(0.9rem,1.35vw,1.3rem)] font-medium uppercase leading-[1.08] tracking-[-0.03em] text-slate-900 md:max-w-4xl">
@@ -80,3 +80,4 @@ export default function FaqSection() {
     </section>
   );
 }
+

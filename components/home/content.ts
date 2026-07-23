@@ -10,6 +10,7 @@ export type CategoryItem = {
 };
 
 export type ProductItem = {
+  id: string;
   title: string;
   subtitle: string;
   image: string;
@@ -34,15 +35,15 @@ export type BestSellerItem = {
 
 export const dropdownItems: NavDropdownItem[] = [
   {
-    label: "Product",
+    label: "PRODUCT",
     items: ["New Arrivals", "Best Sellers", "All Products"],
   },
   {
-    label: "Warranty",
+    label: "WARRANTY",
     items: ["Check Coverage", "Register Product", "Service Status"],
   },
   {
-    label: "Support & Service",
+    label: "SUPPORT & SERVICE",
     items: ["Contact Support", "Repair Center", "Downloads"],
   },
 ];
@@ -94,6 +95,7 @@ export const categories: CategoryItem[] = [
 
 export const products: ProductItem[] = [
   {
+    id: "55-smart-tv",
     title: "XElectron 55 Inch LED TV",
     subtitle: "Premium picture. Big screen impact.",
     image: "/product-tv-card.png",
@@ -104,6 +106,7 @@ export const products: ProductItem[] = [
     reviews: "128",
   },
   {
+    id: "c9-projector",
     title: "XElectron Android C9 Plus",
     subtitle: "Home cinema made simple.",
     image: "/product-c9-card.png",
@@ -114,6 +117,7 @@ export const products: ProductItem[] = [
     reviews: "96",
   },
   {
+    id: "techno-projector",
     title: "XElectron Techno Android",
     subtitle: "Portable projection anywhere.",
     image: "/product-white-projector-card.png",
@@ -124,6 +128,7 @@ export const products: ProductItem[] = [
     reviews: "74",
   },
   {
+    id: "iprojector-2-plus",
     title: "XElectron IProjector 2 Plus",
     subtitle: "Compact power for every room.",
     image: "/product-black-projector-card.png",

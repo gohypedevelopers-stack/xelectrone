@@ -30,7 +30,7 @@ const xelectronProducts: XelectronProduct[] = [
     discount: "40% off",
     rating: 4.5,
     reviews: 128,
-    href: "#",
+    href: "/product/55-smart-tv",
   },
   {
     id: "c9-plus",
@@ -43,7 +43,7 @@ const xelectronProducts: XelectronProduct[] = [
     discount: "45% off",
     rating: 4.3,
     reviews: 256,
-    href: "#",  
+    href: "/product/c9-projector",
   },
   {
     id: "techno-projector",
@@ -56,7 +56,7 @@ const xelectronProducts: XelectronProduct[] = [
     discount: "68% off",
     rating: 4.1,
     reviews: 189,
-    href: "#",
+    href: "/product/techno-projector",
   },
   {
     id: "iprojector-2-plus",
@@ -69,7 +69,7 @@ const xelectronProducts: XelectronProduct[] = [
     discount: "55% off",
     rating: 4.6,
     reviews: 312,
-    href: "#",
+    href: "/product/iprojector-2-plus",
   },
   {
     id: "24stv",
@@ -82,7 +82,7 @@ const xelectronProducts: XelectronProduct[] = [
     discount: "50% off",
     rating: 4.2,
     reviews: 94,
-    href: "#",
+    href: "/product/24stv",
   },
   {
     id: "15-dpf",
@@ -95,7 +95,7 @@ const xelectronProducts: XelectronProduct[] = [
     discount: "43% off",
     rating: 4.4,
     reviews: 76,
-    href: "#",
+    href: "/product/15-dpf",
   },
   {
     id: "32-tv",
@@ -108,7 +108,7 @@ const xelectronProducts: XelectronProduct[] = [
     discount: "53% off",
     rating: 4.3,
     reviews: 157,
-    href: "#",
+    href: "/product/32-tv",
   },
   {
     id: "8-dpf",
@@ -121,7 +121,7 @@ const xelectronProducts: XelectronProduct[] = [
     discount: "50% off",
     rating: 4.0,
     reviews: 203,
-    href: "#",
+    href: "/product/8-dpf",
   },
 ];
 
@@ -157,13 +157,9 @@ export default function NewProductCardsSection() {
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {xelectronProducts.map((product) => (
-            <article
-              key={product.id}
-              className="group overflow-hidden border border-slate-200/80 bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(15,23,42,0.08)]"
-            >
-              <Link href={product.href} className="flex h-full flex-col">
-                {/* Image */}
-                <div className="relative flex h-[220px] items-center justify-center bg-[#f8f9fb] p-4">
+            <Link key={product.id} href={product.href} className="group block h-full" aria-label={`View ${product.title}`}>
+              <article className="overflow-hidden border border-slate-200/80 bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
+                <div className="relative flex h-[220px] items-center justify-center bg-white p-4">
                   <Image
                     src={product.image}
                     alt={product.alt}
@@ -178,7 +174,6 @@ export default function NewProductCardsSection() {
                   )}
                 </div>
 
-                {/* Content */}
                 <div className="flex flex-1 flex-col p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#0a7ae6]">
                     {product.category}
@@ -193,13 +188,9 @@ export default function NewProductCardsSection() {
                   </div>
 
                   <div className="mt-auto flex items-end gap-2 pt-3">
-                    <span className="text-[18px] font-bold text-slate-900">
-                      {product.price}
-                    </span>
+                    <span className="text-[18px] font-bold text-slate-900">{product.price}</span>
                     {product.oldPrice && (
-                      <span className="pb-0.5 text-[13px] text-slate-400 line-through">
-                        {product.oldPrice}
-                      </span>
+                      <span className="pb-0.5 text-[13px] text-slate-400 line-through">{product.oldPrice}</span>
                     )}
                   </div>
 
@@ -212,8 +203,8 @@ export default function NewProductCardsSection() {
                     </span>
                   </div>
                 </div>
-              </Link>
-            </article>
+              </article>
+            </Link>
           ))}
         </div>
       </div>

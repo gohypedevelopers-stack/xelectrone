@@ -29,9 +29,9 @@ export default function HeroShowcase() {
   }, [activeSlide]);
 
   return (
-    <section className="w-full bg-white">
+    <section className="w-full">
       <div className="sm:hidden">
-        <div className="relative h-[66vh] min-h-[460px] max-h-[700px] w-full overflow-hidden bg-gradient-to-b from-white via-white to-[#edf3fa]">
+        <div className="relative h-[66vh] min-h-[460px] max-h-[700px] w-full overflow-hidden">
           <div className="no-scrollbar flex h-full snap-x snap-mandatory overflow-x-auto scroll-smooth">
             {banners.map((banner) => (
               <div key={banner.src} className="relative h-full w-full shrink-0 snap-start">
@@ -48,7 +48,7 @@ export default function HeroShowcase() {
           </div>
 
           <div className="absolute inset-x-0 bottom-4 z-10 flex justify-center px-4">
-            <div className="flex items-center gap-2 rounded-full bg-white/65 px-3 py-1.5 backdrop-blur-sm">
+            <div className="flex items-center gap-2 rounded-full px-1.5 py-1.5">
               {banners.map((banner, index) => (
                 <button
                   key={banner.src}
@@ -56,7 +56,7 @@ export default function HeroShowcase() {
                   aria-label={`Show banner ${index + 1}`}
                   onClick={() => setActiveSlide(index)}
                   className={`h-2 rounded-full transition-all duration-300 ${
-                    index === activeSlide ? "w-8 bg-slate-800" : "w-2 bg-slate-400/70"
+                    index === activeSlide ? "w-8 bg-white" : "w-2 bg-white/50"
                   }`}
                 />
               ))}
@@ -86,7 +86,7 @@ export default function HeroShowcase() {
           </div>
 
           <div className="absolute inset-x-0 bottom-4 z-10 flex justify-center px-4 sm:bottom-7">
-            <div className="flex items-center gap-2 rounded-full bg-white/65 px-3 py-1.5 backdrop-blur-sm">
+            <div className="flex items-center gap-2 rounded-full px-1.5 py-1.5">
               {banners.map((banner, index) => (
                 <button
                   key={banner.src}
@@ -94,7 +94,7 @@ export default function HeroShowcase() {
                   aria-label={`Show banner ${index + 1}`}
                   onClick={() => setActiveSlide(index)}
                   className={`h-2 rounded-full transition-all duration-300 ${
-                    index === activeSlide ? "w-8 bg-slate-800" : "w-2 bg-slate-400/70"
+                    index === activeSlide ? "w-8 bg-white" : "w-2 bg-white/50"
                   }`}
                 />
               ))}

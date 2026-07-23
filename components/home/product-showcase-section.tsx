@@ -35,69 +35,70 @@ export default function ProductShowcaseSection() {
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {products.map((product) => (
-            <article
-              key={product.title}
-              className="overflow-hidden rounded-none border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform duration-200 hover:-translate-y-0.5"
+            <Link
+              key={product.id}
+              href={`/product/${product.id}`}
+              className="group block"
+              aria-label={`View ${product.title}`}
             >
-              <div className="flex h-full flex-col p-3.5">
-                <div className="relative flex h-[175px] items-center justify-center rounded-none bg-[#fbfbfc] p-3">
-                  <Image
-                    src={product.image}
-                    alt={product.alt}
-                    fill
-                    className="object-contain p-3"
-                    sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
-                  />
-                </div>
-
-                <div className="mt-3 flex flex-1 flex-col">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                    XElectron
-                  </p>
-                  <h3 className="mt-1 line-clamp-2 text-[15px] font-medium leading-5 text-slate-900">
-                    {product.title}
-                  </h3>
-
-                  <div className="mt-2 flex items-center gap-2">
-                    <Rating value={product.rating} />
-                    <span className="text-[11px] text-slate-500">({product.reviews})</span>
+              <article className="flex min-h-[430px] flex-col overflow-hidden rounded-[2px] border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:min-h-[455px] lg:min-h-[500px]">
+                <div className="flex flex-1 flex-col p-4 sm:p-[18px] lg:p-5">
+                  <div className="relative flex h-[210px] items-center justify-center overflow-hidden rounded-[2px] bg-white p-4 sm:h-[235px] lg:h-[270px]">
+                    <Image
+                      src={product.image}
+                      alt={product.alt}
+                      fill
+                      className="object-contain p-3 transition-transform duration-300 group-hover:scale-[1.03]"
+                      sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
+                    />
                   </div>
 
-                  <p className="mt-2 text-[12px] leading-5 text-slate-600">
-                    {product.subtitle}
-                  </p>
+                  <div className="mt-4 flex flex-1 flex-col">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                      XElectron
+                    </p>
+                    <h3 className="mt-1 line-clamp-2 text-[15px] font-medium leading-5 text-slate-900 sm:text-[16px]">
+                      {product.title}
+                    </h3>
 
-                  <div className="mt-3 flex items-end gap-2">
-                    <span className="text-[16px] font-semibold text-slate-900">
-                      {product.price}
-                    </span>
-                    {product.oldPrice ? (
-                      <span className="pb-0.5 text-[12px] text-slate-400 line-through">
-                        {product.oldPrice}
+                    <div className="mt-2 flex items-center gap-2">
+                      <Rating value={product.rating} />
+                      <span className="text-[11px] text-slate-500">({product.reviews})</span>
+                    </div>
+
+                    <p className="mt-2 text-[12px] leading-5 text-slate-600">
+                      {product.subtitle}
+                    </p>
+
+                    <div className="mt-3 flex items-end gap-2">
+                      <span className="text-[16px] font-semibold text-slate-900 sm:text-[18px]">
+                        {product.price}
                       </span>
-                    ) : null}
-                  </div>
+                      {product.oldPrice ? (
+                        <span className="pb-0.5 text-[12px] text-slate-400 line-through">
+                          {product.oldPrice}
+                        </span>
+                      ) : null}
+                    </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <Link
-                      href="/"
-                      className="inline-flex h-9 items-center justify-center rounded-[4px] border border-[#0a7ae6] text-[12px] font-medium text-[#0a7ae6] transition-colors hover:bg-[#0a7ae6] hover:text-white"
-                    >
-                      Add to cart
-                    </Link>
-                    <Link
-                      href="/"
-                      className="inline-flex h-9 items-center justify-center rounded-[4px] bg-[#0a7ae6] text-[12px] font-medium text-white transition-opacity hover:opacity-90"
-                    >
-                      Buy
-                    </Link>
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <span className="inline-flex h-10 cursor-pointer items-center justify-center rounded-[4px] border border-[#0a7ae6] text-[12px] font-medium text-[#0a7ae6] transition-colors hover:bg-[#0a7ae6] hover:text-white">
+                        Add to cart
+                      </span>
+                      <span className="inline-flex h-10 cursor-pointer items-center justify-center rounded-[4px] bg-[#0a7ae6] text-[12px] font-medium text-white transition-opacity hover:opacity-90">
+                        Buy
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </article>
+              </article>
+            </Link>
           ))}
         </div>
       </div>
     </section>
   );
 }
+
+
+

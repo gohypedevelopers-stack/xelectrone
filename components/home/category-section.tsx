@@ -25,7 +25,7 @@ export default function CategorySection() {
                 {category.title}
               </h3>
               <Link
-                href="/"
+                href={`/product?id=${category.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                 className="mt-1 text-[8px] font-medium text-[#4f86c6] transition-opacity hover:opacity-70 sm:text-[10px]"
               >
                 View Collection

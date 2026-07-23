@@ -146,24 +146,24 @@ export default function BestSellersSection() {
   } as const;
 
   const titleClass =
-    "shrink-0 whitespace-nowrap text-[clamp(2.9rem,5vw,6.6rem)] font-semibold leading-[0.88] tracking-[-0.08em] transition-all duration-700 ease-out";
+    "shrink-0 whitespace-nowrap text-[clamp(2.9rem,5vw,6.6rem)] font-semibold leading-none tracking-[-0.08em] transition-all duration-700 ease-out";
 
   if (reduceMotion) {
     return (
-      <section className="hidden bg-white text-slate-900 md:block">
+      <section className="hidden bg-white text-slate-900 lg:block">
         <div className="mx-auto max-w-[1600px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
           <p className="text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[#0a7ae6]">
             Best sellers
           </p>
-          <div className="relative mt-16 flex w-full justify-center lg:mt-20" style={titleRailStyle}>
-            <div className="flex min-w-max items-end justify-center gap-14 pb-1">
+          <div className="relative mt-2 flex w-full justify-center lg:mt-4" style={titleRailStyle}>
+            <div className="flex min-w-max items-center justify-center gap-14 py-0.5">
               {bestSellers.map((item, index) => (
                 <h2
                   key={item.id}
                   className={`${titleClass} ${
                     index === 0
-                      ? "translate-y-0 text-slate-900 opacity-100"
-                      : "translate-y-[0.08em] text-slate-300 opacity-60"
+                      ? "translate-y-[-0.02em] text-slate-900 opacity-100"
+                      : "translate-y-[0.02em] text-slate-300 opacity-60"
                   }`}
                 >
                   {item.name}
@@ -172,9 +172,9 @@ export default function BestSellersSection() {
             </div>
           </div>
         </div>
-        <div className="mx-auto max-w-[1600px] space-y-8 px-4 pb-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] space-y-6 px-4 pb-10 sm:px-6 lg:px-8">
           {bestSellers.map((item) => (
-            <div key={item.id} className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            <div key={item.id} className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
               <div className="rounded-[28px] border border-slate-200 bg-[#f8fafc] px-5 py-5 md:px-8 md:py-7">
                 <div className="flex flex-wrap items-end gap-x-3 gap-y-1 border-b border-slate-200 pb-6">
                   <span className="text-[27px] font-semibold text-slate-900">{item.price}</span>
@@ -207,21 +207,21 @@ export default function BestSellersSection() {
   return (
     <section
       ref={sectionRef}
-      className="hidden relative bg-white text-slate-900 md:block"
-      style={{ height: `${bestSellers.length * 100}vh` }}
+      className="hidden relative bg-white text-slate-900 lg:block"
+      style={{ height: `${bestSellers.length * 105}vh` }}
     >
       <div
         ref={viewportRef}
-        className="mx-auto flex h-screen max-w-[1600px] flex-col px-4 py-8 sm:px-6 lg:px-8 lg:py-12"
+        className="mx-auto flex h-screen max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-10"
       >
         <p className="text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[#0a7ae6]">
           Best sellers
         </p>
 
-        <div className="relative mt-16 w-full lg:mt-20 overflow-hidden" style={titleRailStyle}>
+        <div className="relative mt-2 w-full overflow-visible lg:mt-4" style={titleRailStyle}>
           <div 
             ref={trackRef}
-            className="flex w-max items-end gap-14 pb-1 transition-transform duration-700 ease-out"
+            className="flex w-max items-center gap-14 py-0.5 transition-transform duration-700 ease-out"
             style={{ transform: `translateX(${trackOffset}px)` }}
           >
             {bestSellers.map((item, index) => {
@@ -232,8 +232,8 @@ export default function BestSellersSection() {
                   ref={(node) => { titleRefs.current[index] = node; }}
                   className={`${titleClass} ${
                     isActive
-                      ? "translate-y-0 text-slate-900 opacity-100"
-                      : "translate-y-[0.08em] text-slate-300 opacity-50"
+                      ? "translate-y-[-0.02em] text-slate-900 opacity-100"
+                      : "translate-y-[0.02em] text-slate-300 opacity-50"
                   }`}
                 >
                   {item.name}
@@ -243,8 +243,8 @@ export default function BestSellersSection() {
           </div>
         </div>
 
-        <div className="mt-6 grid flex-1 items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)] lg:gap-14">
-          <div className="relative order-2 min-h-[380px] pb-4 sm:min-h-[420px] lg:order-1 lg:min-h-[500px] lg:pb-0">
+        <div className="mt-0 grid flex-1 items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
+          <div className="relative order-2 min-h-[420px] pb-4 sm:min-h-[460px] lg:order-1 lg:min-h-[560px] lg:pb-0">
             {bestSellers.map((item, index) => {
               const isActive = index === activeIndex;
 
@@ -258,18 +258,18 @@ export default function BestSellersSection() {
                     isActive ? "opacity-100 translate-y-0 scale-100" : "pointer-events-none opacity-0 translate-y-6 scale-[0.98]"
                   }`}
                 >
-                  <div className="relative z-10 w-full max-w-[640px] rounded-[24px] border border-slate-200 bg-[#f8fafc] px-4 py-4 shadow-[0_18px_60px_rgba(15,23,42,0.06)] sm:px-5 sm:py-5 md:px-8 md:py-7">
-                    <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-6">
+                  <div className="relative z-10 w-full max-w-[640px] rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-md px-6 py-6 shadow-[0_20px_70px_rgba(15,23,42,0.05)] sm:px-8 sm:py-8 md:px-10 md:py-9">
+                    <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-6">
                       <div>
                         <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-                          <span className="text-[22px] font-semibold text-slate-900 sm:text-[27px]">{item.price}</span>
-                          <span className="text-[13px] text-slate-400 line-through sm:text-[15px]">{item.oldPrice}</span>
-                          <span className="text-[13px] font-medium text-[#0a7ae6] sm:text-[16px]">{item.discount}</span>
+                          <span className="text-[26px] font-semibold text-slate-900 sm:text-[32px]">{item.price}</span>
+                          <span className="text-[14px] text-slate-400 line-through sm:text-[16px]">{item.oldPrice}</span>
+                          <span className="text-[14px] font-medium text-[#0a7ae6] sm:text-[17px]">{item.discount}</span>
                         </div>
                       </div>
                     </div>
 
-                    <p className="mt-4 max-w-[34rem] text-[15px] leading-7 text-slate-700 sm:text-[16px] md:text-[18px]">
+                    <p className="mt-5 max-w-[34rem] text-[16px] leading-8 text-slate-700 sm:text-[17px] md:text-[19px]">
                       {item.description}
                     </p>
 
@@ -279,12 +279,12 @@ export default function BestSellersSection() {
                       ))}
                     </div>
 
-                    <button
-                      type="button"
-                      className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[16px] font-medium text-white transition-opacity hover:opacity-90"
+                    <a
+                      href={`/product?id=${item.id}`}
+                      className="mt-8 inline-flex h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[16px] font-medium text-white transition-all hover:bg-[#086ac9] shadow-lg shadow-blue-500/15 active:scale-[0.99]"
                     >
-                      Add to cart
-                    </button>
+                      View Details & Buy
+                    </a>
                   </div>
                 </div>
               );
@@ -292,7 +292,7 @@ export default function BestSellersSection() {
           </div>
 
           <div className="relative order-1 flex items-center justify-center pb-0 lg:order-2 lg:justify-end lg:pb-0">
-            <div className="relative min-h-[300px] w-full max-w-[860px] sm:min-h-[360px] lg:min-h-[500px]">
+            <div className="relative min-h-[360px] w-full max-w-[900px] sm:min-h-[440px] lg:min-h-[580px]">
               {bestSellers.map((item, index) => {
                 const isActive = index === activeIndex;
 
@@ -312,9 +312,9 @@ export default function BestSellersSection() {
                       ref={(node) => {
                         glowRefs.current[index] = node;
                       }}
-                      className={`absolute inset-0 rounded-full blur-3xl ${
+                      className={`absolute inset-0 rounded-full blur-3xl pointer-events-none ${
                         isActive
-                          ? "bg-[radial-gradient(circle,_rgba(10,122,230,0.18)_0%,_rgba(10,122,230,0.08)_30%,_rgba(10,122,230,0)_68%)]"
+                          ? "bg-[radial-gradient(circle,_rgba(10,122,230,0.12)_0%,_rgba(10,122,230,0.04)_40%,_transparent_70%)]"
                           : "bg-transparent"
                       }`}
                     />
@@ -322,8 +322,8 @@ export default function BestSellersSection() {
                       src={item.image}
                       alt={item.imageAlt}
                       fill
-                      className="object-contain drop-shadow-[0_38px_80px_rgba(15,23,42,0.18)]"
-                      sizes="(min-width: 1024px) 46vw, 100vw"
+                      className="object-contain filter drop-shadow-[0_25px_45px_rgba(15,23,42,0.12)]"
+                      sizes="(min-width: 1024px) 50vw, 100vw"
                       priority={index === 0}
                     />
                   </div>
@@ -336,3 +336,10 @@ export default function BestSellersSection() {
     </section>
   );
 }
+
+
+
+
+
+
+
