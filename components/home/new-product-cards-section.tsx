@@ -178,7 +178,7 @@ export default function NewProductCardsSection() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#0a7ae6]">
                     {product.category}
                   </p>
-                  <h3 className="mt-1.5 line-clamp-2 text-[14px] font-medium leading-5 text-slate-900">
+                  <h3 className="mt-1.5 truncate text-[14px] font-medium leading-5 text-slate-900">
                     {product.title}
                   </h3>
 
