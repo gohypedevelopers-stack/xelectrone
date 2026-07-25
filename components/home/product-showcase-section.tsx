@@ -33,59 +33,59 @@ export default function ProductShowcaseSection() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {products.map((product) => (
             <Link
               key={product.id}
               href={`/product/${product.id}`}
-              className="group block"
+              className="group block h-full"
               aria-label={`View ${product.title}`}
             >
-              <article className="flex min-h-[430px] flex-col overflow-hidden rounded-[2px] border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:min-h-[455px] lg:min-h-[500px]">
-                <div className="flex flex-1 flex-col p-4 sm:p-[18px] lg:p-5">
-                  <div className="relative flex h-[210px] items-center justify-center overflow-hidden rounded-[2px] bg-white p-4 sm:h-[235px] lg:h-[270px]">
+              <article className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200/80 bg-white transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
+                <div className="flex flex-1 flex-col p-2.5 sm:p-4 lg:p-5">
+                  <div className="relative flex h-[140px] items-center justify-center overflow-hidden rounded-md bg-slate-50/60 p-2 sm:h-[235px] sm:p-4 lg:h-[270px]">
                     <Image
                       src={product.image}
                       alt={product.alt}
                       fill
-                      className="object-contain p-3 transition-transform duration-300 group-hover:scale-[1.03]"
-                      sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-contain p-2 transition-transform duration-300 group-hover:scale-[1.03] sm:p-3"
+                      sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 50vw"
                     />
                   </div>
 
-                  <div className="mt-4 flex flex-1 flex-col">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                  <div className="mt-2.5 flex flex-1 flex-col sm:mt-4">
+                    <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400 sm:text-[11px] sm:tracking-[0.18em]">
                       XElectron
                     </p>
-                    <h3 className="mt-1 line-clamp-2 text-[15px] font-medium leading-5 text-slate-900 sm:text-[16px]">
+                    <h3 className="mt-1 line-clamp-2 text-[12px] font-medium leading-4 text-slate-900 sm:text-[16px] sm:leading-5">
                       {product.title}
                     </h3>
 
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-1.5 flex items-center gap-1.5 sm:mt-2">
                       <Rating value={product.rating} />
-                      <span className="text-[11px] text-slate-500">({product.reviews})</span>
+                      <span className="text-[10px] text-slate-500 sm:text-[11px]">({product.reviews})</span>
                     </div>
 
-                    <p className="mt-2 text-[12px] leading-5 text-slate-600">
+                    <p className="mt-1.5 hidden line-clamp-2 text-[11px] leading-4 text-slate-600 sm:block sm:text-[12px]">
                       {product.subtitle}
                     </p>
 
-                    <div className="mt-3 flex items-end gap-2">
-                      <span className="text-[16px] font-semibold text-slate-900 sm:text-[18px]">
+                    <div className="mt-auto flex items-baseline gap-1.5 pt-2.5 sm:pt-3">
+                      <span className="text-[14px] font-bold text-slate-900 sm:text-[18px]">
                         {product.price}
                       </span>
                       {product.oldPrice ? (
-                        <span className="pb-0.5 text-[12px] text-slate-400 line-through">
+                        <span className="text-[11px] text-slate-400 line-through sm:text-[12px]">
                           {product.oldPrice}
                         </span>
                       ) : null}
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <span className="inline-flex h-10 cursor-pointer items-center justify-center rounded-[4px] border border-[#0a7ae6] text-[12px] font-medium text-[#0a7ae6] transition-colors hover:bg-[#0a7ae6] hover:text-white">
+                    <div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:mt-4">
+                      <span className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md border border-[#0a7ae6] px-1 text-[10px] font-medium text-[#0a7ae6] truncate transition-colors hover:bg-[#0a7ae6] hover:text-white sm:h-10 sm:text-[12px]">
                         Add to cart
                       </span>
-                      <span className="inline-flex h-10 cursor-pointer items-center justify-center rounded-[4px] bg-[#0a7ae6] text-[12px] font-medium text-white transition-opacity hover:opacity-90">
+                      <span className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md bg-[#0a7ae6] px-1 text-[10px] font-medium text-white truncate transition-opacity hover:opacity-90 sm:h-10 sm:text-[12px]">
                         Buy
                       </span>
                     </div>

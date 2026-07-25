@@ -155,50 +155,50 @@ export default function NewProductCardsSection() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {xelectronProducts.map((product) => (
             <Link key={product.id} href={product.href} className="group block h-full" aria-label={`View ${product.title}`}>
-              <article className="overflow-hidden border border-slate-200/80 bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
-                <div className="relative flex h-[220px] items-center justify-center bg-white p-4">
+              <article className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200/80 bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
+                <div className="relative flex h-[140px] items-center justify-center bg-slate-50/60 p-2 sm:h-[200px] sm:p-4 lg:h-[220px]">
                   <Image
                     src={product.image}
                     alt={product.alt}
                     fill
-                    className="object-contain p-6 transition-transform duration-500 group-hover:scale-105"
-                    sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                    className="object-contain p-2 transition-transform duration-500 group-hover:scale-105 sm:p-4"
+                    sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, 50vw"
                   />
                   {product.discount && (
-                    <span className="absolute left-3 top-3 bg-[#0a7ae6] px-2.5 py-1 text-[11px] font-semibold text-white">
+                    <span className="absolute left-2 top-2 rounded-[2px] bg-[#0a7ae6] px-1.5 py-0.5 text-[9px] font-semibold text-white sm:left-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-[11px]">
                       {product.discount}
                     </span>
                   )}
                 </div>
 
-                <div className="flex flex-1 flex-col p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#0a7ae6]">
+                <div className="flex flex-1 flex-col p-2.5 sm:p-4">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#0a7ae6] sm:text-[11px] sm:tracking-[0.15em]">
                     {product.category}
                   </p>
-                  <h3 className="mt-1.5 truncate text-[14px] font-medium leading-5 text-slate-900">
+                  <h3 className="mt-1 line-clamp-2 text-[12px] font-medium leading-4 text-slate-900 sm:text-[14px] sm:leading-5">
                     {product.title}
                   </h3>
 
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-1.5 flex items-center gap-1.5">
                     <Rating value={product.rating} />
-                    <span className="text-[11px] text-slate-500">({product.reviews})</span>
+                    <span className="text-[10px] text-slate-500 sm:text-[11px]">({product.reviews})</span>
                   </div>
 
-                  <div className="mt-auto flex items-end gap-2 pt-3">
-                    <span className="text-[18px] font-bold text-slate-900">{product.price}</span>
+                  <div className="mt-auto flex items-baseline gap-1.5 pt-2.5 sm:pt-3">
+                    <span className="text-[14px] font-bold text-slate-900 sm:text-[18px]">{product.price}</span>
                     {product.oldPrice && (
-                      <span className="pb-0.5 text-[13px] text-slate-400 line-through">{product.oldPrice}</span>
+                      <span className="text-[11px] text-slate-400 line-through sm:text-[13px]">{product.oldPrice}</span>
                     )}
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <span className="inline-flex h-10 items-center justify-center rounded-md border border-[#0a7ae6] text-[13px] font-medium text-[#0a7ae6] transition-colors group-hover:bg-[#0a7ae6]/5">
+                  <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+                    <span className="inline-flex h-8 items-center justify-center rounded-md border border-[#0a7ae6] px-1 text-[10px] font-medium text-[#0a7ae6] truncate transition-colors group-hover:bg-[#0a7ae6]/5 sm:h-10 sm:text-[13px]">
                       Add to cart
                     </span>
-                    <span className="inline-flex h-10 items-center justify-center rounded-md bg-[#0a7ae6] text-[13px] font-medium text-white transition-opacity group-hover:opacity-90">
+                    <span className="inline-flex h-8 items-center justify-center rounded-md bg-[#0a7ae6] px-1 text-[10px] font-medium text-white truncate transition-opacity group-hover:opacity-90 sm:h-10 sm:text-[13px]">
                       Buy now
                     </span>
                   </div>

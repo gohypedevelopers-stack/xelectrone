@@ -53,14 +53,17 @@ export const flatItems = ["Home", "About Us", "Contact", "My Account"];
 export const banners = [
   {
     src: "/hero-banner-tv.png",
+    mobileSrc: "/hero-banner-tv-mobile.jpg",
     alt: "XElectron 55 Inch LED TV banner",
   },
   {
     src: "/hero-banner-projector-c9.png",
+    mobileSrc: "/hero-banner-projector-c9-mobile.jpg",
     alt: "XElectron Android C9 Plus projector banner",
   },
   {
     src: "/hero-banner-techno-projector.png",
+    mobileSrc: "/hero-banner-techno-projector-mobile.jpg",
     alt: "XElectron Techno Android Projector banner",
   },
 ];
