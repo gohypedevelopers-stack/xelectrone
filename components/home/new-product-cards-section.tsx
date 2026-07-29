@@ -142,7 +142,7 @@ function Rating({ value }: { value: number }) {
 
 export default function NewProductCardsSection() {
   return (
-    <section className="bg-white px-4 pb-6 pt-12 sm:px-6 sm:pb-8 sm:pt-14 lg:px-8 lg:pb-8 lg:pt-16">
+    <section className="bg-white px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:px-8 lg:pb-8 lg:pt-10">
       <div className="mx-auto max-w-[1600px]">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
@@ -211,3 +211,4 @@ export default function NewProductCardsSection() {
     </section>
   );
 }
+

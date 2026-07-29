@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import ScrollReveal from "@/components/ScrollReveal";
 
 const items = [
   {
@@ -126,9 +127,41 @@ export default function BrandSetupSection() {
             );
           })}
         </div>
+
+        <div className="mt-4 w-full px-5 py-2 sm:mt-6 sm:px-6 sm:py-3 md:mt-8">
+          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0a7ae6]">
+            Trusted proof
+          </p>
+          <ScrollReveal
+            baseOpacity={0.14}
+            baseRotation={0.5}
+            blurStrength={5}
+            rotationEnd="bottom 82%"
+            wordAnimationEnd="bottom 82%"
+            containerClassName="w-full max-w-none"
+            textClassName="w-full text-[clamp(2rem,4.8vw,4.2rem)] leading-[0.95] font-semibold tracking-[-0.08em] text-slate-900"
+          >
+            <span className="block">
+              Trusted by <span className="text-[#0a7ae6]">1 Crore+</span> Indians since 2015.
+            </span>
+            <span className="block">Built for India.</span>
+            <span className="block">
+              Tested for Indian <span className="text-slate-500">conditions.</span>
+            </span>
+            <span className="block text-slate-500">
+              Serviced across <span className="text-[#0a7ae6]">200+ Cities.</span>
+            </span>
+          </ScrollReveal>
+        </div>
       </div>
     </section>
   );
 }
+
+
+
+
+
+
 
 

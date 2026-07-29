@@ -7,6 +7,9 @@ import BrandSetupSection from "@/components/home/brand-setup-section";
 import NewProductCardsSection from "@/components/home/new-product-cards-section";
 import FaqSection from "@/components/home/faq-section";
 import CreatorVideosSection from "@/components/home/creator-videos-section";
+import VerifiedReviewsSection from "@/components/home/verified-reviews-section";
+import BrandMarqueeSection from "@/components/home/brand-marquee-section";
+import BlogSection from "@/components/home/blog-section";
 import Footer from "@/components/footer/footer";
 
 export default function Home() {
@@ -19,8 +22,11 @@ export default function Home() {
       <BestSellersSection />
       <BrandSetupSection />
       <NewProductCardsSection />
-      <FaqSection />
       <CreatorVideosSection />
+      <BrandMarqueeSection />
+      <VerifiedReviewsSection />
+      <FaqSection />
+      <BlogSection />
       <Footer />
     </main>
   );

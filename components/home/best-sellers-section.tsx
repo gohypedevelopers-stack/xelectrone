@@ -20,175 +20,217 @@ function SpecificationRow({ label, value }: { label: string; value: string }) {
 export default function BestSellersSection() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const visualRefs = useRef<Array<HTMLDivElement | null>>([]);
   const glowRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const activeIndexRef = useRef(0);
+  const titleRefs = useRef<Array<HTMLHeadingElement | null>>([]);
+
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReduceMotion(media.matches);
-
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
 
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const titleRefs = useRef<Array<HTMLHeadingElement | null>>([]);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   useLayoutEffect(() => {
-    if (reduceMotion) {
-      return;
-    }
+    if (reduceMotion || isMobile) return;
 
     const section = sectionRef.current;
     const viewport = viewportRef.current;
-    if (!section || !viewport) {
-      return;
-    }
+    const track = trackRef.current;
+
+    if (!section || !viewport || !track) return;
 
     const ctx = gsap.context(() => {
-      const trigger = ScrollTrigger.create({
-        trigger: section,
-        start: "top top",
-        end: () => `+=${Math.max(bestSellers.length - 1, 1) * window.innerHeight}`,
-        scrub: 0.6,
-        pin: viewport,
-        anticipatePin: 1,
-        fastScrollEnd: true,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => {
-          const nextIndex = Math.min(
-            bestSellers.length - 1,
-            Math.round(self.progress * (bestSellers.length - 1))
-          );
-          if (activeIndexRef.current !== nextIndex) {
-            activeIndexRef.current = nextIndex;
-            setActiveIndex(nextIndex);
-          }
+      // Helper: calculate X translation to center title[index] inside container
+      const getTitleX = (index: number) => {
+        const title = titleRefs.current[index];
+        if (!title || !track.parentElement) return 0;
+        const titleCenter = title.offsetLeft + title.offsetWidth / 2;
+        const containerCenter = track.parentElement.offsetWidth / 2;
+        return containerCenter - titleCenter;
+      };
+
+      // Set initial states (Slide 0 visible, rest hidden)
+      cardRefs.current.forEach((card, i) => {
+        if (!card) return;
+        gsap.set(card, {
+          autoAlpha: i === 0 ? 1 : 0,
+          y: i === 0 ? 0 : 35,
+          scale: i === 0 ? 1 : 0.96,
+        });
+      });
+
+      visualRefs.current.forEach((visual, i) => {
+        if (!visual) return;
+        gsap.set(visual, {
+          autoAlpha: i === 0 ? 1 : 0,
+          y: i === 0 ? 0 : 50,
+          scale: i === 0 ? 1 : 0.94,
+        });
+      });
+
+      titleRefs.current.forEach((title, i) => {
+        if (!title) return;
+        gsap.set(title, {
+          opacity: i === 0 ? 1 : 0.4,
+          color: i === 0 ? "#0f172a" : "#cbd5e1",
+        });
+      });
+
+      glowRefs.current.forEach((glow, i) => {
+        if (!glow) return;
+        gsap.set(glow, { autoAlpha: i === 0 ? 1 : 0 });
+      });
+
+      // Position title rail initially
+      gsap.set(track, { x: getTitleX(0) });
+
+      const numSlides = bestSellers.length;
+      const scrollDistance = (numSlides - 1) * window.innerHeight;
+
+      // Master Timeline scrubbed by ScrollTrigger
+      // Pin sectionRef directly with pinSpacing: true so GSAP reserves DOM space
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: section,
+          start: "top top",
+          end: () => `+=${scrollDistance}`,
+          scrub: 0.6, // Physics scrub dampening
+          pin: section,
+          pinSpacing: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
         },
       });
 
-      gsap.set(cardRefs.current, { autoAlpha: 0, y: 24, scale: 0.98 });
-      gsap.set(visualRefs.current, { autoAlpha: 0, y: 150, x: -150, scale: 0.94 });
-      gsap.set(glowRefs.current, { autoAlpha: 0 });
-      gsap.set(cardRefs.current[0], { autoAlpha: 1, y: 0, scale: 1 });
-      gsap.set(visualRefs.current[0], { autoAlpha: 1, y: 0, x: 0, scale: 1 });
-      gsap.set(glowRefs.current[0], { autoAlpha: 1 });
+      // For each transition step between slide i and slide i+1:
+      // Timeline runs from t = 0 to t = (numSlides - 1)
+      for (let i = 0; i < numSlides - 1; i++) {
+        const tStart = i;
 
-      return () => trigger.kill();
+        // Phase 1 (t = i + 0.15 -> i + 0.45): Card i and Visual i fade out cleanly
+        const cardCur = cardRefs.current[i];
+        const visualCur = visualRefs.current[i];
+        const glowCur = glowRefs.current[i];
+        const titleCur = titleRefs.current[i];
+
+        if (cardCur) {
+          tl.to(
+            cardCur,
+            { autoAlpha: 0, y: -35, scale: 0.96, ease: "power2.in", duration: 0.35 },
+            tStart + 0.15
+          );
+        }
+        if (visualCur) {
+          tl.to(
+            visualCur,
+            { autoAlpha: 0, y: -50, scale: 0.94, ease: "power2.in", duration: 0.35 },
+            tStart + 0.15
+          );
+        }
+        if (glowCur) {
+          tl.to(glowCur, { autoAlpha: 0, ease: "power2.in", duration: 0.35 }, tStart + 0.15);
+        }
+        if (titleCur) {
+          tl.to(
+            titleCur,
+            { opacity: 0.4, color: "#cbd5e1", ease: "power1.inOut", duration: 0.5 },
+            tStart + 0.25
+          );
+        }
+
+        // Phase 2 (t = i + 0.2 -> i + 0.8): Title rail slides to center title i+1
+        tl.to(
+          track,
+          {
+            x: () => getTitleX(i + 1),
+            ease: "power2.inOut",
+            duration: 0.6,
+          },
+          tStart + 0.2
+        );
+
+        // Phase 3 (t = i + 0.52 -> i + 0.87): Card i+1 and Visual i+1 fade in cleanly (No overlap with Card i!)
+        const cardNext = cardRefs.current[i + 1];
+        const visualNext = visualRefs.current[i + 1];
+        const glowNext = glowRefs.current[i + 1];
+        const titleNext = titleRefs.current[i + 1];
+
+        if (cardNext) {
+          tl.to(
+            cardNext,
+            { autoAlpha: 1, y: 0, scale: 1, ease: "power2.out", duration: 0.35 },
+            tStart + 0.52
+          );
+        }
+        if (visualNext) {
+          tl.to(
+            visualNext,
+            { autoAlpha: 1, y: 0, scale: 1, ease: "power2.out", duration: 0.35 },
+            tStart + 0.52
+          );
+        }
+        if (glowNext) {
+          tl.to(glowNext, { autoAlpha: 1, ease: "power2.out", duration: 0.35 }, tStart + 0.52);
+        }
+        if (titleNext) {
+          tl.to(
+            titleNext,
+            { opacity: 1, color: "#0f172a", ease: "power1.inOut", duration: 0.5 },
+            tStart + 0.25
+          );
+        }
+      }
     }, section);
 
     return () => ctx.revert();
-  }, [reduceMotion]);
-
-  useLayoutEffect(() => {
-    if (reduceMotion) {
-      return;
-    }
-
-    cardRefs.current.forEach((card, index) => {
-      if (!card) {
-        return;
-      }
-
-      gsap.to(card, {
-        autoAlpha: index === activeIndex ? 1 : 0,
-        y: index === activeIndex ? 0 : 24,
-        scale: index === activeIndex ? 1 : 0.98,
-        duration: 0.7,
-        ease: "power2.out",
-        overwrite: true,
-      });
-    });
-
-    visualRefs.current.forEach((visual, index) => {
-      if (!visual) {
-        return;
-      }
-
-      gsap.to(visual, {
-        autoAlpha: index === activeIndex ? 1 : 0,
-        y: index === activeIndex ? 0 : 150,
-        x: index === activeIndex ? 0 : -150,
-        scale: index === activeIndex ? 1 : 0.94,
-        duration: 0.9,
-        ease: "power3.out",
-        overwrite: true,
-      });
-    });
-
-    glowRefs.current.forEach((glow, index) => {
-      if (!glow) {
-        return;
-      }
-
-      gsap.to(glow, {
-        autoAlpha: index === activeIndex ? 1 : 0,
-        duration: 0.7,
-        ease: "power2.out",
-        overwrite: true,
-      });
-    });
-
-    // Update track position directly to avoid an extra React render on scroll
-    const activeTitle = titleRefs.current[activeIndex];
-    const track = trackRef.current;
-    if (activeTitle && track && track.parentElement) {
-      const centerOfActive = activeTitle.offsetLeft + activeTitle.offsetWidth / 2;
-      const centerOfContainer = track.parentElement.offsetWidth / 2;
-      gsap.to(track, {
-        x: centerOfContainer - centerOfActive,
-        duration: 0.45,
-        ease: "power2.out",
-        overwrite: true,
-      });
-    }
-  }, [activeIndex, reduceMotion]);
+  }, [reduceMotion, isMobile]);
 
   const titleRailStyle = {
-    WebkitMaskImage: "linear-gradient(90deg, transparent 0, black 6%, black 94%, transparent 100%)",
-    maskImage: "linear-gradient(90deg, transparent 0, black 6%, black 94%, transparent 100%)",
+    WebkitMaskImage:
+      "linear-gradient(90deg, transparent 0, black 6%, black 94%, transparent 100%)",
+    maskImage:
+      "linear-gradient(90deg, transparent 0, black 6%, black 94%, transparent 100%)",
   } as const;
 
   const titleClass =
-    "shrink-0 whitespace-nowrap text-[clamp(2.9rem,5vw,6.6rem)] font-semibold leading-none tracking-[-0.08em] transition-all duration-500 ease-out";
+    "shrink-0 whitespace-nowrap text-[clamp(1.8rem,5vw,6.6rem)] font-semibold leading-none tracking-[-0.08em] will-change-transform";
 
   if (reduceMotion) {
     return (
-      <section className="hidden bg-white text-slate-900 lg:block">
-        <div className="mx-auto max-w-[1600px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <section className="bg-white py-12 text-slate-900 hidden md:block">
+        <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
           <p className="text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[#0a7ae6]">
             Best sellers
           </p>
-          <div className="relative mt-2 flex w-full justify-center lg:mt-4" style={titleRailStyle}>
-            <div className="flex min-w-max items-center justify-center gap-14 py-0.5">
-              {bestSellers.map((item, index) => (
-                <h2
-                  key={item.id}
-                  className={`${titleClass} ${
-                    index === 0
-                      ? "translate-y-[-0.02em] text-slate-900 opacity-100"
-                      : "translate-y-[0.02em] text-slate-300 opacity-60"
-                  }`}
-                >
-                  {item.name}
-                </h2>
-              ))}
-            </div>
-          </div>
         </div>
-        <div className="mx-auto max-w-[1600px] space-y-6 px-4 pb-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] space-y-8 px-4 pb-10 sm:px-6 lg:px-8">
           {bestSellers.map((item) => (
-            <div key={item.id} className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-              <div className="rounded-[28px] border border-slate-200 bg-[#f8fafc] px-5 py-5 md:px-8 md:py-7">
+            <div key={item.id} className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <div className="rounded-[28px] border border-slate-200 bg-[#f8fafc] px-6 py-6 md:px-8 md:py-7">
                 <div className="flex flex-wrap items-end gap-x-3 gap-y-1 border-b border-slate-200 pb-6">
                   <span className="text-[27px] font-semibold text-slate-900">{item.price}</span>
-                  <span className="text-[15px] text-slate-400 line-through">{item.oldPrice}</span>
-                  <span className="text-[16px] font-medium text-[#0a7ae6]">{item.discount}</span>
+                  {item.oldPrice && (
+                    <span className="text-[15px] text-slate-400 line-through">{item.oldPrice}</span>
+                  )}
+                  {item.discount && (
+                    <span className="text-[16px] font-medium text-[#0a7ae6]">{item.discount}</span>
+                  )}
                 </div>
                 <p className="mt-5 max-w-[34rem] text-[17px] leading-8 text-slate-700 md:text-[18px]">
                   {item.description}
@@ -198,9 +240,12 @@ export default function BestSellersSection() {
                     <SpecificationRow key={spec.label} label={spec.label} value={spec.value} />
                   ))}
                 </div>
-                <button className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[16px] font-medium text-white">
-                  Add to cart
-                </button>
+                <a
+                  href={`/product?id=${item.id}`}
+                  className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[16px] font-medium text-white hover:bg-[#086ac9] transition-colors"
+                >
+                  View Details & Buy
+                </a>
               </div>
               <div className="relative min-h-[350px] lg:h-full lg:min-h-[450px]">
                 <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,_rgba(10,122,230,0.18)_0%,_rgba(10,122,230,0.08)_30%,_rgba(10,122,230,0)_68%)] blur-3xl" />
@@ -216,127 +261,113 @@ export default function BestSellersSection() {
   return (
     <section
       ref={sectionRef}
-      className="hidden relative bg-white text-slate-900 lg:block"
-      style={{ height: `${bestSellers.length * 96}vh` }}
+      className="relative min-h-screen h-screen bg-white text-slate-900 overflow-hidden hidden md:block"
     >
       <div
         ref={viewportRef}
-        className="mx-auto flex h-screen max-w-[1600px] flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-10"
+        className="mx-auto flex h-full max-w-[1600px] flex-col justify-between px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-10"
       >
         <p className="text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[#0a7ae6]">
           Best sellers
         </p>
 
-        <div className="relative mt-2 w-full overflow-visible lg:mt-4" style={titleRailStyle}>
-          <div 
+        <div className="relative mt-2 w-full overflow-hidden lg:mt-4" style={titleRailStyle}>
+          <div
             ref={trackRef}
-            className="flex w-max items-center gap-14 py-0.5 transition-transform duration-500 ease-out will-change-transform"
+            className="flex w-max items-center gap-14 py-0.5 will-change-transform"
           >
-            {bestSellers.map((item, index) => {
-              const isActive = index === activeIndex;
-              return (
-                <h2
-                  key={item.id}
-                  ref={(node) => { titleRefs.current[index] = node; }}
-                  className={`${titleClass} ${
-                    isActive
-                      ? "translate-y-[-0.02em] text-slate-900 opacity-100"
-                      : "translate-y-[0.02em] text-slate-300 opacity-50"
-                  }`}
-                >
-                  {item.name}
-                </h2>
-              );
-            })}
+            {bestSellers.map((item, index) => (
+              <h2
+                key={item.id}
+                ref={(node) => {
+                  titleRefs.current[index] = node;
+                }}
+                className={titleClass}
+              >
+                {item.name}
+              </h2>
+            ))}
           </div>
         </div>
 
-        <div className="mt-0 grid flex-1 items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
-          <div className="relative order-2 min-h-[420px] pb-4 sm:min-h-[460px] lg:order-1 lg:min-h-[560px] lg:pb-0">
-            {bestSellers.map((item, index) => {
-              const isActive = index === activeIndex;
-
-              return (
-                <div
-                  key={item.id}
-                  ref={(node) => {
-                    cardRefs.current[index] = node;
-                  }}
-                  className={`absolute inset-0 flex items-center transition-all duration-700 ease-out [will-change:transform,opacity] ${
-                    isActive ? "opacity-100 translate-y-0 scale-100" : "pointer-events-none opacity-0 translate-y-6 scale-[0.98]"
-                  }`}
-                >
-                  <div className="relative z-10 w-full max-w-[640px] rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-md px-6 py-6 shadow-[0_20px_70px_rgba(15,23,42,0.05)] sm:px-8 sm:py-8 md:px-10 md:py-9">
-                    <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-6">
-                      <div>
-                        <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-                          <span className="text-[26px] font-semibold text-slate-900 sm:text-[32px]">{item.price}</span>
-                          <span className="text-[14px] text-slate-400 line-through sm:text-[16px]">{item.oldPrice}</span>
-                          <span className="text-[14px] font-medium text-[#0a7ae6] sm:text-[17px]">{item.discount}</span>
-                        </div>
+        <div className="my-auto grid flex-1 items-center gap-2 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
+          <div className="relative order-2 min-h-[320px] pb-2 sm:min-h-[420px] sm:pb-4 lg:order-1 lg:min-h-[560px] lg:pb-0">
+            {bestSellers.map((item, index) => (
+              <div
+                key={item.id}
+                ref={(node) => {
+                  cardRefs.current[index] = node;
+                }}
+                className="absolute inset-0 flex items-center will-change-[transform,opacity]"
+              >
+                <div className="relative z-10 w-full max-w-[640px] rounded-[20px] sm:rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-md px-4 py-4 shadow-[0_20px_70px_rgba(15,23,42,0.05)] sm:px-8 sm:py-8 md:px-10 md:py-9 max-h-[calc(100vh-320px)] sm:max-h-none overflow-y-auto">
+                  <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-6">
+                    <div>
+                      <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                        <span className="text-[22px] font-semibold text-slate-900 sm:text-[32px]">
+                          {item.price}
+                        </span>
+                        {item.oldPrice && (
+                          <span className="text-[14px] text-slate-400 line-through sm:text-[16px]">
+                            {item.oldPrice}
+                          </span>
+                        )}
+                        {item.discount && (
+                          <span className="text-[14px] font-medium text-[#0a7ae6] sm:text-[17px]">
+                            {item.discount}
+                          </span>
+                        )}
                       </div>
                     </div>
-
-                    <p className="mt-5 max-w-[34rem] text-[16px] leading-8 text-slate-700 sm:text-[17px] md:text-[19px]">
-                      {item.description}
-                    </p>
-
-                    <div className="mt-6">
-                      {item.specs.map((spec) => (
-                        <SpecificationRow key={spec.label} label={spec.label} value={spec.value} />
-                      ))}
-                    </div>
-
-                    <a
-                      href={`/product?id=${item.id}`}
-                      className="mt-8 inline-flex h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[16px] font-medium text-white transition-all hover:bg-[#086ac9] shadow-lg shadow-blue-500/15 active:scale-[0.99]"
-                    >
-                      View Details & Buy
-                    </a>
                   </div>
+
+                  <p className="mt-3 sm:mt-5 max-w-[34rem] text-[14px] leading-6 text-slate-700 sm:text-[17px] sm:leading-8 md:text-[19px]">
+                    {item.description}
+                  </p>
+
+                  <div className="mt-3 sm:mt-6">
+                    {item.specs.map((spec) => (
+                      <SpecificationRow key={spec.label} label={spec.label} value={spec.value} />
+                    ))}
+                  </div>
+
+                  <a
+                    href={`/product?id=${item.id}`}
+                    className="mt-4 sm:mt-8 inline-flex h-11 sm:h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[14px] sm:text-[16px] font-medium text-white transition-all hover:bg-[#086ac9] shadow-lg shadow-blue-500/15 active:scale-[0.99]"
+                  >
+                    View Details & Buy
+                  </a>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
 
           <div className="relative order-1 flex items-center justify-center pb-0 lg:order-2 lg:justify-end lg:pb-0">
-            <div className="relative min-h-[360px] w-full max-w-[900px] sm:min-h-[440px] lg:min-h-[580px]">
-              {bestSellers.map((item, index) => {
-                const isActive = index === activeIndex;
-
-                return (
+            <div className="relative min-h-[220px] w-full max-w-[900px] sm:min-h-[440px] lg:min-h-[580px]">
+              {bestSellers.map((item, index) => (
+                <div
+                  key={item.id}
+                  ref={(node) => {
+                    visualRefs.current[index] = node;
+                  }}
+                  className="absolute inset-0 flex items-center justify-center pb-0 will-change-[transform,opacity]"
+                >
                   <div
-                    key={item.id}
                     ref={(node) => {
-                      visualRefs.current[index] = node;
+                      glowRefs.current[index] = node;
                     }}
-                    className={`absolute inset-0 flex items-center justify-center pb-0 transition-all duration-700 ease-out [will-change:transform,opacity] ${
-                      isActive
-                        ? "opacity-100 translate-y-0 translate-x-0 scale-100"
-                        : "opacity-0 translate-y-32 -translate-x-32 scale-[0.94]"
-                    }`}
-                  >
-                    <div
-                      ref={(node) => {
-                        glowRefs.current[index] = node;
-                      }}
-                      className={`absolute inset-0 rounded-full blur-3xl pointer-events-none [will-change:opacity,transform] ${
-                        isActive
-                          ? "bg-[radial-gradient(circle,_rgba(10,122,230,0.12)_0%,_rgba(10,122,230,0.04)_40%,_transparent_70%)]"
-                          : "bg-transparent"
-                      }`}
-                    />
-                    <Image
-                      src={item.image}
-                      alt={item.imageAlt}
-                      fill
-                      className="object-contain filter drop-shadow-[0_25px_45px_rgba(15,23,42,0.12)] [will-change:transform,opacity]"
-                      sizes="(min-width: 1024px) 50vw, 100vw"
-                      priority={index === 0}
-                    />
-                  </div>
-                );
-              })}
+                    className="absolute inset-0 rounded-full bg-[radial-gradient(circle,_rgba(10,122,230,0.18)_0%,_rgba(10,122,230,0.08)_30%,_rgba(10,122,230,0)_68%)] blur-3xl pointer-events-none will-change-[opacity]"
+                  />
+                  <Image
+                    src={item.image}
+                    alt={item.imageAlt}
+                    fill
+                    className="object-contain filter drop-shadow-[0_25px_45px_rgba(15,23,42,0.12)]"
+                    sizes="(min-width: 1024px) 50vw, 100vw"
+                    priority={index === 0}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -344,10 +375,3 @@ export default function BestSellersSection() {
     </section>
   );
 }
-
-
-
-
-
-
-

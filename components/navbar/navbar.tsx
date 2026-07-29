@@ -14,7 +14,6 @@ import {
   Headphones,
   User,
   PhoneCall,
-  Sparkles,
   Package,
   Home as HomeIcon,
   Info,
@@ -80,7 +79,9 @@ function FlatNavLink({
       onClick={onClick}
       className="group inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[14px] font-medium text-slate-700 transition-colors duration-200 hover:text-[#0a7ae6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6]"
     >
-      {Icon && <Icon className="size-4 text-slate-400 group-hover:text-[#0a7ae6]" />}
+      {Icon && (
+        <Icon className="size-4 text-slate-400 group-hover:text-[#0a7ae6]" />
+      )}
       <span>{label}</span>
     </Link>
   );
@@ -104,7 +105,11 @@ function DropdownNavItem({
   const panelId = `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-menu`;
 
   return (
-    <div className="relative h-full" onMouseEnter={onOpen} onMouseLeave={onClose}>
+    <div
+      className="relative h-full"
+      onMouseEnter={onOpen}
+      onMouseLeave={onClose}
+    >
       <button
         type="button"
         aria-expanded={open}
@@ -131,7 +136,6 @@ function DropdownNavItem({
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl">
             <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
               <span>{label}</span>
-              <Sparkles className="size-3 text-[#0a7ae6]" />
             </div>
             <div className="space-y-0.5">
               {items.map((item) => (
@@ -156,7 +160,9 @@ function DropdownNavItem({
 export default function Navbar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [expandedMobileCategory, setExpandedMobileCategory] = useState<string | null>("PRODUCT");
+  const [expandedMobileCategory, setExpandedMobileCategory] = useState<
+    string | null
+  >("PRODUCT");
   const [searchQuery, setSearchQuery] = useState("");
   const headerRef = useRef<HTMLElement | null>(null);
 
@@ -247,7 +253,9 @@ export default function Navbar() {
               items={group.items}
               open={openMenu === group.label}
               onToggle={() =>
-                setOpenMenu((current) => (current === group.label ? null : group.label))
+                setOpenMenu((current) =>
+                  current === group.label ? null : group.label,
+                )
               }
               onOpen={() => setOpenMenu(group.label)}
               onClose={() => setOpenMenu(null)}
@@ -255,13 +263,15 @@ export default function Navbar() {
           ))}
           <FlatNavLink label="About Us" href="/" />
           <FlatNavLink label="Contact" href="/" />
-          <FlatNavLink label="My Account" href="/" />
         </nav>
 
         {/* Desktop Actions */}
         <div className="hidden shrink-0 items-center justify-self-end gap-1.5 sm:flex">
           <IconButton label="Search">
             <Search className="size-4 text-slate-700 stroke-[1.8]" />
+          </IconButton>
+          <IconButton label="My Account">
+            <User className="size-4 text-slate-700 stroke-[1.8]" />
           </IconButton>
           <IconButton label="Shopping bag" badge={2}>
             <ShoppingBag className="size-4 text-slate-700 stroke-[1.8]" />
@@ -272,6 +282,9 @@ export default function Navbar() {
         <div className="flex shrink-0 items-center gap-1 sm:hidden">
           <IconButton label="Search" onClick={() => setMobileOpen(true)}>
             <Search className="size-4 text-slate-800 stroke-[1.8]" />
+          </IconButton>
+          <IconButton label="My Account">
+            <User className="size-4 text-slate-800 stroke-[1.8]" />
           </IconButton>
           <IconButton label="Shopping bag" badge={2}>
             <ShoppingBag className="size-4 text-slate-800 stroke-[1.8]" />
@@ -303,7 +316,6 @@ export default function Navbar() {
           {/* Slide-Down Drawer Container */}
           <div className="fixed inset-x-0 top-[58px] z-50 max-h-[calc(100vh-58px)] overflow-y-auto border-t border-slate-200/80 bg-white/98 shadow-2xl backdrop-blur-2xl lg:hidden animate-in slide-in-from-top-2 duration-200">
             <div className="mx-auto max-w-[1600px] px-4 py-4 space-y-4">
-              
               {/* Quick Search Input */}
               <div className="relative">
                 <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -334,7 +346,10 @@ export default function Navbar() {
                   const isExpanded = expandedMobileCategory === group.label;
 
                   return (
-                    <div key={group.label} className="rounded-xl border border-slate-100 bg-slate-50/50 overflow-hidden">
+                    <div
+                      key={group.label}
+                      className="rounded-xl border border-slate-100 bg-slate-50/50 overflow-hidden"
+                    >
                       <button
                         type="button"
                         onClick={() => toggleMobileCategory(group.label)}
@@ -401,10 +416,16 @@ export default function Navbar() {
 
               {/* Bottom Support Callout Box */}
               <div className="rounded-xl border border-[#0a7ae6]/20 bg-[linear-gradient(135deg,rgba(10,122,230,0.05),rgba(10,122,230,0.1))] p-3.5 text-center">
-                <p className="text-[12px] font-bold text-slate-900">Need Help or Service?</p>
-                <p className="mt-0.5 text-[11px] text-slate-600">Call Support: <span className="font-semibold text-[#0a7ae6]">1800-123-4567</span></p>
+                <p className="text-[12px] font-bold text-slate-900">
+                  Need Help or Service?
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-600">
+                  Call Support:{" "}
+                  <span className="font-semibold text-[#0a7ae6]">
+                    1800-123-4567
+                  </span>
+                </p>
               </div>
-
             </div>
           </div>
         </>
@@ -412,8 +433,3 @@ export default function Navbar() {
     </header>
   );
 }
-
-
-
-
-
