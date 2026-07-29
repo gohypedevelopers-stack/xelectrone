@@ -70,21 +70,6 @@ export const banners = [
 
 export const categories: CategoryItem[] = [
   {
-    title: "Laptops & PC",
-    src: "/category-laptop.png",
-    alt: "Laptop category",
-  },
-  {
-    title: "Smartphones",
-    src: "/category-smartphone.png",
-    alt: "Smartphone category",
-  },
-  {
-    title: "Cameras",
-    src: "/category-camera.png",
-    alt: "Camera category",
-  },
-  {
     title: "Headphones",
     src: "/category-headphones.png",
     alt: "Headphones category",
@@ -93,6 +78,31 @@ export const categories: CategoryItem[] = [
     title: "Speakers",
     src: "/category-speaker.png",
     alt: "Speaker category",
+  },
+  {
+    title: "Projectors",
+    src: "/category-projector.png",
+    alt: "Projectors category",
+  },
+  {
+    title: "Digital Photo Frames",
+    src: "/category-frame.png",
+    alt: "Digital Photo Frames category",
+  },
+  {
+    title: "LED TVS",
+    src: "/category-tv.png",
+    alt: "LED TVS category",
+  },
+  {
+    title: "Portable Monitors",
+    src: "/category-monitor.png",
+    alt: "Portable Monitors category",
+  },
+  {
+    title: "Accessories",
+    src: "/category-accessories.png",
+    alt: "Accessories category",
   },
 ];
 
