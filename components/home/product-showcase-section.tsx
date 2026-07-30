@@ -20,14 +20,14 @@ function Rating({ value }: { value: number }) {
 
 export default function ProductShowcaseSection() {
   return (
-    <section className="bg-white px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+    <section className="bg-white px-4 py-6 sm:px-6 lg:px-8 lg:py-12">
       <div className="mx-auto max-w-[1600px]">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-[#0a7ae6]">
               Featured Products
             </p>
-            <h2 className="mt-1 text-[22px] font-semibold tracking-[-0.03em] text-slate-900 sm:text-[28px]">
+            <h2 className="mt-1 text-[22px] font-normal tracking-[-0.03em] text-slate-900 sm:text-[28px]">
               Products you can buy now
             </h2>
           </div>
@@ -57,7 +57,7 @@ export default function ProductShowcaseSection() {
                     <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400 sm:text-[11px] sm:tracking-[0.18em]">
                       XElectron
                     </p>
-                    <h3 className="mt-1 line-clamp-2 text-[12px] font-medium leading-4 text-slate-900 sm:text-[16px] sm:leading-5">
+                    <h3 className="mt-1 truncate text-[12px] font-medium leading-4 text-slate-900 sm:text-[16px] sm:leading-5">
                       {product.title}
                     </h3>
 
@@ -71,7 +71,7 @@ export default function ProductShowcaseSection() {
                     </p>
 
                     <div className="mt-auto flex items-baseline gap-1.5 pt-2.5 sm:pt-3">
-                      <span className="text-[14px] font-bold text-slate-900 sm:text-[18px]">
+                      <span className="text-[13px] font-medium text-slate-900 sm:text-[15px]">
                         {product.price}
                       </span>
                       {product.oldPrice ? (

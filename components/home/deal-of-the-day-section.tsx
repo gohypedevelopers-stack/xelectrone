@@ -1,0 +1,304 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { Flame, Sparkles } from "lucide-react";
+
+export default function DealOfTheDaySection() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [isWhite, setIsWhite] = useState(false);
+  const [timeLeft, setTimeLeft] = useState({
+    hours: 6,
+    minutes: 37,
+    seconds: 8,
+  });
+
+  // COUNTDOWN TIMER
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: 59, seconds: 59 };
+        } else if (prev.hours > 0) {
+          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        }
+        return { hours: 0, minutes: 0, seconds: 0 };
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // SCROLL TRIGGER: FIRST BLACK, THEN TRANSITIONS TO WHITE ON IN-VIEW
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsWhite(entry.isIntersecting);
+      },
+      {
+        threshold: 0.3,
+      }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const formatTime = (num: number) => String(num).padStart(2, "0");
+
+  return (
+    <section
+      ref={sectionRef}
+      className={`px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-28 transition-colors duration-700 ease-in-out ${
+        isWhite ? "bg-[#fafbfc] text-slate-900" : "bg-[#080c14] text-white"
+      }`}
+    >
+      <div className="mx-auto max-w-[1480px]">
+        {/* SECTION HEADER */}
+        <div className="mb-4 sm:mb-10 flex items-center justify-between gap-2">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#0a7ae6]">
+              <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Flash Offer
+            </span>
+            <h2
+              className={`mt-0.5 text-lg xs:text-2xl font-normal tracking-tight transition-colors duration-700 whitespace-nowrap sm:text-3xl lg:text-4xl ${
+                isWhite ? "text-slate-900" : "text-white"
+              }`}
+            >
+              Deal of the day
+            </h2>
+          </div>
+
+          {/* MOBILE ONLY TIMER BADGE */}
+          <div
+            className={`flex sm:hidden items-center gap-1.5 rounded-lg border px-2 py-1 shadow-xs transition-all duration-700 shrink-0 ${
+              isWhite
+                ? "border-blue-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-blue-50/80 text-slate-900"
+                : "border-slate-800 bg-[#0f172a]/90 text-white"
+            }`}
+          >
+            <div className="flex items-center gap-1">
+              <Flame className="h-3 w-3 fill-[#0a7ae6] text-[#0a7ae6] animate-pulse" />
+              <span className="text-[10px] font-extrabold">16 Left</span>
+            </div>
+            <div className={`h-3 w-px ${isWhite ? "bg-slate-300/80" : "bg-slate-700"}`} />
+            <div className="flex items-center gap-1">
+              <span className="text-[8px] font-bold uppercase tracking-wider text-slate-400">
+                Ends In
+              </span>
+              <div className="font-mono text-[11px] font-extrabold tracking-tight">
+                <span>{formatTime(timeLeft.hours)}</span>:
+                <span>{formatTime(timeLeft.minutes)}</span>:
+                <span className="text-[#0a7ae6]">{formatTime(timeLeft.seconds)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2-COLUMN GRID WITH 50/50 SIZING */}
+        <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-12 lg:items-stretch">
+          {/* LEFT COLUMN: LIFESTYLE IMAGE BANNER */}
+          <div
+            className={`relative overflow-hidden rounded-2xl sm:rounded-[30px] border transition-all duration-700 lg:col-span-6 flex flex-col h-[210px] sm:h-full sm:min-h-[460px] lg:min-h-[550px] ${
+              isWhite
+                ? "border-slate-200/80 bg-slate-900 shadow-md"
+                : "border-slate-800/90 bg-slate-950 shadow-2xl shadow-blue-950/40"
+            }`}
+          >
+            <div className="relative h-full w-full min-h-[210px] sm:min-h-[460px] lg:min-h-[550px]">
+              <Image
+                src="/deal-soundbar.png"
+                alt="XElectron Blaze B2000 Soundbar System"
+                fill
+                className="object-cover transition-transform duration-700 hover:scale-105"
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              
+              {/* DOLBY AUDIO BADGE */}
+              <div className="absolute bottom-3 right-3 sm:bottom-5 sm:right-5 flex items-center gap-2 rounded-xl bg-black/80 backdrop-blur-md px-3 py-1.5 sm:px-3.5 sm:py-2 text-white border border-white/10 shadow-lg">
+                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+                  Dolby Audio
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: DEAL DETAILS CARD WITH DESKTOP TIMER BOX */}
+          <div className="flex flex-col gap-4 sm:gap-5 lg:col-span-6 justify-between">
+            {/* DESKTOP TIMER BOX (EXACTLY AS IN SCREENSHOT) */}
+            <div
+              className={`hidden sm:flex items-center justify-between rounded-[22px] border p-4.5 shadow-sm transition-all duration-700 ${
+                isWhite
+                  ? "border-blue-100 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-blue-50/70 text-slate-900"
+                  : "border-slate-800 bg-[#0f172a]/90 text-white"
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <div
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors duration-700 ${
+                    isWhite
+                      ? "bg-[#0a7ae6]/10 border border-[#0a7ae6]/20 text-[#0a7ae6]"
+                      : "bg-[#0a7ae6]/20 border border-[#0a7ae6]/30 text-[#0a7ae6]"
+                  }`}
+                >
+                  <Flame className="h-5.5 w-5.5 fill-[#0a7ae6] text-[#0a7ae6] animate-pulse" />
+                </div>
+                <div>
+                  <p
+                    className={`text-base font-bold leading-none transition-colors duration-700 ${
+                      isWhite ? "text-slate-900" : "text-white"
+                    }`}
+                  >
+                    16
+                  </p>
+                  <p
+                    className={`mt-0.5 text-[10px] font-semibold uppercase tracking-widest transition-colors duration-700 ${
+                      isWhite ? "text-slate-500" : "text-slate-400"
+                    }`}
+                  >
+                    Units Left
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className={`h-8.5 w-px transition-colors duration-700 ${
+                  isWhite ? "bg-slate-200/80" : "bg-slate-800"
+                }`}
+              />
+
+              {/* LIVE COUNTDOWN DISPLAY */}
+              <div className="text-right">
+                <p
+                  className={`text-[10px] font-semibold uppercase tracking-widest transition-colors duration-700 ${
+                    isWhite ? "text-slate-400" : "text-slate-400"
+                  }`}
+                >
+                  Ends In
+                </p>
+                <div
+                  className={`mt-0.5 font-mono text-2xl sm:text-3xl font-extrabold tracking-tight transition-colors duration-700 ${
+                    isWhite ? "text-slate-900" : "text-white"
+                  }`}
+                >
+                  <span>{formatTime(timeLeft.hours)}</span>:
+                  <span>{formatTime(timeLeft.minutes)}</span>:
+                  <span className="text-[#0a7ae6]">{formatTime(timeLeft.seconds)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* PRODUCT CARD BODY */}
+            <div
+              className={`flex-1 flex flex-col justify-between rounded-2xl sm:rounded-[30px] border p-4 sm:p-7 lg:p-9 shadow-sm transition-all duration-700 ${
+                isWhite
+                  ? "border-slate-200/90 bg-white text-slate-900 shadow-sm"
+                  : "border-slate-800 bg-[#0e1626] text-white shadow-2xl"
+              }`}
+            >
+              <div>
+                {/* PRODUCT TITLE & SUBTITLE */}
+                <h3
+                  className={`text-2xl font-semibold tracking-tight transition-colors duration-700 sm:text-4xl ${
+                    isWhite ? "text-slate-900" : "text-white"
+                  }`}
+                >
+                  BLAZE B2000
+                </h3>
+                <p
+                  className={`mt-1 text-sm sm:text-base leading-relaxed transition-colors duration-700 ${
+                    isWhite ? "text-slate-600" : "text-slate-300"
+                  }`}
+                >
+                  Powerhouse home audio system designed to turn your living room into a cinematic experience.
+                </p>
+
+                {/* SPECIFICATION PILLS WITH WEIGHT SEMIBOLD & 11PX */}
+                <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-2.5">
+                  {["DOLBY AUDIO", "900W", "5.2 CHANNEL", "3D SURROUND"].map((spec) => (
+                    <span
+                      key={spec}
+                      className={`rounded-full border px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider transition-all duration-700 ${
+                        isWhite
+                          ? "border-[#0a7ae6]/30 bg-blue-50/70 text-[#0a7ae6] hover:bg-blue-100"
+                          : "border-[#0a7ae6]/40 bg-[#0a7ae6]/15 text-[#38bdf8] hover:bg-[#0a7ae6]/25"
+                      }`}
+                    >
+                      {spec}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                {/* PRICING */}
+                <div
+                  className={`mt-4 sm:mt-5 border-t pt-3.5 sm:pt-4 transition-colors duration-700 ${
+                    isWhite ? "border-slate-100" : "border-slate-800"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-baseline gap-2 sm:gap-3">
+                    <span
+                      className={`text-xl font-medium transition-colors duration-700 sm:text-2xl lg:text-3xl ${
+                        isWhite ? "text-slate-900" : "text-white"
+                      }`}
+                    >
+                      ₹ 14,999
+                    </span>
+                    <span
+                      className={`text-xs font-normal line-through transition-colors duration-700 sm:text-sm ${
+                        isWhite ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      ₹ 32,999
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-[#0a7ae6]">
+                    EMI FROM ₹ 5,000/MONTH
+                  </p>
+                </div>
+
+                {/* STOCK CLAIM PROGRESS BAR */}
+                <div className="mt-3 sm:mt-4">
+                  <div className="flex justify-between text-[11px] sm:text-xs font-semibold uppercase tracking-wider">
+                    <span className="text-[#0a7ae6]">Selling Fast</span>
+                    <span
+                      className={`transition-colors duration-700 ${
+                        isWhite ? "text-slate-500" : "text-slate-400"
+                      }`}
+                    >
+                      86% Claimed
+                    </span>
+                  </div>
+                  <div
+                    className={`mt-1.5 sm:mt-2 h-2 sm:h-2.5 w-full overflow-hidden rounded-full transition-colors duration-700 ${
+                      isWhite ? "bg-slate-100" : "bg-slate-800"
+                    }`}
+                  >
+                    <div className="h-full w-[86%] rounded-full bg-gradient-to-r from-[#0a7ae6] to-[#025bb5] shadow-sm transition-all duration-500" />
+                  </div>
+                </div>
+
+                {/* BLUE CTA BUTTON */}
+                <Link
+                  href="/product?id=blaze-b2000"
+                  className="group relative mt-4 sm:mt-7 inline-flex h-12 sm:h-15 w-full items-center justify-center overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#0a7ae6] to-[#025bb5] text-sm sm:text-lg font-semibold tracking-wide text-white shadow-md shadow-blue-500/25 transition-all duration-300 hover:from-[#0869c7] hover:to-[#014993] hover:shadow-blue-500/40 active:scale-[0.99]"
+                >
+                  <span>GRAB IT NOW — ₹ 14,999</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

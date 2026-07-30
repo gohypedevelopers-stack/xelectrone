@@ -11,9 +11,9 @@ const videos = [
 
 export default function CreatorVideosSection() {
   return (
-    <section className="bg-[#f4f6f8] py-12 md:py-20 text-slate-900">
+    <section className="bg-white py-12 md:py-20 text-slate-900">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
-        <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold tracking-tight mb-8">
+        <h2 className="text-2xl md:text-3xl lg:text-4xl font-normal tracking-tight mb-8">
           Approved by Creators
         </h2>
         
@@ -21,7 +21,7 @@ export default function CreatorVideosSection() {
           {videos.map((vid) => (
             <div 
               key={vid.id} 
-              className="relative group aspect-[9/16] min-w-[72vw] snap-start overflow-hidden rounded-[18px] cursor-pointer bg-slate-200 sm:min-w-[48vw] lg:min-w-0 md:rounded-2xl"
+              className="relative group aspect-[9/16] min-w-[72vw] snap-start overflow-hidden rounded-[10px] cursor-pointer bg-slate-200 sm:min-w-[48vw] lg:min-w-0"
             >
               <Image
                 src={vid.image}

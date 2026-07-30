@@ -178,28 +178,28 @@ export default function VerifiedReviewsSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative w-full bg-[#f8fafc] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12 overflow-hidden"
+      className="relative w-full bg-[#f8fafc] px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-24 overflow-hidden"
     >
       <div className="mx-auto max-w-[1400px]">
         {/* HEADER TITLE & NAVIGATION BUTTONS IN ONE LINE */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl md:text-4xl lg:text-[42px] sm:whitespace-nowrap">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <h2 className="text-xl font-normal tracking-tight text-slate-900 sm:text-3xl md:text-4xl lg:text-[42px]">
             Real reviews from verified buyers
           </h2>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
               onClick={handlePrev}
               aria-label="Previous review"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ea580c] text-white shadow-md shadow-orange-500/20 transition-all hover:bg-[#c2410c] hover:scale-105 active:scale-95"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[#0a7ae6] text-white shadow-md shadow-blue-500/25 transition-all hover:bg-[#0869c7] hover:scale-105 active:scale-95"
             >
-              <ChevronLeft className="h-5 w-5 stroke-[2.5]" />
+              <ChevronLeft className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.5]" />
             </button>
             <button
               onClick={handleNext}
               aria-label="Next review"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ea580c] text-white shadow-md shadow-orange-500/20 transition-all hover:bg-[#c2410c] hover:scale-105 active:scale-95"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[#0a7ae6] text-white shadow-md shadow-blue-500/25 transition-all hover:bg-[#0869c7] hover:scale-105 active:scale-95"
             >
-              <ChevronRight className="h-5 w-5 stroke-[2.5]" />
+              <ChevronRight className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.5]" />
             </button>
           </div>
         </div>

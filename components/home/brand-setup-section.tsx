@@ -35,9 +35,9 @@ export default function BrandSetupSection() {
   const [hoveredIndex, setHoveredIndex] = useState(0);
 
   return (
-    <section className="overflow-hidden bg-white pb-10 pt-4 text-slate-900 md:pb-16 md:pt-4">
+    <section className="overflow-hidden bg-white py-14 sm:py-20 lg:py-24 text-slate-900">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
-        <h2 className="mb-5 text-[2rem] font-bold leading-[0.96] tracking-tight md:mb-10 md:text-[clamp(2.5rem,4vw,3.5rem)]">
+        <h2 className="mb-5 text-[2rem] font-normal leading-[0.96] tracking-tight md:mb-10 md:text-[clamp(2.5rem,4vw,3.5rem)]">
           One brand for your whole setup
         </h2>
 
@@ -49,7 +49,7 @@ export default function BrandSetupSection() {
             {items.map((item, index) => (
               <article
                 key={item.id}
-                className="relative min-w-[76vw] snap-start overflow-hidden rounded-[20px] bg-slate-950"
+                className="relative min-w-[76vw] snap-start overflow-hidden rounded-[10px] bg-slate-950"
               >
                 <div className="relative h-[370px] w-full">
                   <Image
@@ -85,18 +85,18 @@ export default function BrandSetupSection() {
               <div
                 key={item.id}
                 onMouseEnter={() => setHoveredIndex(index)}
-                className={`group relative cursor-pointer overflow-hidden rounded-[24px] transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                className={`group relative cursor-pointer overflow-hidden rounded-[10px] transition-all duration-500 ease-in-out ${
                   isActive ? "flex-[12] lg:flex-[16]" : "flex-[1]"
                 }`}
               >
                 <div
-                  className={`absolute inset-0 z-10 bg-slate-900/10 transition-opacity duration-500 group-hover:bg-transparent ${
+                  className={`absolute inset-0 z-10 bg-slate-900/10 transition-opacity duration-500 ease-in-out group-hover:bg-transparent ${
                     isActive ? "opacity-0" : "opacity-100"
                   }`}
                 />
 
                 <div
-                  className={`absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-700 ${
+                  className={`absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-500 ease-in-out ${
                     isActive ? "opacity-100" : "opacity-0"
                   }`}
                 />
@@ -105,15 +105,15 @@ export default function BrandSetupSection() {
                   src={item.image}
                   alt={item.title}
                   fill
-                  className={`object-cover transition-transform duration-1000 ease-out ${
+                  className={`object-cover transition-transform duration-700 ease-in-out ${
                     isActive ? "scale-105" : "scale-100"
                   }`}
                   sizes="(max-width: 767px) 100vw, 50vw"
                 />
 
                 <div
-                  className={`absolute bottom-6 right-6 z-30 flex flex-col justify-end text-right transition-all duration-500 ease-out md:bottom-10 md:right-10 ${
-                    isActive ? "translate-y-0 opacity-100 delay-200" : "translate-y-8 opacity-0"
+                  className={`absolute bottom-6 right-6 z-30 flex flex-col justify-end text-right transition-all duration-500 ease-in-out md:bottom-10 md:right-10 ${
+                    isActive ? "translate-y-0 opacity-100 delay-100" : "translate-y-4 opacity-0"
                   }`}
                 >
                   <h3 className="mb-2 whitespace-nowrap text-2xl font-bold text-white drop-shadow-md md:text-3xl lg:text-4xl">

@@ -17,9 +17,15 @@ import {
   Package,
   Home as HomeIcon,
   Info,
+  Plus,
+  Minus,
+  Trash2,
+  ArrowUpRight,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { dropdownItems } from "@/components/home/content";
+import { productsCatalog } from "@/lib/products-data";
 
 function BrandLogo() {
   return (
@@ -77,49 +83,43 @@ function FlatNavLink({
     <Link
       href={href}
       onClick={onClick}
-      className="group inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[14px] font-medium text-slate-700 transition-colors duration-200 hover:text-[#0a7ae6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6]"
+      className="group inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[13px] font-semibold uppercase tracking-wider text-slate-700 transition-colors duration-200 hover:text-[#0a7ae6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6]"
     >
       {Icon && (
         <Icon className="size-4 text-slate-400 group-hover:text-[#0a7ae6]" />
       )}
-      <span>{label}</span>
+      <span className="uppercase">{label}</span>
     </Link>
   );
 }
 
 function DropdownNavItem({
   label,
-  items,
   open,
   onToggle,
   onOpen,
-  onClose,
 }: {
   label: string;
-  items: string[];
+  items?: string[];
   open: boolean;
   onToggle: () => void;
   onOpen: () => void;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
-  const panelId = `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-menu`;
-
   return (
     <div
-      className="relative h-full"
+      className="h-full flex items-center"
       onMouseEnter={onOpen}
-      onMouseLeave={onClose}
     >
       <button
         type="button"
         aria-expanded={open}
-        aria-controls={panelId}
         onClick={onToggle}
-        className={`inline-flex h-full min-w-max items-center gap-1 px-3 text-[14px] font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6] ${
+        className={`inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[13px] font-semibold uppercase tracking-wider transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6] ${
           open ? "text-[#0a7ae6]" : "text-slate-700 hover:text-[#0a7ae6]"
         }`}
       >
-        <span>{label}</span>
+        <span className="uppercase">{label}</span>
         <ChevronDown
           className={`size-3.5 stroke-[2] transition-transform duration-200 ${
             open ? "rotate-180 text-[#0a7ae6]" : "text-slate-400"
@@ -127,50 +127,68 @@ function DropdownNavItem({
           aria-hidden="true"
         />
       </button>
-
-      {open ? (
-        <div
-          id={panelId}
-          className="absolute left-1/2 top-full z-40 mt-1 w-[260px] -translate-x-1/2 pt-1"
-        >
-          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-[0_20px_50px_rgba(15,23,42,0.15)] backdrop-blur-xl">
-            <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-              <span>{label}</span>
-            </div>
-            <div className="space-y-0.5">
-              {items.map((item) => (
-                <Link
-                  key={item}
-                  href="/"
-                  onClick={onClose}
-                  className="flex items-center justify-between rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-[#0a7ae6]/8 hover:text-[#0a7ae6]"
-                >
-                  <span>{item}</span>
-                  <ChevronRight className="size-3.5 text-slate-300 opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100" />
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
 
+const MENU_ORDER = ["PRODUCT", "WARRANTY", "SUPPORT & SERVICE"];
+
 export default function Navbar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [slideDirection, setSlideDirection] = useState<"from-right" | "from-left">("from-right");
+  const prevMenuRef = useRef<string | null>(null);
+
+  const handleOpenMenu = (newMenu: string | null) => {
+    if (newMenu && prevMenuRef.current && newMenu !== prevMenuRef.current) {
+      const prevIdx = MENU_ORDER.indexOf(prevMenuRef.current);
+      const newIdx = MENU_ORDER.indexOf(newMenu);
+      if (newIdx > prevIdx) {
+        setSlideDirection("from-right");
+      } else if (newIdx < prevIdx) {
+        setSlideDirection("from-left");
+      }
+    } else if (newMenu) {
+      setSlideDirection("from-right");
+    }
+    prevMenuRef.current = newMenu;
+    setOpenMenu(newMenu);
+  };
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMobileCategory, setExpandedMobileCategory] = useState<
     string | null
-  >("PRODUCT");
+  >(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
+  const [cartItems, setCartItems] = useState([
+    {
+      id: "55-smart-tv",
+      name: "XElectron 55 Inch LED TV",
+      price: 29999,
+      image: "/product-tv-card.png",
+      quantity: 1,
+      category: "Smart TVs",
+    },
+    {
+      id: "techno-projector",
+      name: "XElectron Techno Android",
+      price: 6990,
+      image: "/product-white-projector-card.png",
+      quantity: 1,
+      category: "Projectors",
+    },
+  ]);
   const headerRef = useRef<HTMLElement | null>(null);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
       if (headerRef.current && !headerRef.current.contains(target)) {
-        setOpenMenu(null);
+        handleOpenMenu(null);
       }
     }
 
@@ -178,6 +196,8 @@ export default function Navbar() {
       if (event.key === "Escape") {
         setOpenMenu(null);
         setMobileOpen(false);
+        setIsCartOpen(false);
+        setIsSearchDrawerOpen(false);
       }
     }
 
@@ -189,9 +209,53 @@ export default function Navbar() {
     };
   }, []);
 
-  // Prevent background scrolling when mobile menu is open
   useEffect(() => {
-    if (mobileOpen) {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY <= 20) {
+        setIsHeaderVisible(true);
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      const diff = currentScrollY - lastScrollY.current;
+
+      if (diff > 4) {
+        setIsHeaderVisible(false);
+      } else if (diff < -4) {
+        setIsHeaderVisible(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsHeaderVisible(true);
+      }, 90);
+    };
+
+    const handleScrollEnd = () => {
+      setIsHeaderVisible(true);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scrollend", handleScrollEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("scrollend", handleScrollEnd);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Prevent background scrolling when mobile menu, cart, or search drawer is open
+  useEffect(() => {
+    if (mobileOpen || isCartOpen || isSearchDrawerOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -199,10 +263,10 @@ export default function Navbar() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [mobileOpen]);
+  }, [mobileOpen, isCartOpen, isSearchDrawerOpen]);
 
   const handleNavigate = () => {
-    setOpenMenu(null);
+    handleOpenMenu(null);
     setMobileOpen(false);
   };
 
@@ -224,12 +288,15 @@ export default function Navbar() {
   };
 
   return (
-    <header
-      ref={headerRef}
-      className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl transition-all duration-200"
-      onMouseLeave={() => setOpenMenu(null)}
-    >
-      <div className="mx-auto flex h-[58px] max-w-[1600px] items-center justify-between px-4 sm:grid sm:h-[70px] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-6 lg:px-8">
+    <>
+      <header
+        ref={headerRef}
+        className={`sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl transition-transform duration-300 ease-out ${
+          isHeaderVisible || openMenu ? "translate-y-0" : "-translate-y-full"
+        }`}
+        onMouseLeave={() => handleOpenMenu(null)}
+      >
+      <div className="mx-auto flex h-[68px] max-w-[1600px] items-center justify-between px-4 sm:grid sm:h-[70px] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <Link
           href="/"
@@ -245,7 +312,7 @@ export default function Navbar() {
           aria-label="Primary"
           className="hidden h-full w-max items-stretch justify-self-center whitespace-nowrap px-4 lg:flex lg:gap-1"
         >
-          <FlatNavLink label="Home" href="/" />
+          <FlatNavLink label="HOME" href="/" />
           {dropdownItems.map((group) => (
             <DropdownNavItem
               key={group.label}
@@ -253,40 +320,45 @@ export default function Navbar() {
               items={group.items}
               open={openMenu === group.label}
               onToggle={() =>
-                setOpenMenu((current) =>
-                  current === group.label ? null : group.label,
-                )
+                handleOpenMenu(openMenu === group.label ? null : group.label)
               }
-              onOpen={() => setOpenMenu(group.label)}
-              onClose={() => setOpenMenu(null)}
+              onOpen={() => handleOpenMenu(group.label)}
+              onClose={() => handleOpenMenu(null)}
             />
           ))}
-          <FlatNavLink label="About Us" href="/" />
-          <FlatNavLink label="Contact" href="/" />
+          <FlatNavLink label="ABOUT US" href="/" />
+          <FlatNavLink label="CONTACT" href="/" />
         </nav>
 
         {/* Desktop Actions */}
         <div className="hidden shrink-0 items-center justify-self-end gap-1.5 sm:flex">
-          <IconButton label="Search">
+          <IconButton label="Search" onClick={() => setIsSearchDrawerOpen(true)}>
             <Search className="size-4 text-slate-700 stroke-[1.8]" />
           </IconButton>
-          <IconButton label="My Account">
-            <User className="size-4 text-slate-700 stroke-[1.8]" />
-          </IconButton>
-          <IconButton label="Shopping bag" badge={2}>
+          <Link href="/login" aria-label="My Account">
+            <IconButton label="My Account">
+              <User className="size-4 text-slate-700 stroke-[1.8]" />
+            </IconButton>
+          </Link>
+          <IconButton
+            label="Shopping bag"
+            badge={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
+            onClick={() => setIsCartOpen(true)}
+          >
             <ShoppingBag className="size-4 text-slate-700 stroke-[1.8]" />
           </IconButton>
         </div>
 
         {/* Mobile Actions & Toggle */}
         <div className="flex shrink-0 items-center gap-1 sm:hidden">
-          <IconButton label="Search" onClick={() => setMobileOpen(true)}>
+          <IconButton label="Search" onClick={() => setIsSearchDrawerOpen(true)}>
             <Search className="size-4 text-slate-800 stroke-[1.8]" />
           </IconButton>
-          <IconButton label="My Account">
-            <User className="size-4 text-slate-800 stroke-[1.8]" />
-          </IconButton>
-          <IconButton label="Shopping bag" badge={2}>
+          <IconButton
+            label="Shopping bag"
+            badge={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
+            onClick={() => setIsCartOpen(true)}
+          >
             <ShoppingBag className="size-4 text-slate-800 stroke-[1.8]" />
           </IconButton>
           <button
@@ -304,30 +376,372 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* Darkened Smooth Backdrop Blur Overlay */}
+      {openMenu && (
+        <div
+          className="hidden lg:block fixed inset-0 top-[70px] z-40 bg-slate-950/20 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in"
+          onClick={() => handleOpenMenu(null)}
+        />
+      )}
+
+      {/* Full Width Mega Menu Dropdown */}
+      {openMenu && (
+        <div
+          className="hidden lg:block absolute top-full inset-x-0 z-50 border-b border-slate-200/90 bg-white/98 backdrop-blur-2xl shadow-[0_30px_70px_rgba(15,23,42,0.18)] transition-all duration-300 ease-out animate-in fade-in slide-in-from-top-2"
+          onMouseEnter={() => handleOpenMenu(openMenu)}
+          onMouseLeave={() => handleOpenMenu(null)}
+        >
+          <div className="mx-auto max-w-[1440px] px-8 py-6 overflow-hidden">
+            <div
+              key={openMenu}
+              className={`transition-all duration-300 ease-out animate-in fade-in ${
+                slideDirection === "from-right"
+                  ? "slide-in-from-right-12"
+                  : "slide-in-from-left-12"
+              }`}
+            >
+            {openMenu === "PRODUCT" && (
+              <div className="grid grid-cols-12 gap-8 items-stretch">
+                {/* Column 1: Featured Links */}
+                <div className="col-span-3 border-r border-slate-100 pr-6 space-y-3">
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                    FEATURED
+                  </h4>
+                  <ul className="space-y-0.5">
+                    {[
+                      { name: "New Arrivals", href: "/shop?filter=new-arrivals", badge: "HOT" },
+                      { name: "Best Sellers", href: "/shop?filter=best-sellers", badge: "TOP" },
+                      { name: "All Products", href: "/shop", badge: null },
+                    ].map((item) => (
+                      <li key={item.name}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setOpenMenu(null)}
+                          className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-800 hover:bg-slate-50 hover:text-[#0a7ae6] transition-all duration-200"
+                        >
+                          <span className="group-hover:translate-x-1 transition-transform duration-200">
+                            {item.name}
+                          </span>
+                          {item.badge ? (
+                            <span className="text-[9px] font-extrabold bg-[#0a7ae6]/10 text-[#0a7ae6] px-2 py-0.5 rounded-full">
+                              {item.badge}
+                            </span>
+                          ) : (
+                            <ChevronRight className="size-3.5 text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                          )}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Column 2: Categories */}
+                <div className="col-span-4 border-r border-slate-100 pr-6 space-y-3">
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                    CATEGORIES
+                  </h4>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                    {[
+                      { name: "Smart TVs", href: "/shop?filter=smart-tvs" },
+                      { name: "Projectors", href: "/shop?filter=projectors" },
+                      { name: "Headphones", href: "/shop?filter=headphones" },
+                      { name: "Speakers", href: "/shop?filter=speakers" },
+                      { name: "Cameras", href: "/shop?filter=cameras" },
+                      { name: "Digital Frames", href: "/shop?filter=digital-photo-frame" },
+                    ].map((cat) => (
+                      <Link
+                        key={cat.name}
+                        href={cat.href}
+                        onClick={() => setOpenMenu(null)}
+                        className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600 hover:bg-slate-50 hover:text-[#0a7ae6] transition-all duration-200"
+                      >
+                        <span className="group-hover:translate-x-0.5 transition-transform">
+                          {cat.name}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Column 3: High-End Spotlight Visual Cards */}
+                <div className="col-span-5 grid grid-cols-2 gap-4">
+                  {/* Spotlight Card 1 */}
+                  <Link
+                    href="/product/55-smart-tv"
+                    onClick={() => setOpenMenu(null)}
+                    className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                  >
+                    <Image
+                      src="/category-tv.png"
+                      alt="Spotlight TV"
+                      fill
+                      className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
+                      <div className="mb-1">
+                        <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
+                          SPOTLIGHT
+                        </span>
+                      </div>
+                      <h5 className="text-xs font-medium uppercase text-white tracking-wider">
+                        OFF BEAT TV EDIT
+                      </h5>
+                    </div>
+                  </Link>
+
+                  {/* Spotlight Card 2 */}
+                  <Link
+                    href="/product/techno-projector"
+                    onClick={() => setOpenMenu(null)}
+                    className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                  >
+                    <Image
+                      src="/category-projector.png"
+                      alt="New Launch Projector"
+                      fill
+                      className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
+                      <div className="mb-1">
+                        <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
+                          NEW LAUNCH
+                        </span>
+                      </div>
+                      <h5 className="text-xs font-medium uppercase text-white tracking-wider">
+                        TECHNO PROJECTOR
+                      </h5>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {openMenu === "WARRANTY" && (
+              <div className="grid grid-cols-12 gap-8 items-stretch">
+                {/* Column 1: Coverage */}
+                <div className="col-span-3 border-r border-slate-100 pr-6 space-y-3">
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                    COVERAGE
+                  </h4>
+                  <ul className="space-y-0.5">
+                    {[
+                      { name: "Check Coverage", href: "/warranty" },
+                      { name: "Register Product", href: "/warranty" },
+                      { name: "Terms & Policy", href: "/warranty" },
+                    ].map((item) => (
+                      <li key={item.name}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setOpenMenu(null)}
+                          className="group flex items-center justify-between rounded-none px-3 py-2 text-xs font-medium uppercase tracking-wider text-slate-800 hover:bg-slate-50 hover:text-[#0a7ae6] transition-all duration-200"
+                        >
+                          <span className="group-hover:translate-x-1 transition-transform duration-200">
+                            {item.name}
+                          </span>
+                          <ChevronRight className="size-3.5 text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Column 2: Services */}
+                <div className="col-span-4 border-r border-slate-100 pr-6 space-y-3">
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                    SERVICES & REPAIRS
+                  </h4>
+                  <div className="space-y-0.5">
+                    {[
+                      { name: "Service Status Tracking", href: "/warranty" },
+                      { name: "Replacement Claims", href: "/warranty" },
+                      { name: "Authorized Service Centers", href: "/warranty" },
+                    ].map((srv) => (
+                      <Link
+                        key={srv.name}
+                        href={srv.href}
+                        onClick={() => setOpenMenu(null)}
+                        className="group flex items-center justify-between rounded-none px-3 py-2 text-xs font-normal uppercase tracking-wider text-slate-600 hover:bg-slate-50 hover:text-[#0a7ae6] transition-all duration-200"
+                      >
+                        <span className="group-hover:translate-x-0.5 transition-transform">
+                          {srv.name}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Column 3: Spotlight Image Cards */}
+                <div className="col-span-5 grid grid-cols-2 gap-4">
+                  <Link
+                    href="/warranty"
+                    onClick={() => setOpenMenu(null)}
+                    className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                  >
+                    <Image
+                      src="/category-headphones.png"
+                      alt="Register Product"
+                      fill
+                      className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
+                      <div className="mb-1">
+                        <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
+                          REGISTRATION
+                        </span>
+                      </div>
+                      <h5 className="text-xs font-medium uppercase text-white tracking-wider">
+                        REGISTER YOUR GEAR
+                      </h5>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/warranty"
+                    onClick={() => setOpenMenu(null)}
+                    className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                  >
+                    <Image
+                      src="/banner-earbuds.png"
+                      alt="Care Plus"
+                      fill
+                      className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
+                      <div className="mb-1">
+                        <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
+                          PROTECTION
+                        </span>
+                      </div>
+                      <h5 className="text-xs font-medium uppercase text-white tracking-wider">
+                        XELECTRON CARE PLUS
+                      </h5>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {openMenu === "SUPPORT & SERVICE" && (
+              <div className="grid grid-cols-12 gap-8 items-stretch">
+                {/* Column 1: Help & Support */}
+                <div className="col-span-3 border-r border-slate-100 pr-6 space-y-3">
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                    HELP & SUPPORT
+                  </h4>
+                  <ul className="space-y-0.5">
+                    {[
+                      { name: "Contact Support", href: "/contact" },
+                      { name: "Troubleshooting Guide", href: "/support" },
+                      { name: "Order Tracking", href: "/support" },
+                    ].map((item) => (
+                      <li key={item.name}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setOpenMenu(null)}
+                          className="group flex items-center justify-between rounded-none px-3 py-2 text-xs font-medium uppercase tracking-wider text-slate-800 hover:bg-slate-50 hover:text-[#0a7ae6] transition-all duration-200"
+                        >
+                          <span className="group-hover:translate-x-1 transition-transform duration-200">
+                            {item.name}
+                          </span>
+                          <ChevronRight className="size-3.5 text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Column 2: Resources & Downloads */}
+                <div className="col-span-4 border-r border-slate-100 pr-6 space-y-3">
+                  <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                    RESOURCES & DOWNLOADS
+                  </h4>
+                  <div className="space-y-0.5">
+                    {[
+                      { name: "Repair Center Locations", href: "/support" },
+                      { name: "Downloads & Manuals", href: "/support" },
+                      { name: "Firmware Updates", href: "/support" },
+                    ].map((res) => (
+                      <Link
+                        key={res.name}
+                        href={res.href}
+                        onClick={() => setOpenMenu(null)}
+                        className="group flex items-center justify-between rounded-none px-3 py-2 text-xs font-normal uppercase tracking-wider text-slate-600 hover:bg-slate-50 hover:text-[#0a7ae6] transition-all duration-200"
+                      >
+                        <span className="group-hover:translate-x-0.5 transition-transform">
+                          {res.name}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Column 3: Spotlight Image Cards */}
+                <div className="col-span-5 grid grid-cols-2 gap-4">
+                  <Link
+                    href="/contact"
+                    onClick={() => setOpenMenu(null)}
+                    className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                  >
+                    <Image
+                      src="/creator-projector.png"
+                      alt="Repair Center"
+                      fill
+                      className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
+                      <div className="mb-1">
+                        <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
+                          HELP CENTER
+                        </span>
+                      </div>
+                      <h5 className="text-xs font-medium uppercase text-white tracking-wider">
+                        NEED REPAIR HELP?
+                      </h5>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/support"
+                    onClick={() => setOpenMenu(null)}
+                    className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                  >
+                    <Image
+                      src="/blog-3.png"
+                      alt="Manuals"
+                      fill
+                      className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
+                      <div className="mb-1">
+                        <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
+                          MANUALS
+                        </span>
+                      </div>
+                      <h5 className="text-xs font-medium uppercase text-white tracking-wider">
+                        USER GUIDES & DOCS
+                      </h5>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Drawer Menu */}
       {mobileOpen ? (
         <>
           {/* Backdrop Overlay */}
           <div
-            className="fixed inset-0 top-[58px] z-40 bg-slate-900/30 backdrop-blur-xs lg:hidden"
+            className="fixed inset-0 top-[68px] z-40 bg-slate-900/30 backdrop-blur-xs lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
 
           {/* Slide-Down Drawer Container */}
-          <div className="fixed inset-x-0 top-[58px] z-50 max-h-[calc(100vh-58px)] overflow-y-auto border-t border-slate-200/80 bg-white/98 shadow-2xl backdrop-blur-2xl lg:hidden animate-in slide-in-from-top-2 duration-200">
+          <div className="fixed inset-x-0 top-[68px] z-50 max-h-[calc(100vh-68px)] overflow-y-auto border-t border-slate-200/80 bg-white/98 shadow-2xl backdrop-blur-2xl lg:hidden animate-in slide-in-from-top-2 duration-200">
             <div className="mx-auto max-w-[1600px] px-4 py-4 space-y-4">
-              {/* Quick Search Input */}
-              <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search products, TVs, projectors..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-[13px] text-slate-900 placeholder-slate-400 focus:border-[#0a7ae6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a7ae6]/20"
-                />
-              </div>
-
               {/* Navigation Items List */}
               <div className="space-y-1">
                 {/* Home */}
@@ -368,17 +782,24 @@ export default function Navbar() {
 
                       {isExpanded && (
                         <div className="border-t border-slate-100 bg-white px-3.5 py-2 space-y-1">
-                          {group.items.map((item) => (
-                            <Link
-                              key={item}
-                              href="/"
-                              onClick={handleNavigate}
-                              className="flex items-center justify-between rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-[#0a7ae6]/5 hover:text-[#0a7ae6]"
-                            >
-                              <span>{item}</span>
-                              <ChevronRight className="size-3.5 text-slate-300" />
-                            </Link>
-                          ))}
+                          {group.items.map((item) => {
+                            let href = "/";
+                            if (group.label === "PRODUCT") {
+                              if (item === "New Arrivals") href = "/shop?filter=new-arrivals";
+                              else if (item === "Best Sellers") href = "/shop?filter=best-sellers";
+                              else if (item === "All Products") href = "/shop";
+                            }
+                            return (
+                              <Link
+                                key={item}
+                                href={href}
+                                onClick={handleNavigate}
+                                className="block rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-[#0a7ae6]/5 hover:text-[#0a7ae6]"
+                              >
+                                <span>{item}</span>
+                              </Link>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -405,7 +826,7 @@ export default function Navbar() {
                 </Link>
 
                 <Link
-                  href="/"
+                  href="/login"
                   onClick={handleNavigate}
                   className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-[14px] font-semibold text-slate-800 hover:bg-slate-100 hover:text-[#0a7ae6]"
                 >
@@ -431,5 +852,361 @@ export default function Navbar() {
         </>
       ) : null}
     </header>
+
+    {/* Cart Drawer */}
+    <div className={`fixed inset-0 z-[100] ${isCartOpen ? "pointer-events-auto" : "pointer-events-none"}`}>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-500 ease-in-out ${
+          isCartOpen ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={() => setIsCartOpen(false)}
+      />
+
+      {/* Drawer Panel */}
+      <div
+        className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white shadow-2xl transition-transform duration-500 ease-in-out ${
+          isCartOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 p-5">
+          <h2 className="text-base sm:text-lg font-medium uppercase tracking-wider text-slate-900">
+            Shopping Cart ({cartItems.reduce((acc, item) => acc + item.quantity, 0)})
+          </h2>
+          <button
+            onClick={() => setIsCartOpen(false)}
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {/* Cart Items List */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {cartItems.length > 0 ? (
+            cartItems.map((item) => (
+              <div key={item.id} className="flex gap-4 border-b border-slate-100 pb-4">
+                <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-white border border-slate-100 p-2 flex items-center justify-center">
+                  <Image
+                    src={item.image}
+                    alt={item.name}
+                    width={60}
+                    height={60}
+                    className="object-contain"
+                  />
+                </div>
+
+                <div className="flex flex-1 flex-col">
+                  <span className="text-[9px] font-medium uppercase tracking-widest text-[#0a7ae6]">
+                    {item.category}
+                  </span>
+                  <h3 className="text-sm font-medium text-slate-900 line-clamp-1">
+                    {item.name}
+                  </h3>
+                  
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-1">
+                      <button
+                        onClick={() => {
+                          setCartItems((prev) =>
+                            prev.map((x) =>
+                              x.id === item.id ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x
+                            )
+                          );
+                        }}
+                        className="p-1 text-slate-500 hover:text-slate-900"
+                      >
+                        <Minus className="size-3" />
+                      </button>
+                      <span className="px-2 text-xs font-medium text-slate-800">{item.quantity}</span>
+                      <button
+                        onClick={() => {
+                          setCartItems((prev) =>
+                            prev.map((x) =>
+                              x.id === item.id ? { ...x, quantity: x.quantity + 1 } : x
+                            )
+                          );
+                        }}
+                        className="p-1 text-slate-500 hover:text-slate-900"
+                      >
+                        <Plus className="size-3" />
+                      </button>
+                    </div>
+
+                    <span className="text-sm font-medium text-slate-900">
+                      ₹{(item.price * item.quantity).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setCartItems((prev) => prev.filter((x) => x.id !== item.id));
+                  }}
+                  className="self-start p-1 text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <ShoppingBag className="size-12 text-slate-200 stroke-[1.5] mb-3" />
+              <p className="text-slate-400 font-medium">Your cart is empty</p>
+              <Link
+                href="/shop"
+                onClick={() => setIsCartOpen(false)}
+                className="mt-4 rounded-full bg-[#0a7ae6] px-6 py-2.5 text-xs font-medium uppercase tracking-wider text-white shadow-md shadow-[#0a7ae6]/20 transition-all hover:scale-105"
+              >
+                Start Shopping
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Summary */}
+        {cartItems.length > 0 && (
+          <div className="border-t border-slate-100 p-5 bg-slate-50/50">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-slate-600">Subtotal</span>
+              <span className="text-xl font-medium text-slate-900">
+                ₹{cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0).toLocaleString("en-IN")}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 mb-5 font-normal">
+              Taxes and shipping calculated at checkout. Free shipping on all orders!
+            </p>
+            <button
+              onClick={() => alert("Proceeding to checkout...")}
+              className="w-full rounded-xl bg-[#0a7ae6] py-3.5 text-center text-sm font-medium uppercase tracking-wider text-white shadow-lg shadow-[#0a7ae6]/25 transition-all hover:opacity-95 hover:scale-[1.02]"
+            >
+              Proceed to Checkout
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Search Drawer */}
+    <div className={`fixed inset-0 z-[100] ${isSearchDrawerOpen ? "pointer-events-auto" : "pointer-events-none"}`}>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-500 ease-in-out ${
+          isSearchDrawerOpen ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={() => setIsSearchDrawerOpen(false)}
+      />
+
+      {/* Drawer Panel */}
+      <div
+        className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white shadow-2xl transition-transform duration-500 ease-in-out ${
+          isSearchDrawerOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 p-5">
+          <h2 className="text-lg font-black uppercase tracking-wider text-slate-900">
+            Search Products
+          </h2>
+          <button
+            onClick={() => setIsSearchDrawerOpen(false)}
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {/* Search Input Box */}
+        <div className="p-5 border-b border-slate-100">
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder="What are you looking for?"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-none border border-slate-900 bg-white py-2.5 pl-4 pr-10 text-[14px] text-slate-900 placeholder-slate-500 focus:outline-none"
+              autoFocus={isSearchDrawerOpen}
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-slate-800 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Results List */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {searchQuery.trim() !== "" ? (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
+                Search Results
+              </p>
+              <div className="space-y-4">
+                {(() => {
+                  const filtered = Object.values(productsCatalog).filter(
+                    (p) =>
+                      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      p.category.toLowerCase().includes(searchQuery.toLowerCase())
+                  );
+                  if (filtered.length === 0) {
+                    return <p className="text-sm text-slate-400 text-center py-8">No products found matching your search.</p>;
+                  }
+                  const cards = filtered.slice(0, 4);
+                  const listItems = filtered.slice(4);
+
+                  return (
+                    <>
+                      {/* 4 Cards Grid */}
+                      <div className="grid grid-cols-2 gap-3 mb-6">
+                        {cards.map((product) => (
+                          <Link
+                            key={product.id}
+                            href={`/product/${product.id}`}
+                            onClick={() => setIsSearchDrawerOpen(false)}
+                            className="group flex flex-col rounded-lg border border-slate-200/80 bg-white p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                          >
+                            <div className="relative h-[80px] w-full bg-slate-50/60 rounded-md p-1 flex items-center justify-center mb-2 overflow-hidden">
+                              <Image
+                                src={product.mainImage}
+                                alt={product.name}
+                                fill
+                                className="object-contain p-1 transition-transform group-hover:scale-105"
+                                sizes="120px"
+                              />
+                            </div>
+                            <span className="text-[8px] font-bold uppercase tracking-wider text-[#0a7ae6] truncate">
+                              {product.category}
+                            </span>
+                            <h4 className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-[#0a7ae6] transition-colors mt-0.5">
+                              {product.name}
+                            </h4>
+                            <span className="text-xs font-black text-slate-900 mt-1">
+                              {product.price}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+
+                      {/* Remainder List */}
+                      {listItems.length > 0 && (
+                        <div className="space-y-3 pt-4 border-t border-slate-100">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">More Results</p>
+                          {listItems.map((product) => (
+                            <Link
+                              key={product.id}
+                              href={`/product/${product.id}`}
+                              onClick={() => setIsSearchDrawerOpen(false)}
+                              className="flex gap-3 border-b border-slate-100 pb-3 group items-center"
+                            >
+                              <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-white border border-slate-100 p-1 flex items-center justify-center">
+                                <Image
+                                  src={product.mainImage}
+                                  alt={product.name}
+                                  width={32}
+                                  height={32}
+                                  className="object-contain"
+                                />
+                              </div>
+                              <div className="flex flex-1 flex-col justify-center min-w-0">
+                                <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-[#0a7ae6] transition-colors">
+                                  {product.name}
+                                </h4>
+                                <p className="text-[9px] text-slate-400 font-semibold truncate mt-0.5">
+                                  {product.category} • <span className="text-slate-950 font-bold">{product.price}</span>
+                                </p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
+                Popular Products
+              </p>
+              <div className="space-y-4">
+                {(() => {
+                  const allProducts = Object.values(productsCatalog);
+                  const cards = allProducts.slice(0, 4);
+                  const listItems = allProducts.slice(4);
+
+                  return (
+                    <>
+                      {/* 4 Cards Grid */}
+                      <div className="grid grid-cols-2 gap-3 mb-6">
+                        {cards.map((product) => (
+                          <Link
+                            key={product.id}
+                            href={`/product/${product.id}`}
+                            onClick={() => setIsSearchDrawerOpen(false)}
+                            className="group flex flex-col rounded-lg border border-slate-200/80 bg-white p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                          >
+                            <div className="relative h-[80px] w-full bg-slate-50/60 rounded-md p-1 flex items-center justify-center mb-2 overflow-hidden">
+                              <Image
+                                src={product.mainImage}
+                                alt={product.name}
+                                fill
+                                className="object-contain p-1 transition-transform group-hover:scale-105"
+                                sizes="120px"
+                              />
+                            </div>
+                            <span className="text-[8px] font-bold uppercase tracking-wider text-[#0a7ae6] truncate">
+                              {product.category}
+                            </span>
+                            <h4 className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-[#0a7ae6] transition-colors mt-0.5">
+                              {product.name}
+                            </h4>
+                            <span className="text-xs font-black text-slate-900 mt-1">
+                              {product.price}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+
+                      {/* Remainder List */}
+                      {listItems.length > 0 && (
+                        <div className="space-y-3 pt-4 border-t border-slate-100">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">More Popular Products</p>
+                          {listItems.map((product) => (
+                            <Link
+                              key={product.id}
+                              href={`/product/${product.id}`}
+                              onClick={() => setIsSearchDrawerOpen(false)}
+                              className="flex gap-3 border-b border-slate-100 pb-3 group items-center"
+                            >
+                              <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-white border border-slate-100 p-1 flex items-center justify-center">
+                                <Image
+                                  src={product.mainImage}
+                                  alt={product.name}
+                                  width={32}
+                                  height={32}
+                                  className="object-contain"
+                                />
+                              </div>
+                              <div className="flex flex-1 flex-col justify-center min-w-0">
+                                <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-[#0a7ae6] transition-colors">
+                                  {product.name}
+                                </h4>
+                                <p className="text-[9px] text-slate-400 font-semibold truncate mt-0.5">
+                                  {product.category} • <span className="text-slate-950 font-bold">{product.price}</span>
+                                </p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+    </>
   );
 }

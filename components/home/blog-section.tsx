@@ -12,7 +12,7 @@ const blogPosts = [
     date: "Jul 22, 2026",
     readTime: "4 min read",
     image: "/blog-1.png",
-    accent: "#ea580c",
+    accent: "#0a7ae6",
   },
   {
     id: 2,
@@ -23,7 +23,7 @@ const blogPosts = [
     date: "Jul 18, 2026",
     readTime: "6 min read",
     image: "/blog-2.png",
-    accent: "#0a7ae6",
+    accent: "#025bb5",
   },
   {
     id: 3,
@@ -34,30 +34,30 @@ const blogPosts = [
     date: "Jul 12, 2026",
     readTime: "5 min read",
     image: "/blog-3.png",
-    accent: "#16a34a",
+    accent: "#0284c7",
   },
 ];
 
 export default function BlogSection() {
   return (
-    <section className="relative w-full bg-white px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-20">
+    <section className="relative w-full bg-white px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
       <div className="mx-auto max-w-[1400px]">
         {/* Header */}
-        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-6 sm:mb-10 flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-2">
+            <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-1 sm:mb-2">
               From our blog
             </p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+            <h2 className="text-lg xs:text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight text-slate-900 whitespace-nowrap">
               Latest Stories & Updates
             </h2>
           </div>
           <a
             href="#"
-            className="group flex items-center gap-1.5 text-sm font-semibold text-[#ea580c] transition-colors hover:text-[#c2410c]"
+            className="group flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-bold text-[#0a7ae6] transition-colors hover:text-[#025bb5] shrink-0"
           >
-            View all posts
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            <span>View all</span>
+            <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:translate-x-1" />
           </a>
         </div>
 
@@ -86,7 +86,7 @@ export default function BlogSection() {
 
               {/* Content */}
               <div className="flex flex-1 flex-col p-5">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-[#ea580c] transition-colors duration-200">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-[#0a7ae6] transition-colors duration-200">
                   {post.title}
                 </h3>
                 <p className="mt-2 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-2">
