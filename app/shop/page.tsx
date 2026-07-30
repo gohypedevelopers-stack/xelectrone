@@ -155,15 +155,15 @@ function ShopContent() {
 
       {/* Related Products Section */}
       {relatedProducts.length > 0 && (
-        <div className="mt-20 border-t border-slate-100 pt-16">
-          <div className="mb-8 flex flex-col items-center text-center">
+        <div className="mt-8 sm:mt-16 border-t border-slate-100 pt-6 sm:pt-12">
+          <div className="mb-4 sm:mb-6 flex flex-col items-center text-center">
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#0a7ae6]">
               Recommendations
             </p>
-            <h2 className="mt-1.5 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+            <h2 className="mt-1.5 text-2xl font-normal tracking-tight text-slate-900 sm:text-3xl">
               You May Also Like
             </h2>
-            <div className="mt-3 h-0.5 w-12 rounded-full bg-[#0a7ae6]" />
+            <div className="mt-2.5 h-0.5 w-10 rounded-full bg-[#0a7ae6]" />
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 sm:gap-6 lg:grid-cols-4">
