@@ -1,23 +1,21 @@
 import type { Metadata } from "next"
 
 import { AppSidebar } from "@/components/admin/navigation/app-sidebar"
-import { CategoryManager } from "@/components/admin/products/category-manager"
+import { CollectionEditor } from "@/components/admin/products/collection-editor"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 export const metadata: Metadata = {
-  title: "Categories | SUOS Admin",
-  description: "Create and manage storefront product categories.",
+  title: "Add collection | SUOS Admin",
+  description: "Create a product collection in the SUOS admin dashboard.",
 }
 
-export default function CategoriesPage() {
+export default function AddCollectionPage() {
   return (
     <TooltipProvider>
       <SidebarProvider className="min-h-svh">
         <AppSidebar />
-        <SidebarInset>
-          <CategoryManager />
-        </SidebarInset>
+        <SidebarInset><CollectionEditor /></SidebarInset>
       </SidebarProvider>
     </TooltipProvider>
   )
