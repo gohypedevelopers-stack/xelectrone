@@ -47,7 +47,7 @@ export default function BestSellersSection() {
   }, []);
 
   useLayoutEffect(() => {
-    if (reduceMotion || isMobile) return;
+    if (reduceMotion) return;
 
     const section = sectionRef.current;
     const viewport = viewportRef.current;
@@ -87,7 +87,7 @@ export default function BestSellersSection() {
       titleRefs.current.forEach((title, i) => {
         if (!title) return;
         gsap.set(title, {
-          opacity: i === 0 ? 1 : 0.4,
+          opacity: i === 0 ? 1 : 0.35,
           color: i === 0 ? "#0f172a" : "#cbd5e1",
         });
       });
@@ -104,13 +104,12 @@ export default function BestSellersSection() {
       const scrollDistance = (numSlides - 1) * window.innerHeight;
 
       // Master Timeline scrubbed by ScrollTrigger
-      // Pin sectionRef directly with pinSpacing: true so GSAP reserves DOM space
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: section,
           start: "top top",
           end: () => `+=${scrollDistance}`,
-          scrub: 0.6, // Physics scrub dampening
+          scrub: 0.8, // Smooth physics scrub dampening
           pin: section,
           pinSpacing: true,
           anticipatePin: 1,
@@ -119,7 +118,6 @@ export default function BestSellersSection() {
       });
 
       // For each transition step between slide i and slide i+1:
-      // Timeline runs from t = 0 to t = (numSlides - 1)
       for (let i = 0; i < numSlides - 1; i++) {
         const tStart = i;
 
@@ -149,7 +147,7 @@ export default function BestSellersSection() {
         if (titleCur) {
           tl.to(
             titleCur,
-            { opacity: 0.4, color: "#cbd5e1", ease: "power1.inOut", duration: 0.5 },
+            { opacity: 0.35, color: "#cbd5e1", ease: "power1.inOut", duration: 0.5 },
             tStart + 0.25
           );
         }
@@ -165,7 +163,7 @@ export default function BestSellersSection() {
           tStart + 0.2
         );
 
-        // Phase 3 (t = i + 0.52 -> i + 0.87): Card i+1 and Visual i+1 fade in cleanly (No overlap with Card i!)
+        // Phase 3 (t = i + 0.52 -> i + 0.87): Card i+1 and Visual i+1 fade in cleanly
         const cardNext = cardRefs.current[i + 1];
         const visualNext = visualRefs.current[i + 1];
         const glowNext = glowRefs.current[i + 1];
@@ -199,7 +197,21 @@ export default function BestSellersSection() {
     }, section);
 
     return () => ctx.revert();
-  }, [reduceMotion, isMobile]);
+  }, [reduceMotion]);
+
+  const goToSlide = (targetIndex: number) => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const numSlides = bestSellers.length;
+    const scrollDistance = (numSlides - 1) * window.innerHeight;
+    const targetProgress = targetIndex / (numSlides - 1);
+    const targetScroll = section.offsetTop + targetProgress * scrollDistance;
+
+    window.scrollTo({
+      top: targetScroll,
+      behavior: "smooth",
+    });
+  };
 
   const titleRailStyle = {
     WebkitMaskImage:
@@ -209,11 +221,11 @@ export default function BestSellersSection() {
   } as const;
 
   const titleClass =
-    "shrink-0 whitespace-nowrap text-[clamp(1.8rem,5vw,6.6rem)] font-semibold leading-none tracking-[-0.08em] will-change-transform";
+    "shrink-0 whitespace-nowrap text-[clamp(1.8rem,5.2vw,5.5rem)] font-normal leading-none tracking-[-0.04em] will-change-transform cursor-pointer transition-opacity duration-300 hover:opacity-100 select-none";
 
   if (reduceMotion) {
     return (
-      <section className="bg-white py-12 text-slate-900 hidden md:block">
+      <section className="bg-white py-12 text-slate-900">
         <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
           <p className="text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[#0a7ae6]">
             Best sellers
@@ -223,14 +235,22 @@ export default function BestSellersSection() {
           {bestSellers.map((item) => (
             <div key={item.id} className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
               <div className="rounded-[28px] border border-slate-200 bg-[#f8fafc] px-6 py-6 md:px-8 md:py-7">
-                <div className="flex flex-wrap items-end gap-x-3 gap-y-1 border-b border-slate-200 pb-6">
-                  <span className="text-[27px] font-semibold text-slate-900">{item.price}</span>
-                  {item.oldPrice && (
-                    <span className="text-[15px] text-slate-400 line-through">{item.oldPrice}</span>
-                  )}
-                  {item.discount && (
-                    <span className="text-[16px] font-medium text-[#0a7ae6]">{item.discount}</span>
-                  )}
+                <div className="border-b border-slate-200 pb-5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a7ae6]">
+                    XElectron
+                  </p>
+                  <h3 className="mt-1 text-[22px] font-bold text-slate-900 md:text-[26px]">
+                    {item.name}
+                  </h3>
+                  <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
+                    <span className="text-[27px] font-semibold text-slate-900">{item.price}</span>
+                    {item.oldPrice && (
+                      <span className="text-[15px] text-slate-400 line-through">{item.oldPrice}</span>
+                    )}
+                    {item.discount && (
+                      <span className="text-[16px] font-medium text-[#0a7ae6]">{item.discount}</span>
+                    )}
+                  </div>
                 </div>
                 <p className="mt-5 max-w-[34rem] text-[17px] leading-8 text-slate-700 md:text-[18px]">
                   {item.description}
@@ -261,7 +281,7 @@ export default function BestSellersSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen h-screen bg-white text-slate-900 overflow-hidden hidden md:block"
+      className="relative min-h-screen h-screen bg-white text-slate-900 overflow-hidden"
     >
       <div
         ref={viewportRef}
@@ -274,7 +294,7 @@ export default function BestSellersSection() {
         <div className="relative mt-2 w-full overflow-hidden lg:mt-4" style={titleRailStyle}>
           <div
             ref={trackRef}
-            className="flex w-max items-center gap-14 py-0.5 will-change-transform"
+            className="flex w-max items-center gap-10 sm:gap-14 py-0.5 will-change-transform"
           >
             {bestSellers.map((item, index) => (
               <h2
@@ -282,6 +302,7 @@ export default function BestSellersSection() {
                 ref={(node) => {
                   titleRefs.current[index] = node;
                 }}
+                onClick={() => goToSlide(index)}
                 className={titleClass}
               >
                 {item.name}
@@ -301,23 +322,27 @@ export default function BestSellersSection() {
                 className="absolute inset-0 flex items-center will-change-[transform,opacity]"
               >
                 <div className="relative z-10 w-full max-w-[640px] rounded-[20px] sm:rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-md px-4 py-4 shadow-[0_20px_70px_rgba(15,23,42,0.05)] sm:px-8 sm:py-8 md:px-10 md:py-9 max-h-[calc(100vh-320px)] sm:max-h-none overflow-y-auto">
-                  <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-6">
-                    <div>
-                      <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-                        <span className="text-[22px] font-semibold text-slate-900 sm:text-[32px]">
-                          {item.price}
+                  <div className="border-b border-slate-200/80 pb-4 sm:pb-5">
+                    <p className="text-[10px] sm:text-[12px] font-bold uppercase tracking-[0.2em] text-[#0a7ae6]">
+                      XElectron
+                    </p>
+                    <h3 className="mt-1 text-[20px] sm:text-[26px] font-bold tracking-tight text-slate-900">
+                      {item.name}
+                    </h3>
+                    <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
+                      <span className="text-[22px] font-semibold text-slate-900 sm:text-[30px]">
+                        {item.price}
+                      </span>
+                      {item.oldPrice && (
+                        <span className="text-[14px] text-slate-400 line-through sm:text-[16px]">
+                          {item.oldPrice}
                         </span>
-                        {item.oldPrice && (
-                          <span className="text-[14px] text-slate-400 line-through sm:text-[16px]">
-                            {item.oldPrice}
-                          </span>
-                        )}
-                        {item.discount && (
-                          <span className="text-[14px] font-medium text-[#0a7ae6] sm:text-[17px]">
-                            {item.discount}
-                          </span>
-                        )}
-                      </div>
+                      )}
+                      {item.discount && (
+                        <span className="text-[14px] font-medium text-[#0a7ae6] sm:text-[17px]">
+                          {item.discount}
+                        </span>
+                      )}
                     </div>
                   </div>
 

@@ -8,13 +8,75 @@ const SLIDE_DURATION = 6000;
 const PROGRESS_STEP = 50;
 
 export default function HeroShowcase() {
-  const [activeSlide, setActiveSlide] = useState(0);
+  // Extended array for seamless forward/backward infinite looping: [Last, ...Banners, First]
+  const extendedBanners = [
+    banners[banners.length - 1],
+    ...banners,
+    banners[0],
+  ];
+
+  const [currentIndex, setCurrentIndex] = useState(1);
+  const [isTransitioning, setIsTransitioning] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   const minSwipeDistance = 40;
+
+  // Handle wrap-around seamlessly after transition finishes
+  useEffect(() => {
+    let resetTimer: NodeJS.Timeout;
+    if (currentIndex === extendedBanners.length - 1) {
+      resetTimer = setTimeout(() => {
+        setIsTransitioning(false);
+        setCurrentIndex(1);
+      }, 700);
+    } else if (currentIndex === 0) {
+      resetTimer = setTimeout(() => {
+        setIsTransitioning(false);
+        setCurrentIndex(banners.length);
+      }, 700);
+    }
+    return () => clearTimeout(resetTimer);
+  }, [currentIndex, extendedBanners.length]);
+
+  // Re-enable transition after position reset
+  useEffect(() => {
+    if (!isTransitioning) {
+      const enableTimer = setTimeout(() => {
+        setIsTransitioning(true);
+      }, 50);
+      return () => clearTimeout(enableTimer);
+    }
+  }, [isTransitioning]);
+
+  // Active slide timer & progress bar
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    setProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          return 100;
+        }
+        return prev + (PROGRESS_STEP / SLIDE_DURATION) * 100;
+      });
+    }, PROGRESS_STEP);
+
+    const slideTimer = setInterval(() => {
+      setIsTransitioning(true);
+      setCurrentIndex((prev) => prev + 1);
+    }, SLIDE_DURATION);
+
+    return () => {
+      clearInterval(progressInterval);
+      clearInterval(slideTimer);
+    };
+  }, [currentIndex, isPlaying]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
@@ -32,95 +94,127 @@ export default function HeroShowcase() {
     const isRightSwipe = distance < -minSwipeDistance;
 
     if (isLeftSwipe) {
-      setActiveSlide((prev) => (prev + 1) % banners.length);
+      setIsTransitioning(true);
+      setCurrentIndex((prev) => prev + 1);
     } else if (isRightSwipe) {
-      setActiveSlide((prev) => (prev - 1 + banners.length) % banners.length);
+      setIsTransitioning(true);
+      setCurrentIndex((prev) => prev - 1);
     }
   };
 
-  useEffect(() => {
-    setProgress(0);
-
-    const timer = window.setInterval(() => {
-      setProgress((current) => {
-        if (current >= 100) {
-          setActiveSlide((slide) => (slide + 1) % banners.length);
-          return 0;
-        }
-
-        return current + (PROGRESS_STEP / SLIDE_DURATION) * 100;
-      });
-    }, PROGRESS_STEP);
-
-    return () => window.clearInterval(timer);
-  }, [activeSlide]);
+  // Determine active 0-based index for banners
+  const activeDotIndex =
+    currentIndex === 0
+      ? banners.length - 1
+      : currentIndex === extendedBanners.length - 1
+      ? 0
+      : currentIndex - 1;
 
   return (
-    <section className="w-full">
-      {/* Mobile View: Touch swipeable without dots indicator */}
-      <div className="sm:hidden">
+    <section className="w-full bg-white pb-3 overflow-hidden rounded-none">
+      {/* FULL WIDTH SHARP CAROUSEL TRACK (INCREASED HEIGHT, SHARP CORNERS) */}
+      <div
+        className="relative w-full h-[380px] sm:h-[580px] md:h-[660px] lg:h-[760px] sm:h-[calc(100vh-76px)] overflow-hidden touch-pan-y rounded-none"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div
-          className="relative w-full aspect-[9/16] overflow-hidden touch-pan-y"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          className={`flex h-full w-full ${
+            isTransitioning
+              ? "transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+              : "transition-none"
+          }`}
+          style={{
+            transform: `translateX(-${currentIndex * 100}%)`,
+          }}
         >
-          <div
-            className="flex h-full w-full transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
-            style={{ transform: `translateX(-${activeSlide * 100}%)` }}
-          >
-            {banners.map((banner) => (
-              <div key={banner.src} className="relative h-full w-full shrink-0">
-                <Image
-                  src={banner.mobileSrc || banner.src}
-                  alt={banner.alt}
-                  fill
-                  priority={banner.src === banners[0].src}
-                  className="object-cover object-center"
-                  sizes="100vw"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Desktop View */}
-      <div className="hidden sm:block">
-        <div className="relative h-[clamp(360px,72vh,760px)] w-full overflow-hidden sm:h-[calc(100vh-72px)]">
-          <div
-            className="flex h-full w-full transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
-            style={{ transform: `translateX(-${activeSlide * 100}%)` }}
-          >
-            {banners.map((banner) => (
-              <div key={banner.src} className="relative h-full w-full shrink-0">
+          {extendedBanners.map((banner, index) => (
+            <div
+              key={`${banner.src}-${index}`}
+              className="relative h-full w-full shrink-0 overflow-hidden rounded-none bg-slate-950"
+            >
+              {/* DESKTOP BANNER */}
+              <div className="hidden sm:block relative h-full w-full">
                 <Image
                   src={banner.src}
                   alt={banner.alt}
                   fill
-                  priority={banner.src === banners[0].src}
-                  className="object-cover object-[70%_center] sm:object-center"
+                  priority={index === 1}
+                  className="object-cover object-center"
                   sizes="100vw"
                 />
               </div>
-            ))}
-          </div>
 
-          <div className="absolute inset-x-0 bottom-4 z-10 flex justify-center px-4 sm:bottom-7">
-            <div className="flex items-center gap-2 rounded-full px-1.5 py-1.5">
-              {banners.map((banner, index) => (
+              {/* MOBILE BANNER */}
+              <div className="sm:hidden relative h-full w-full">
+                <Image
+                  src={banner.mobileSrc || banner.src}
+                  alt={banner.alt}
+                  fill
+                  priority={index === 1}
+                  className="object-cover object-center"
+                  sizes="100vw"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* PROGRESS DOT PAGINATION OVERLAY UPWARD ON HERO BANNER */}
+        <div className="absolute inset-x-0 bottom-4 sm:bottom-6 z-20 flex items-center justify-center px-6">
+          <div className="flex items-center gap-2.5">
+            {banners.map((banner, index) => {
+              const isActive = index === activeDotIndex;
+
+              return isActive ? (
                 <button
                   key={banner.src}
                   type="button"
-                  aria-label={`Show banner ${index + 1}`}
-                  onClick={() => setActiveSlide(index)}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    index === activeSlide ? "w-8 bg-white" : "w-2 bg-white/50"
-                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                  onClick={() => {
+                    setIsTransitioning(true);
+                    setCurrentIndex(index + 1);
+                  }}
+                  className="relative w-8 sm:w-9 h-2 sm:h-2.5 rounded-full bg-neutral-300 overflow-hidden transition-all duration-300 cursor-pointer shadow-md"
+                >
+                  <div
+                    className="absolute left-0 top-0 bottom-0 bg-neutral-900 rounded-full transition-all duration-75 ease-linear"
+                    style={{ width: `${progress}%` }}
+                  />
+                </button>
+              ) : (
+                <button
+                  key={banner.src}
+                  type="button"
+                  aria-label={`Go to slide ${index + 1}`}
+                  onClick={() => {
+                    setIsTransitioning(true);
+                    setCurrentIndex(index + 1);
+                  }}
+                  className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-neutral-400/80 hover:bg-neutral-700 transition-all duration-300 cursor-pointer shadow-md"
                 />
-              ))}
-            </div>
+              );
+            })}
           </div>
+
+          {/* PLAY / PAUSE CONTROLLER */}
+          <button
+            type="button"
+            aria-label={isPlaying ? "Pause carousel" : "Play carousel"}
+            onClick={() => setIsPlaying(!isPlaying)}
+            className="absolute right-6 sm:right-10 text-neutral-400 hover:text-neutral-700 transition-colors p-1"
+          >
+            {isPlaying ? (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
         </div>
       </div>
     </section>

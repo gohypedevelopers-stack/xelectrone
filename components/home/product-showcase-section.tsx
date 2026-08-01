@@ -1,6 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Star } from "lucide-react";
+import { Heart, Star } from "lucide-react";
 import { products } from "@/components/home/content";
 
 function Rating({ value }: { value: number }) {
@@ -19,6 +22,15 @@ function Rating({ value }: { value: number }) {
 }
 
 export default function ProductShowcaseSection() {
+  const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
+
+  const toggleWishlist = (id: string) => {
+    setWishlist((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   return (
     <section className="bg-white px-4 py-6 sm:px-6 lg:px-8 lg:py-12">
       <div className="mx-auto max-w-[1600px]">
@@ -44,6 +56,24 @@ export default function ProductShowcaseSection() {
               <article className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200/80 bg-white transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
                 <div className="flex flex-1 flex-col p-2.5 sm:p-4 lg:p-5">
                   <div className="relative flex h-[140px] items-center justify-center overflow-hidden rounded-md bg-slate-50/60 p-2 sm:h-[235px] sm:p-4 lg:h-[270px]">
+                    <button
+                      type="button"
+                      aria-label={`Add ${product.title} to wishlist`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleWishlist(product.id);
+                      }}
+                      className="absolute top-2.5 right-2.5 z-10 flex size-8 items-center justify-center rounded-full bg-white/90 shadow-sm text-slate-400 backdrop-blur-xs transition-all duration-200 hover:scale-110 hover:bg-white hover:text-red-500 active:scale-95"
+                    >
+                      <Heart
+                        className={`size-4 transition-colors ${
+                          wishlist[product.id]
+                            ? "fill-red-500 text-red-500"
+                            : "text-slate-400 hover:text-red-500"
+                        }`}
+                      />
+                    </button>
                     <Image
                       src={product.image}
                       alt={product.alt}

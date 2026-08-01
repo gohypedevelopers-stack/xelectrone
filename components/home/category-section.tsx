@@ -30,18 +30,18 @@ export default function CategorySection() {
               <Link
                 key={category.title}
                 href={`/shop?filter=${filterSlug}`}
-                className="group flex min-w-[125px] shrink-0 sm:min-w-[150px] lg:min-w-0 lg:flex-1 flex-col items-center justify-center rounded-2xl border border-slate-200/90 bg-white px-3.5 py-5 sm:px-4 sm:py-6 min-h-[150px] sm:min-h-[175px] lg:min-h-[190px] text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#0a7ae6] hover:shadow-sm"
+                className="group flex min-w-[130px] shrink-0 sm:min-w-[150px] lg:min-w-0 lg:flex-1 flex-col items-center justify-center rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-3 h-[145px] sm:h-[170px] lg:h-[190px] text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#0a7ae6] hover:shadow-md"
               >
-                {/* CLEAN PRODUCT HERO IMAGE (NO CIRCLE OR BOX BACKGROUND) */}
-                <div className="relative flex h-26 w-26 items-center justify-center sm:h-30 sm:w-30 lg:h-32 lg:w-32">
-                  <div className="relative h-22 w-22 transition-transform duration-300 ease-out group-hover:scale-108 sm:h-26 sm:w-26 lg:h-28 lg:w-28">
+                {/* CLEAN PRODUCT HERO IMAGE (FILLING CARD FULLY) */}
+                <div className="relative flex h-full w-full items-center justify-center p-1 sm:p-1.5">
+                  <div className="relative h-full w-full transition-transform duration-300 ease-out group-hover:scale-105">
                     <Image
                       src={cacheBustSrc}
                       alt={category.alt}
                       fill
                       unoptimized
                       className="mix-blend-multiply object-contain filter drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)]"
-                      sizes="160px"
+                      sizes="200px"
                     />
                   </div>
                 </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ChevronDown,
   ChevronRight,
+  Heart,
   Menu,
   Search,
   ShoppingBag,
@@ -73,23 +74,28 @@ function FlatNavLink({
   href = "/",
   icon: Icon,
   onClick,
+  onMouseEnter,
 }: {
   label: string;
   href?: string;
   icon?: any;
   onClick?: () => void;
+  onMouseEnter?: () => void;
 }) {
   return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className="group inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[13px] font-semibold uppercase tracking-wider text-slate-700 transition-colors duration-200 hover:text-[#0a7ae6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6]"
-    >
-      {Icon && (
-        <Icon className="size-4 text-slate-400 group-hover:text-[#0a7ae6]" />
-      )}
-      <span className="uppercase">{label}</span>
-    </Link>
+    <div className="h-full flex items-center" onMouseEnter={onMouseEnter}>
+      <Link
+        href={href}
+        onClick={onClick}
+        onMouseEnter={onMouseEnter}
+        className="group inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[13px] font-semibold uppercase tracking-wider text-slate-700 transition-colors duration-200 hover:text-[#0a7ae6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6]"
+      >
+        {Icon && (
+          <Icon className="size-4 text-slate-400 group-hover:text-[#0a7ae6]" />
+        )}
+        <span className="uppercase">{label}</span>
+      </Link>
+    </div>
   );
 }
 
@@ -135,7 +141,7 @@ const MENU_ORDER = ["PRODUCT", "WARRANTY", "SUPPORT & SERVICE"];
 
 export default function Navbar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [slideDirection, setSlideDirection] = useState<"from-right" | "from-left">("from-right");
+  const [slideDirection, setSlideDirection] = useState<"from-right" | "from-left" | "from-top">("from-top");
   const prevMenuRef = useRef<string | null>(null);
 
   const handleOpenMenu = (newMenu: string | null) => {
@@ -147,8 +153,8 @@ export default function Navbar() {
       } else if (newIdx < prevIdx) {
         setSlideDirection("from-left");
       }
-    } else if (newMenu) {
-      setSlideDirection("from-right");
+    } else if (newMenu && !prevMenuRef.current) {
+      setSlideDirection("from-top");
     }
     prevMenuRef.current = newMenu;
     setOpenMenu(newMenu);
@@ -160,7 +166,26 @@ export default function Navbar() {
   >(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
+  const [wishlistItems, setWishlistItems] = useState([
+    {
+      id: "techno-android",
+      name: "XElectron Techno Android",
+      price: 6990,
+      oldPrice: 21999,
+      image: "/product-white-projector-card.png",
+      category: "Projectors",
+    },
+    {
+      id: "c9-plus",
+      name: "XElectron Android C9 Plus",
+      price: 10990,
+      oldPrice: 19999,
+      image: "/product-black-projector-card.png",
+      category: "Projectors",
+    },
+  ]);
   const [cartItems, setCartItems] = useState([
     {
       id: "55-smart-tv",
@@ -197,6 +222,7 @@ export default function Navbar() {
         setOpenMenu(null);
         setMobileOpen(false);
         setIsCartOpen(false);
+        setIsWishlistOpen(false);
         setIsSearchDrawerOpen(false);
       }
     }
@@ -253,9 +279,9 @@ export default function Navbar() {
     };
   }, []);
 
-  // Prevent background scrolling when mobile menu, cart, or search drawer is open
+  // Prevent background scrolling when mobile menu, cart, wishlist, or search drawer is open
   useEffect(() => {
-    if (mobileOpen || isCartOpen || isSearchDrawerOpen) {
+    if (mobileOpen || isCartOpen || isWishlistOpen || isSearchDrawerOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -263,7 +289,7 @@ export default function Navbar() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [mobileOpen, isCartOpen, isSearchDrawerOpen]);
+  }, [mobileOpen, isCartOpen, isWishlistOpen, isSearchDrawerOpen]);
 
   const handleNavigate = () => {
     handleOpenMenu(null);
@@ -303,6 +329,7 @@ export default function Navbar() {
           aria-label="XElectron home"
           className="inline-flex shrink-0 items-center rounded-full text-slate-900 transition-opacity duration-200 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6] sm:justify-self-start"
           onClick={handleNavigate}
+          onMouseEnter={() => handleOpenMenu(null)}
         >
           <BrandLogo />
         </Link>
@@ -312,7 +339,7 @@ export default function Navbar() {
           aria-label="Primary"
           className="hidden h-full w-max items-stretch justify-self-center whitespace-nowrap px-4 lg:flex lg:gap-1"
         >
-          <FlatNavLink label="HOME" href="/" />
+          <FlatNavLink label="HOME" href="/" onMouseEnter={() => handleOpenMenu(null)} />
           {dropdownItems.map((group) => (
             <DropdownNavItem
               key={group.label}
@@ -326,14 +353,21 @@ export default function Navbar() {
               onClose={() => handleOpenMenu(null)}
             />
           ))}
-          <FlatNavLink label="ABOUT US" href="/" />
-          <FlatNavLink label="CONTACT" href="/" />
+          <FlatNavLink label="ABOUT US" href="/" onMouseEnter={() => handleOpenMenu(null)} />
+          <FlatNavLink label="CONTACT" href="/" onMouseEnter={() => handleOpenMenu(null)} />
         </nav>
 
         {/* Desktop Actions */}
         <div className="hidden shrink-0 items-center justify-self-end gap-1.5 sm:flex">
           <IconButton label="Search" onClick={() => setIsSearchDrawerOpen(true)}>
             <Search className="size-4 text-slate-700 stroke-[1.8]" />
+          </IconButton>
+          <IconButton
+            label="Wishlist"
+            badge={wishlistItems.length}
+            onClick={() => setIsWishlistOpen(true)}
+          >
+            <Heart className="size-4 text-slate-700 stroke-[1.8]" />
           </IconButton>
           <Link href="/login" aria-label="My Account">
             <IconButton label="My Account">
@@ -353,6 +387,13 @@ export default function Navbar() {
         <div className="flex shrink-0 items-center gap-1 sm:hidden">
           <IconButton label="Search" onClick={() => setIsSearchDrawerOpen(true)}>
             <Search className="size-4 text-slate-800 stroke-[1.8]" />
+          </IconButton>
+          <IconButton
+            label="Wishlist"
+            badge={wishlistItems.length}
+            onClick={() => setIsWishlistOpen(true)}
+          >
+            <Heart className="size-4 text-slate-800 stroke-[1.8]" />
           </IconButton>
           <IconButton
             label="Shopping bag"
@@ -377,27 +418,35 @@ export default function Navbar() {
       </div>
 
       {/* Darkened Smooth Backdrop Blur Overlay */}
-      {openMenu && (
-        <div
-          className="hidden lg:block fixed inset-0 top-[70px] z-40 bg-slate-950/20 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in"
-          onClick={() => handleOpenMenu(null)}
-        />
-      )}
+      <div
+        className={`hidden lg:block fixed inset-0 top-[70px] z-40 bg-slate-950/25 backdrop-blur-xs transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          openMenu
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none invisible"
+        }`}
+        onClick={() => handleOpenMenu(null)}
+      />
 
       {/* Full Width Mega Menu Dropdown */}
-      {openMenu && (
-        <div
-          className="hidden lg:block absolute top-full inset-x-0 z-50 border-b border-slate-200/90 bg-white/98 backdrop-blur-2xl shadow-[0_30px_70px_rgba(15,23,42,0.18)] transition-all duration-300 ease-out animate-in fade-in slide-in-from-top-2"
-          onMouseEnter={() => handleOpenMenu(openMenu)}
-          onMouseLeave={() => handleOpenMenu(null)}
-        >
-          <div className="mx-auto max-w-[1440px] px-8 py-6 overflow-hidden">
+      <div
+        className={`hidden lg:block absolute top-full inset-x-0 z-50 grid border-b border-slate-200/90 bg-white/98 backdrop-blur-2xl shadow-[0_35px_80px_rgba(15,23,42,0.16)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          openMenu
+            ? "grid-rows-[1fr] opacity-100 translate-y-0 pointer-events-auto visible"
+            : "grid-rows-[0fr] opacity-0 -translate-y-3 pointer-events-none invisible"
+        }`}
+        onMouseEnter={() => openMenu && handleOpenMenu(openMenu)}
+        onMouseLeave={() => handleOpenMenu(null)}
+      >
+        <div className="overflow-hidden">
+          <div className="mx-auto max-w-[1440px] px-8 py-6">
             <div
-              key={openMenu}
-              className={`transition-all duration-300 ease-out animate-in fade-in ${
+              key={openMenu ?? "empty"}
+              className={`transition-all duration-300 ease-out ${
                 slideDirection === "from-right"
-                  ? "slide-in-from-right-12"
-                  : "slide-in-from-left-12"
+                  ? "animate-in fade-in slide-in-from-right-8 duration-300"
+                  : slideDirection === "from-left"
+                  ? "animate-in fade-in slide-in-from-left-8 duration-300"
+                  : "animate-in fade-in slide-in-from-top-1 duration-300"
               }`}
             >
             {openMenu === "PRODUCT" && (
@@ -728,7 +777,7 @@ export default function Navbar() {
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Mobile Drawer Menu */}
       {mobileOpen ? (
@@ -983,6 +1032,165 @@ export default function Navbar() {
             >
               Proceed to Checkout
             </button>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Wishlist Drawer */}
+    <div className={`fixed inset-0 z-[100] ${isWishlistOpen ? "pointer-events-auto" : "pointer-events-none"}`}>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-500 ease-in-out ${
+          isWishlistOpen ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={() => setIsWishlistOpen(false)}
+      />
+
+      {/* Drawer Panel */}
+      <div
+        className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white shadow-2xl transition-transform duration-500 ease-in-out ${
+          isWishlistOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 p-5">
+          <h2 className="text-base sm:text-lg font-medium uppercase tracking-wider text-slate-900">
+            My Wishlist ({wishlistItems.length})
+          </h2>
+          <button
+            onClick={() => setIsWishlistOpen(false)}
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {/* Items List */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {wishlistItems.length > 0 ? (
+            wishlistItems.map((item) => (
+              <div key={item.id} className="flex gap-4 border-b border-slate-100 pb-4 group">
+                <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-white border border-slate-100 p-2 flex items-center justify-center">
+                  <Image
+                    src={item.image}
+                    alt={item.name}
+                    width={60}
+                    height={60}
+                    className="object-contain transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+
+                <div className="flex flex-1 flex-col justify-between">
+                  <div>
+                    <span className="text-[9px] font-medium uppercase tracking-widest text-[#0a7ae6]">
+                      {item.category}
+                    </span>
+                    <h3 className="text-sm font-medium text-slate-900 line-clamp-1">
+                      {item.name}
+                    </h3>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="text-sm font-medium text-slate-900">
+                        ₹{item.price.toLocaleString("en-IN")}
+                      </span>
+                      {item.oldPrice && (
+                        <span className="text-xs text-slate-400 line-through">
+                          ₹{item.oldPrice.toLocaleString("en-IN")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCartItems((prev) => [
+                          ...prev,
+                          {
+                            id: item.id,
+                            name: item.name,
+                            price: item.price,
+                            image: item.image,
+                            quantity: 1,
+                            category: item.category,
+                          },
+                        ]);
+                        setIsWishlistOpen(false);
+                        setIsCartOpen(true);
+                      }}
+                      className="inline-flex h-8 items-center justify-center rounded-lg bg-[#0a7ae6] px-3.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-[#0867c2] active:scale-95 cursor-pointer"
+                    >
+                      Move to Cart
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setWishlistItems((prev) => prev.filter((x) => x.id !== item.id));
+                  }}
+                  className="self-start p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <Heart className="size-12 text-slate-200 stroke-[1.5] mb-3" />
+              <p className="text-slate-400 font-medium">Your wishlist is empty</p>
+              <Link
+                href="/shop"
+                onClick={() => setIsWishlistOpen(false)}
+                className="mt-4 rounded-full bg-[#0a7ae6] px-6 py-2.5 text-xs font-medium uppercase tracking-wider text-white shadow-md shadow-[#0a7ae6]/20 transition-all hover:scale-105"
+              >
+                Start Shopping
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Summary */}
+        {wishlistItems.length > 0 && (
+          <div className="border-t border-slate-100 p-5 bg-slate-50/50">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-slate-600">Saved Items</span>
+              <span className="text-sm font-medium text-slate-900">
+                {wishlistItems.length} {wishlistItems.length === 1 ? "Product" : "Products"}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 mb-4 font-normal">
+              Move items to your cart anytime to complete your order. Free shipping on all orders!
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  setCartItems((prev) => [
+                    ...prev,
+                    ...wishlistItems.map((item) => ({
+                      id: item.id,
+                      name: item.name,
+                      price: item.price,
+                      image: item.image,
+                      quantity: 1,
+                      category: item.category,
+                    })),
+                  ]);
+                  setIsWishlistOpen(false);
+                  setIsCartOpen(true);
+                }}
+                className="w-full rounded-xl bg-[#0a7ae6] py-3.5 text-center text-sm font-medium uppercase tracking-wider text-white shadow-lg shadow-[#0a7ae6]/25 transition-all hover:opacity-95 hover:scale-[1.02] cursor-pointer"
+              >
+                Move All to Cart
+              </button>
+              <button
+                onClick={() => setWishlistItems([])}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-center text-xs font-medium uppercase tracking-wider text-slate-500 transition-all hover:bg-red-50 hover:border-red-200 hover:text-red-600 cursor-pointer"
+              >
+                Clear Wishlist
+              </button>
+            </div>
           </div>
         )}
       </div>
