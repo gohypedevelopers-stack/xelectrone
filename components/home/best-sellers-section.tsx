@@ -10,9 +10,9 @@ gsap.registerPlugin(ScrollTrigger);
 
 function SpecificationRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-2 gap-4 border-t border-slate-200 py-4 first:border-t-0 first:pt-0 last:pb-0">
-      <div className="text-[15px] font-medium text-slate-600">{label}</div>
-      <div className="text-right text-[15px] font-semibold text-slate-900">{value}</div>
+    <div className="grid grid-cols-2 gap-4 border-t border-slate-200/80 py-2 sm:py-2.5 first:border-t-0 first:pt-0 last:pb-0">
+      <div className="text-[13px] sm:text-[14px] font-medium text-slate-600">{label}</div>
+      <div className="text-right text-[13px] sm:text-[14px] font-semibold text-slate-900">{value}</div>
     </div>
   );
 }
@@ -221,7 +221,7 @@ export default function BestSellersSection() {
   } as const;
 
   const titleClass =
-    "shrink-0 whitespace-nowrap text-[clamp(1.8rem,5.2vw,5.5rem)] font-normal leading-none tracking-[-0.04em] will-change-transform cursor-pointer transition-opacity duration-300 hover:opacity-100 select-none";
+    "shrink-0 whitespace-nowrap text-[clamp(1.2rem,2.8vw,2.8rem)] font-normal leading-[1.2] tracking-[-0.04em] will-change-transform cursor-pointer transition-opacity duration-300 hover:opacity-100 select-none py-1";
 
   if (reduceMotion) {
     return (
@@ -285,72 +285,76 @@ export default function BestSellersSection() {
     >
       <div
         ref={viewportRef}
-        className="mx-auto flex h-full max-w-[1600px] flex-col justify-between px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-10"
+        className="mx-auto flex h-full max-w-[1600px] flex-col justify-center px-3 pt-10 pb-2 sm:px-6 sm:pt-12 sm:pb-3 lg:px-8 lg:pt-14 lg:pb-4"
       >
-        <p className="text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[#0a7ae6]">
-          Best sellers
-        </p>
+        {/* TOP HEADER BLOCK: Badge + Giant Title Rail */}
+        <div className="relative z-20 shrink-0 flex flex-col items-center mb-1 sm:mb-1.5">
+          <p className="text-center text-[11px] sm:text-[12px] font-semibold uppercase tracking-[0.08em] text-[#0a7ae6]">
+            Best sellers
+          </p>
 
-        <div className="relative mt-2 w-full overflow-hidden lg:mt-4" style={titleRailStyle}>
-          <div
-            ref={trackRef}
-            className="flex w-max items-center gap-10 sm:gap-14 py-0.5 will-change-transform"
-          >
-            {bestSellers.map((item, index) => (
-              <h2
-                key={item.id}
-                ref={(node) => {
-                  titleRefs.current[index] = node;
-                }}
-                onClick={() => goToSlide(index)}
-                className={titleClass}
-              >
-                {item.name}
-              </h2>
-            ))}
+          <div className="relative mt-0.5 w-full overflow-hidden py-0.5" style={titleRailStyle}>
+            <div
+              ref={trackRef}
+              className="flex w-max items-center gap-10 sm:gap-14 py-0.5 will-change-transform"
+            >
+              {bestSellers.map((item, index) => (
+                <h2
+                  key={item.id}
+                  ref={(node) => {
+                    titleRefs.current[index] = node;
+                  }}
+                  onClick={() => goToSlide(index)}
+                  className={titleClass}
+                >
+                  {item.name}
+                </h2>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="my-auto grid flex-1 items-center gap-2 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
-          <div className="relative order-2 min-h-[320px] pb-2 sm:min-h-[420px] sm:pb-4 lg:order-1 lg:min-h-[560px] lg:pb-0">
+        {/* BOTTOM PRODUCT SHOWCASE GRID */}
+        <div className="relative z-10 grid w-full mt-1 sm:mt-2 lg:mt-2.5 items-start gap-2 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
+          <div className="relative order-2 min-h-[220px] pb-2 sm:min-h-[280px] sm:pb-4 lg:order-1 lg:min-h-[340px] lg:pb-0">
             {bestSellers.map((item, index) => (
               <div
                 key={item.id}
                 ref={(node) => {
                   cardRefs.current[index] = node;
                 }}
-                className="absolute inset-0 flex items-center will-change-[transform,opacity]"
+                className="absolute inset-0 flex items-start pt-2 sm:pt-4 will-change-[transform,opacity]"
               >
-                <div className="relative z-10 w-full max-w-[640px] rounded-[20px] sm:rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-md px-4 py-4 shadow-[0_20px_70px_rgba(15,23,42,0.05)] sm:px-8 sm:py-8 md:px-10 md:py-9 max-h-[calc(100vh-320px)] sm:max-h-none overflow-y-auto">
-                  <div className="border-b border-slate-200/80 pb-4 sm:pb-5">
-                    <p className="text-[10px] sm:text-[12px] font-bold uppercase tracking-[0.2em] text-[#0a7ae6]">
+                <div className="relative z-10 w-full max-w-[640px] rounded-[20px] sm:rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-md px-4 pt-3.5 pb-5 shadow-[0_20px_70px_rgba(15,23,42,0.05)] sm:px-6 sm:pt-5 sm:pb-6 md:px-8 md:pt-6 md:pb-6 max-h-[calc(100vh-210px)] overflow-y-auto no-scrollbar">
+                  <div className="border-b border-slate-200/80 pb-2.5 sm:pb-3">
+                    <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a7ae6]">
                       XElectron
                     </p>
-                    <h3 className="mt-1 text-[20px] sm:text-[26px] font-bold tracking-tight text-slate-900">
+                    <h3 className="mt-0.5 text-[17px] sm:text-[22px] font-bold tracking-tight text-slate-900">
                       {item.name}
                     </h3>
-                    <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
-                      <span className="text-[22px] font-semibold text-slate-900 sm:text-[30px]">
+                    <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-1">
+                      <span className="text-[19px] font-semibold text-slate-900 sm:text-[26px]">
                         {item.price}
                       </span>
                       {item.oldPrice && (
-                        <span className="text-[14px] text-slate-400 line-through sm:text-[16px]">
+                        <span className="text-[12px] text-slate-400 line-through sm:text-[14px]">
                           {item.oldPrice}
                         </span>
                       )}
                       {item.discount && (
-                        <span className="text-[14px] font-medium text-[#0a7ae6] sm:text-[17px]">
+                        <span className="text-[12px] font-medium text-[#0a7ae6] sm:text-[15px]">
                           {item.discount}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <p className="mt-3 sm:mt-5 max-w-[34rem] text-[14px] leading-6 text-slate-700 sm:text-[17px] sm:leading-8 md:text-[19px]">
+                  <p className="mt-2 sm:mt-3 max-w-[34rem] text-[12px] leading-4 text-slate-700 sm:text-[15px] sm:leading-6 md:text-[16px]">
                     {item.description}
                   </p>
 
-                  <div className="mt-3 sm:mt-6">
+                  <div className="mt-2 sm:mt-4">
                     {item.specs.map((spec) => (
                       <SpecificationRow key={spec.label} label={spec.label} value={spec.value} />
                     ))}
@@ -358,7 +362,7 @@ export default function BestSellersSection() {
 
                   <a
                     href={`/product?id=${item.id}`}
-                    className="mt-4 sm:mt-8 inline-flex h-11 sm:h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[14px] sm:text-[16px] font-medium text-white transition-all hover:bg-[#086ac9] shadow-lg shadow-blue-500/15 active:scale-[0.99]"
+                    className="mt-3 sm:mt-5 inline-flex h-9 sm:h-12 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[12px] sm:text-[14px] font-medium text-white transition-all hover:bg-[#086ac9] shadow-lg shadow-blue-500/15 active:scale-[0.99]"
                   >
                     View Details & Buy
                   </a>
@@ -368,7 +372,7 @@ export default function BestSellersSection() {
           </div>
 
           <div className="relative order-1 flex items-center justify-center pb-0 lg:order-2 lg:justify-end lg:pb-0">
-            <div className="relative min-h-[220px] w-full max-w-[900px] sm:min-h-[440px] lg:min-h-[580px]">
+            <div className="relative min-h-[160px] w-full max-w-[900px] sm:min-h-[280px] lg:min-h-[340px]">
               {bestSellers.map((item, index) => (
                 <div
                   key={item.id}

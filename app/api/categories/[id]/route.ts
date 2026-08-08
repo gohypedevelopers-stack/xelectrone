@@ -1,0 +1,46 @@
+import { NextRequest, NextResponse } from "next/server";
+import * as categoriesController from "@/lib/server/controllers/categories.controller";
+
+type RouteParams = { params: Promise<{ id: string }> };
+
+// GET /api/categories/:id
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const category = await categoriesController.getCategory(id);
+    if (!category) {
+      return NextResponse.json({ success: false, error: "Category not found" }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, data: category });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
+
+// PUT /api/categories/:id
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const category = await categoriesController.updateCategory(id, body);
+    return NextResponse.json({ success: true, data: category });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    const status = message.includes("not found") ? 404 : 500;
+    return NextResponse.json({ success: false, error: message }, { status });
+  }
+}
+
+// DELETE /api/categories/:id
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    await categoriesController.deleteCategory(id);
+    return NextResponse.json({ success: true, message: "Category deleted" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    const status = message.includes("not found") ? 404 : 500;
+    return NextResponse.json({ success: false, error: message }, { status });
+  }
+}

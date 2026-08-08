@@ -27,11 +27,52 @@ interface ProductDetailProps {
 export default function ProductDetail({ initialProduct }: ProductDetailProps) {
   const searchParams = useSearchParams();
   const productId = searchParams?.get("id") || searchParams?.get("product");
+  const [apiProduct, setApiProduct] = useState<ProductDetailItem | null>(null);
 
   const product = useMemo(() => {
+    if (apiProduct) return apiProduct;
     if (initialProduct) return initialProduct;
     return getProductById(productId);
-  }, [initialProduct, productId]);
+  }, [apiProduct, initialProduct, productId]);
+
+  useEffect(() => {
+    const targetId = productId || initialProduct?.id || initialProduct?.slug;
+    if (!targetId) return;
+
+    fetch(`/api/products/${encodeURIComponent(targetId)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          const p = json.data;
+          setApiProduct({
+            id: p.id,
+            slug: p.slug || p.id,
+            name: p.name,
+            category: p.category?.title || p.category || "Electronics",
+            categorySlug: p.category?.slug || "general",
+            price: typeof p.price === "number" ? `₹${p.price.toLocaleString("en-IN")}` : String(p.price),
+            oldPrice: p.compareAtPrice ? `₹${p.compareAtPrice.toLocaleString("en-IN")}` : undefined,
+            discount: p.compareAtPrice && p.price ? `${Math.round(((p.compareAtPrice - p.price) / p.compareAtPrice) * 100)}% off` : undefined,
+            rating: p.rating || 4.8,
+            reviewsCount: `${p.reviewCount || 120} Reviews`,
+            description: p.description || "High quality XElectron product with premium build and official brand warranty.",
+            colors: p.colors || [{ name: "Standard", bg: "#1e1e24" }],
+            features: Array.isArray(p.features) && p.features.length > 0
+              ? p.features.map((f: any) => typeof f === "string" ? f : f.featureText || f.text || f.title || f.name || String(f))
+              : ["Official Brand Warranty", "High Performance Build", "Fast Express Shipping"],
+            specs: p.specs || [
+              { label: "Category", value: p.category?.title || "Electronics" },
+              { label: "Model SKU", value: p.sku || p.id },
+            ],
+            shippingNotice: "Free express delivery across India & Official Brand Warranty",
+            mainImage: p.images?.[0] || p.mainImage || "/category-smartphone.png",
+          });
+        }
+      })
+      .catch(() => {
+        // Silent fallback to static catalog
+      });
+  }, [productId, initialProduct]);
 
   const similarProducts = useMemo(() => getSimilarProducts(product.id, 4), [product.id]);
 
@@ -109,7 +150,7 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
                   src={product.mainImage}
                   alt={`${product.name} side profile`}
                   fill
-                  className="object-contain -rotate-6 scale-110 p-2"
+                  className="object-contain scale-125 translate-x-4 p-2"
                   sizes="(min-width: 1024px) 25vw, 62vw"
                 />
               </div>
@@ -140,47 +181,52 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
             </div>
           </div>
 
-          <div className="pt-1 lg:pl-4">
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-slate-400 sm:text-[13px]">
+          <div>
+            <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-600">
               {product.category}
-            </p>
+            </span>
 
-            <h1 className="mb-3 text-2xl font-medium tracking-tight text-slate-900 leading-[1.1] sm:text-4xl lg:text-5xl">
+            <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
               {product.name}
             </h1>
 
-            <div className="mb-6 flex items-center gap-2 text-xs font-medium text-slate-600 sm:text-sm">
-              <div className="flex items-center gap-1">
-                <Star className="size-4 fill-slate-900 text-slate-900" />
-                <span className="font-semibold text-slate-900">({product.rating})</span>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1 text-amber-500">
+                <Star className="size-4 fill-current" />
+                <span className="text-sm font-bold text-slate-900">{product.rating}</span>
               </div>
-              <span className="text-slate-400">•</span>
-              <span className="text-slate-400">{product.reviewsCount}</span>
+              <span className="text-slate-300">•</span>
+              <span className="text-xs font-medium text-slate-500 sm:text-sm">
+                {product.reviewsCount}
+              </span>
             </div>
 
-            <p className="mb-8 max-w-xl text-xs leading-relaxed text-slate-500 sm:text-base">
-              {product.description}
-            </p>
-
-            <div className="mb-8 flex items-baseline gap-3">
-              <span className="text-3xl font-medium tracking-tight text-slate-900 sm:text-5xl">
+            <div className="mt-6 flex flex-wrap items-baseline gap-3">
+              <span className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
                 {product.price}
               </span>
               {product.oldPrice && (
-                <span className="text-lg text-slate-400 line-through">
+                <span className="text-lg text-slate-400 line-through sm:text-xl">
                   {product.oldPrice}
                 </span>
               )}
               {product.discount && (
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-[#0a7ae6] sm:text-sm">
+                <span className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-[#0a7ae6] sm:text-sm">
                   {product.discount}
                 </span>
               )}
             </div>
 
+            <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
+              {product.description}
+            </p>
+
             {product.colors.length > 0 && (
-              <div className="mb-8 border-t border-slate-100 pt-6">
-                <div className="flex items-center gap-3">
+              <div className="mt-6">
+                <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Select Finish
+                </span>
+                <div className="mt-3 flex items-center gap-3">
                   {product.colors.map((color) => {
                     const isSelected = selectedColor === color.name;
                     return (
@@ -188,15 +234,15 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
                         key={color.name}
                         type="button"
                         onClick={() => setSelectedColor(color.name)}
-                        aria-label={`Select ${color.name} color`}
-                        className={`relative flex size-8 items-center justify-center rounded-full transition-all ${
-                          isSelected
-                            ? "scale-105 ring-2 ring-slate-900 ring-offset-2"
-                            : "opacity-80 hover:scale-105 hover:opacity-100"
+                        className={`group relative flex size-8 items-center justify-center rounded-full transition-transform hover:scale-110 ${
+                          isSelected ? "ring-2 ring-[#0a7ae6] ring-offset-2" : ""
                         }`}
                         style={{ backgroundColor: color.bg }}
+                        aria-label={`Select ${color.name} color`}
                       >
-                        {isSelected && <span className="size-2 rounded-full bg-white opacity-90" />}
+                        {isSelected && (
+                          <Check className="size-4 text-white drop-shadow-md" />
+                        )}
                       </button>
                     );
                   })}
@@ -211,14 +257,24 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
               <div className="mb-8 border-t border-slate-100 pt-6">
                 <h3 className="mb-4 text-sm font-semibold text-slate-900">Key Features</h3>
                 <ul className="space-y-3">
-                  {product.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-sm text-slate-600 sm:text-[15px]">
-                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-700">
-                        <Check className="size-3 stroke-[2.5]" />
-                      </span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
+                  {product.features.map((feature, idx) => {
+                    const featureText =
+                      typeof feature === "string"
+                        ? feature
+                        : (feature as any)?.featureText ||
+                          (feature as any)?.text ||
+                          (feature as any)?.title ||
+                          (feature as any)?.name ||
+                          String(feature);
+                    return (
+                      <li key={`feature-${idx}`} className="flex items-center gap-3 text-sm text-slate-600 sm:text-[15px]">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-700">
+                          <Check className="size-3 stroke-[2.5]" />
+                        </span>
+                        <span>{featureText}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -227,14 +283,18 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
               <div className="mb-8 border-t border-slate-100 pt-6">
                 <h3 className="mb-3 text-sm font-semibold text-slate-900">Specifications</h3>
                 <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
-                  {product.specs.map((spec) => (
-                    <div key={spec.label} className="rounded-xl bg-slate-50 p-2.5">
-                      <span className="block text-[11px] uppercase tracking-wider text-slate-400">
-                        {spec.label}
-                      </span>
-                      <span className="font-semibold text-slate-900">{spec.value}</span>
-                    </div>
-                  ))}
+                  {product.specs.map((spec, idx) => {
+                    const labelText = typeof spec === "object" && spec ? spec.label : `Spec ${idx + 1}`;
+                    const valueText = typeof spec === "object" && spec ? spec.value : String(spec);
+                    return (
+                      <div key={labelText ? `${labelText}-${idx}` : `spec-${idx}`} className="rounded-xl bg-slate-50 p-2.5">
+                        <span className="block text-[11px] uppercase tracking-wider text-slate-400">
+                          {labelText}
+                        </span>
+                        <span className="font-semibold text-slate-900">{valueText}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -242,12 +302,12 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
             <p className="mb-6 text-[11px] leading-relaxed text-slate-400">{product.shippingNotice}</p>
 
             <div className="flex items-center gap-3">
-              <button
-                type="button"
+              <Link
+                href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}`}
                 className="flex h-12 flex-1 items-center justify-center rounded-2xl bg-[#0a7ae6] text-sm font-medium text-white shadow-md shadow-blue-500/10 transition-all hover:bg-[#086ac9] active:scale-[0.99] sm:h-14 sm:rounded-full sm:text-base"
               >
                 Buy Now
-              </button>
+              </Link>
 
               <button
                 type="button"

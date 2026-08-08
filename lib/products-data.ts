@@ -375,6 +375,33 @@ export const productsCatalog: Record<string, ProductDetailItem> = {
     shippingNotice: "Free delivery with desktop stand included",
     mainImage: "https://www.xelectron.com/wp-content/uploads/2023/01/8-inch-DPF-W-600x600.jpg",
   },
+  "blaze-b2000": {
+    id: "blaze-b2000",
+    slug: "blaze-b2000",
+    name: "XElectron Blaze B2000 Projector",
+    category: "Projectors",
+    categorySlug: "projectors",
+    price: "₹14,990",
+    oldPrice: "₹28,999",
+    discount: "48% off",
+    rating: 4.8,
+    reviewsCount: "820 Reviews",
+    description:
+      "A high-brightness Full HD smart home projector featuring 6500 LED lumens, cinematic color rendering, and built-in WiFi screen mirroring.",
+    colors: [{ name: "Onyx Black", bg: "#1a1a1a" }],
+    features: [
+      "Native 1080p Full HD Resolution",
+      "6500 LED Lumens Brightness",
+      "Dual 5W Built-in Stereo Speakers",
+    ],
+    specs: [
+      { label: "Lumens", value: "6500 LED Lumens" },
+      { label: "Connectivity", value: "WiFi + Bluetooth 5.2 + HDMI" },
+      { label: "Projection Size", value: '40" to 220" Screen' },
+    ],
+    shippingNotice: "Free express shipping across India & 1-Year Brand Warranty",
+    mainImage: "/product-black-projector-card.png",
+  },
 };
 
 export type SimilarProductCard = {
