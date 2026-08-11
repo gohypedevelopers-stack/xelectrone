@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import * as productsController from "@/lib/server/controllers/products.controller";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -24,6 +25,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body = await request.json();
     const product = await productsController.updateProduct(id, body);
+    revalidatePath("/");
     return NextResponse.json({ success: true, data: product });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";
@@ -37,6 +39,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     await productsController.deleteProduct(id);
+    revalidatePath("/");
     return NextResponse.json({ success: true, message: "Product deleted" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";

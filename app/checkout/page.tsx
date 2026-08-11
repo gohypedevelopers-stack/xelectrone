@@ -1,12 +1,9 @@
 "use client";
 
-import { Suspense, useState, useEffect, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowRight,
-  ArrowUpRight,
   Check,
   ChevronDown,
   CreditCard,
@@ -16,77 +13,24 @@ import {
   QrCode,
   RotateCcw,
   ShieldCheck,
-  ShoppingBag,
-  ShoppingCart,
-  Tag,
   Truck,
-  User,
   X,
 } from "lucide-react";
-import { productsCatalog, type ProductDetailItem } from "@/lib/products-data";
+import Navbar from "@/components/navbar/navbar";
+import { useCart } from "@/components/providers/cart-provider";
 
-// Top Header component matching reference design with XElectron branding
-function CheckoutHeader() {
-  return (
-    <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <Image
-            src="/xelectron-logo.png"
-            alt="XElectron"
-            width={220}
-            height={64}
-            className="h-10 sm:h-12 w-auto object-contain object-left transition-transform group-hover:scale-[1.02]"
-            priority
-          />
-        </Link>
+const CHECKOUT_SESSION_KEY = "xelectron-active-checkout";
 
-        {/* Right Navigation */}
-        <div className="flex items-center gap-4 sm:gap-6">
-          <Link
-            href="/shop"
-            className="hidden items-center gap-2 text-xs font-medium text-slate-600 transition-colors hover:text-[#0a7ae6] sm:flex sm:text-sm"
-          >
-            <ShoppingCart className="size-4" />
-            <span>Cart</span>
-          </Link>
+function createCheckoutSessionToken() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
 
-          <Link
-            href="/dashboard"
-            className="hidden items-center gap-2 text-xs font-medium text-slate-600 transition-colors hover:text-[#0a7ae6] sm:flex sm:text-sm"
-          >
-            <User className="size-4" />
-            <span>My account</span>
-            <ChevronDown className="size-3 text-slate-400" />
-          </Link>
-
-          <Link
-            href="/shop"
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#0a7ae6] px-4 py-2 text-xs font-medium text-white shadow-sm shadow-[#0a7ae6]/20 transition-all hover:bg-[#086ac9] hover:scale-105 active:scale-95 sm:px-5 sm:py-2.5 sm:text-sm"
-          >
-            <span>Shop</span>
-            <ArrowUpRight className="size-3.5 sm:size-4" />
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
 function CheckoutContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  // Selected product from query or fallback
-  const productParam = searchParams.get("product") || "yuqos-neosound-flex";
-  const qtyParam = Math.max(1, parseInt(searchParams.get("qty") || "1", 10));
-
-  const [orderItems, setOrderItems] = useState<{
-    product: ProductDetailItem;
-    quantity: number;
-    priceNumber: number;
-  }[]>([]);
+  const { items: orderItems, subtotal, clearCart } = useCart();
 
   // Form State
   const [couponCode, setCouponCode] = useState("");
@@ -121,26 +65,14 @@ function CheckoutContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [checkoutSessionToken] = useState(() => {
+    if (typeof window === "undefined") return "";
 
-  // Initialize Items
-  useEffect(() => {
-    const matched = productsCatalog[productParam] || productsCatalog["yuqos-neosound-flex"] || Object.values(productsCatalog)[0];
-    if (matched) {
-      const cleanPrice = parseInt(matched.price.replace(/[^\d]/g, ""), 10) || 4999;
-      setOrderItems([
-        {
-          product: matched,
-          quantity: qtyParam,
-          priceNumber: cleanPrice,
-        },
-      ]);
-    }
-  }, [productParam, qtyParam]);
-
-  // Calculations
-  const subtotal = useMemo(() => {
-    return orderItems.reduce((acc, item) => acc + item.priceNumber * item.quantity, 0);
-  }, [orderItems]);
+    const existingSession = window.sessionStorage.getItem(CHECKOUT_SESSION_KEY);
+    const sessionToken = existingSession || createCheckoutSessionToken();
+    if (!existingSession) window.sessionStorage.setItem(CHECKOUT_SESSION_KEY, sessionToken);
+    return sessionToken;
+  });
 
   const discountAmount = useMemo(() => {
     if (couponDiscount > 0) {
@@ -151,6 +83,33 @@ function CheckoutContent() {
 
   const shippingCost = 0; // Free shipping
   const total = Math.max(0, subtotal - discountAmount + shippingCost);
+
+  const trackCheckout = useCallback(async () => {
+    if (!checkoutSessionToken || orderItems.length === 0) return;
+
+    try {
+      await fetch("/api/abandoned-checkouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionToken: checkoutSessionToken,
+          items: orderItems.map(({ id, quantity }) => ({ id, quantity })),
+          customerName: [firstName, lastName].filter(Boolean).join(" "),
+          email,
+          phone,
+        }),
+      });
+    } catch {
+      // Tracking must not block customers from checking out.
+    }
+  }, [checkoutSessionToken, email, firstName, lastName, orderItems, phone]);
+
+  useEffect(() => {
+    if (orderComplete || !checkoutSessionToken || orderItems.length === 0) return;
+
+    const timer = window.setTimeout(() => { void trackCheckout(); }, 650);
+    return () => window.clearTimeout(timer);
+  }, [checkoutSessionToken, orderComplete, orderItems.length, trackCheckout]);
 
   // Apply Coupon Handler
   const handleApplyCoupon = (e: React.FormEvent) => {
@@ -189,6 +148,11 @@ function CheckoutContent() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (orderItems.length === 0) {
+      alert("Your cart is empty. Add a product before placing an order.");
+      return;
+    }
+
     if (!firstName || !phone || !email || !addressLine1 || !city || !postalCode) {
       alert("Please fill in all required billing and address fields (*)");
       return;
@@ -207,6 +171,8 @@ function CheckoutContent() {
     setIsSubmitting(true);
 
     try {
+      await trackCheckout();
+
       // Create mock or real order via API
       const randomOrderId = `XE-${Math.floor(100000 + Math.random() * 900000)}`;
       setOrderId(randomOrderId);
@@ -214,6 +180,16 @@ function CheckoutContent() {
       // Simulate network request
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
+      if (checkoutSessionToken) {
+        await fetch("/api/abandoned-checkouts/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionToken: checkoutSessionToken }),
+        });
+        window.sessionStorage.removeItem(CHECKOUT_SESSION_KEY);
+      }
+
+      clearCart();
       setOrderComplete(true);
     } catch {
       alert("Something went wrong while placing your order. Please try again.");
@@ -540,28 +516,28 @@ function CheckoutContent() {
 
               {/* Order Items */}
               <div className="divide-y divide-slate-200/80">
-                {orderItems.map(({ product, quantity, priceNumber }) => (
-                  <div key={product.id} className="flex items-center justify-between gap-4 py-3.5 first:pt-0">
+                {orderItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-4 py-3.5 first:pt-0">
                     <div className="flex items-center gap-3">
                       <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-1">
                         <Image
-                          src={product.mainImage || "/category-smartphone.png"}
-                          alt={product.name}
+                          src={item.image || "/category-smartphone.png"}
+                          alt={item.name}
                           fill
                           className="object-contain"
                         />
                       </div>
                       <div>
                         <h4 className="text-xs sm:text-sm font-semibold text-slate-900 line-clamp-1">
-                          {product.name}
+                          {item.name}
                         </h4>
                         <span className="text-[11px] font-medium text-slate-500">
-                          Qty: {quantity}
+                          Qty: {item.quantity}
                         </span>
                       </div>
                     </div>
                     <span className="text-xs sm:text-sm font-semibold text-slate-900">
-                      ₹{(priceNumber * quantity).toLocaleString("en-IN")}
+                      ₹{(item.price * item.quantity).toLocaleString("en-IN")}
                     </span>
                   </div>
                 ))}
@@ -819,7 +795,7 @@ function CheckoutContent() {
 export default function CheckoutPage() {
   return (
     <>
-      <CheckoutHeader />
+      <Navbar />
       <Suspense fallback={
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="size-8 animate-spin rounded-full border-4 border-[#0a7ae6] border-t-transparent" />

@@ -21,15 +21,12 @@ export const adminRoutes: AdminRoute[] = [
     label: "Products",
     href: "/dashboard/products",
     children: [
-      {
-        label: "Collections",
-        href: "/dashboard/products/collections",
-      },
       { label: "Categories", href: "/dashboard/products/categories" },
       { label: "Inventory", href: "/dashboard/products/inventory" },
     ],
   },
   { label: "Customers", href: "/dashboard/customers" },
+  { label: "Deal of the day", href: "/dashboard/deal-of-the-day" },
   { label: "Discounts", href: "/dashboard/discounts" },
   {
     label: "Analytics",

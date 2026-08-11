@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  Star,
   Check,
   Heart,
   ShoppingBag,
@@ -15,170 +14,142 @@ import {
 } from "lucide-react";
 import {
   getProductById,
-  getSimilarProducts,
   ProductDetailItem,
+  type SimilarProductCard,
 } from "@/lib/products-data";
 import SimilarProductsSection from "@/components/product/similar-products-section";
+import { ProductDescriptionContent } from "@/components/product/product-description-content";
+import { priceToNumber, useCart } from "@/components/providers/cart-provider";
+import { formatINR } from "@/lib/format-price";
+import { recordRecentlyViewedProduct } from "@/lib/recently-viewed-products";
 
 interface ProductDetailProps {
   initialProduct?: ProductDetailItem;
+  initialRelatedProducts?: SimilarProductCard[];
+  productId?: string;
 }
 
-export default function ProductDetail({ initialProduct }: ProductDetailProps) {
+function toProductDetailItem(product: any): ProductDetailItem {
+  return {
+    id: product.id,
+    slug: product.slug || product.id,
+    name: product.name,
+    category: product.category?.title || product.category || "Electronics",
+    categorySlug: product.category?.slug || "general",
+    price: typeof product.price === "number" ? `₹${product.price.toLocaleString("en-IN")}` : String(product.price),
+    oldPrice: product.oldPrice || undefined,
+    discount: product.discount || undefined,
+    rating: product.rating || 4.8,
+    reviewsCount: `${product.reviewsCount || product.reviewCount || 0} Reviews`,
+    description: product.description || "High quality XElectron product with premium build and official brand warranty.",
+    colors: Array.isArray(product.colors) && product.colors.length > 0
+      ? product.colors.map((color: any) => ({ name: color.name, bg: color.bg || color.bgHex || "#1e1e24", border: color.border || color.borderHex }))
+      : [{ name: "Standard", bg: "#1e1e24" }],
+    features: Array.isArray(product.features) && product.features.length > 0
+      ? product.features.map((feature: any) => typeof feature === "string" ? feature : feature.featureText || feature.text || feature.title || feature.name || String(feature))
+      : ["Official Brand Warranty", "High Performance Build", "Fast Express Shipping"],
+    specs: Array.isArray(product.specs) && product.specs.length > 0
+      ? product.specs.map((spec: any) => ({ label: spec.label || "Specification", value: spec.value || String(spec) }))
+      : [
+          { label: "Category", value: product.category?.title || "Electronics" },
+          { label: "Model SKU", value: product.sku || product.id },
+        ],
+    shippingNotice: product.shippingNotice || "Free express delivery across India & Official Brand Warranty",
+    mainImage: product.images?.[0] || product.mainImage || "/category-smartphone.png",
+    images: Array.isArray(product.media) && product.media.length > 0
+      ? [...new Set([product.mainImage, ...product.media.map((media: any) => media.url)])]
+      : product.images,
+  };
+}
+
+export default function ProductDetail({
+  initialProduct,
+  initialRelatedProducts = [],
+  productId,
+}: ProductDetailProps) {
   const searchParams = useSearchParams();
-  const productId = searchParams?.get("id") || searchParams?.get("product");
+  const { addItem, wishlistItems, toggleWishlistItem } = useCart();
+  const searchProductId = searchParams?.get("id") || searchParams?.get("product");
   const [apiProduct, setApiProduct] = useState<ProductDetailItem | null>(null);
 
   const product = useMemo(() => {
     if (apiProduct) return apiProduct;
     if (initialProduct) return initialProduct;
-    return getProductById(productId);
-  }, [apiProduct, initialProduct, productId]);
+    return getProductById(searchProductId);
+  }, [apiProduct, initialProduct, searchProductId]);
 
   useEffect(() => {
-    const targetId = productId || initialProduct?.id || initialProduct?.slug;
+    const targetId = productId || searchProductId;
     if (!targetId) return;
 
     fetch(`/api/products/${encodeURIComponent(targetId)}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data) {
-          const p = json.data;
-          setApiProduct({
-            id: p.id,
-            slug: p.slug || p.id,
-            name: p.name,
-            category: p.category?.title || p.category || "Electronics",
-            categorySlug: p.category?.slug || "general",
-            price: typeof p.price === "number" ? `₹${p.price.toLocaleString("en-IN")}` : String(p.price),
-            oldPrice: p.compareAtPrice ? `₹${p.compareAtPrice.toLocaleString("en-IN")}` : undefined,
-            discount: p.compareAtPrice && p.price ? `${Math.round(((p.compareAtPrice - p.price) / p.compareAtPrice) * 100)}% off` : undefined,
-            rating: p.rating || 4.8,
-            reviewsCount: `${p.reviewCount || 120} Reviews`,
-            description: p.description || "High quality XElectron product with premium build and official brand warranty.",
-            colors: p.colors || [{ name: "Standard", bg: "#1e1e24" }],
-            features: Array.isArray(p.features) && p.features.length > 0
-              ? p.features.map((f: any) => typeof f === "string" ? f : f.featureText || f.text || f.title || f.name || String(f))
-              : ["Official Brand Warranty", "High Performance Build", "Fast Express Shipping"],
-            specs: p.specs || [
-              { label: "Category", value: p.category?.title || "Electronics" },
-              { label: "Model SKU", value: p.sku || p.id },
-            ],
-            shippingNotice: "Free express delivery across India & Official Brand Warranty",
-            mainImage: p.images?.[0] || p.mainImage || "/category-smartphone.png",
-          });
+          setApiProduct(toProductDetailItem(json.data));
         }
       })
       .catch(() => {
         // Silent fallback to static catalog
       });
-  }, [productId, initialProduct]);
-
-  const similarProducts = useMemo(() => getSimilarProducts(product.id, 4), [product.id]);
-
-  const [selectedColor, setSelectedColor] = useState(
-    product.colors[0]?.name || "Standard"
-  );
-  const [isFavorite, setIsFavorite] = useState(false);
+  }, [productId, searchProductId]);
 
   useEffect(() => {
-    if (product.colors[0]) {
-      setSelectedColor(product.colors[0].name);
-    }
-  }, [product]);
+    if (product?.id) recordRecentlyViewedProduct(product.id);
+  }, [product?.id]);
+
+  const productImages = useMemo(
+    () => [...new Set([product.mainImage, ...(product.images || [])].filter(Boolean))],
+    [product.images, product.mainImage]
+  );
+  const hasOneProductImage = productImages.length === 1;
+
+  const addProductToCart = () => {
+    addItem({
+      id: product.id,
+      slug: product.slug || product.id,
+      name: product.name,
+      price: priceToNumber(product.price),
+      image: product.mainImage,
+      category: product.category,
+    });
+  };
+
+  const isFavorite = wishlistItems.some((item) => item.id === product.id);
+
+  const toggleProductWishlist = () => {
+    toggleWishlistItem({
+      id: product.id,
+      slug: product.slug || product.id,
+      name: product.name,
+      price: priceToNumber(product.price),
+      oldPrice: product.oldPrice ? priceToNumber(product.oldPrice) : undefined,
+      image: product.mainImage,
+      category: product.category,
+    });
+  };
 
   return (
-    <div className="min-h-dvh bg-white px-4 py-8 text-slate-900 sm:px-6 lg:px-8 lg:py-12">
+    <div className="min-h-dvh bg-white px-4 py-4 text-slate-900 sm:px-6 lg:px-8 lg:py-6">
       <div className="mx-auto max-w-[1440px]">
-        <nav
-          aria-label="Breadcrumb"
-          className="mb-6 flex items-center gap-2 text-xs text-slate-400 sm:text-sm"
-        >
-          <Link href="/" className="transition-colors hover:text-slate-700">
-            Home
-          </Link>
-          <span>/</span>
-          <Link href="/" className="transition-colors hover:text-slate-700">
-            Products
-          </Link>
-          <span>/</span>
-          <span className="font-medium text-slate-800">{product.name}</span>
-        </nav>
-
         <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
-          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 sm:grid sm:mx-0 sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0">
-            <div className="group relative flex aspect-[4/5] min-w-[62vw] shrink-0 snap-start items-center justify-center overflow-hidden rounded-[24px] bg-white p-4 sm:min-w-0 sm:p-6">
-              <div className="relative h-full w-full">
-                <Image
-                  src={product.mainImage}
-                  alt={`${product.name} main view`}
-                  fill
-                  className="object-contain p-2 transition-transform duration-500 group-hover:scale-105"
-                  sizes="(min-width: 1024px) 25vw, 62vw"
-                  priority
-                />
+          <div className={`no-scrollbar -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 sm:grid sm:mx-0 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 ${
+            hasOneProductImage ? "sm:grid-cols-1" : "sm:grid-cols-2"
+          }`}>
+            {productImages.map((image, index) => (
+              <div key={image} className="group relative flex aspect-square min-w-[62vw] shrink-0 snap-start items-center justify-center overflow-hidden rounded-[24px] bg-white p-4 sm:min-w-0 sm:p-6">
+                <div className="relative h-full w-full">
+                  <Image
+                    src={image}
+                    alt={`${product.name} image ${index + 1}`}
+                    fill
+                    className="object-contain object-top p-2 transition-transform duration-500 group-hover:scale-105"
+                    sizes="(min-width: 1024px) 25vw, 62vw"
+                    priority={index === 0}
+                  />
+                </div>
               </div>
-            </div>
-
-            <div className="relative flex aspect-[4/5] min-w-[62vw] shrink-0 snap-start items-center justify-center overflow-hidden rounded-[24px] bg-white p-4 sm:min-w-0 sm:p-6">
-              <div className="relative h-full w-full opacity-95">
-                <Image
-                  src={product.mainImage}
-                  alt={`${product.name} detail view`}
-                  fill
-                  className="object-contain scale-125 translate-y-4 p-2"
-                  sizes="(min-width: 1024px) 25vw, 62vw"
-                />
-              </div>
-            </div>
-
-            <div className="relative flex aspect-[4/5] min-w-[62vw] shrink-0 snap-start items-center justify-center overflow-hidden rounded-[24px] bg-white p-4 sm:min-w-0 sm:p-6">
-              <div className="relative h-full w-full">
-                <Image
-                  src={product.mainImage}
-                  alt={`${product.name} top profile`}
-                  fill
-                  className="object-contain scale-150 -translate-y-6 rotate-12 p-2"
-                  sizes="(min-width: 1024px) 25vw, 62vw"
-                />
-              </div>
-            </div>
-
-            <div className="relative flex aspect-[4/5] min-w-[62vw] shrink-0 snap-start items-center justify-center overflow-hidden rounded-[24px] bg-white p-4 sm:min-w-0 sm:p-6">
-              <div className="relative h-full w-full">
-                <Image
-                  src={product.mainImage}
-                  alt={`${product.name} side profile`}
-                  fill
-                  className="object-contain scale-125 translate-x-4 p-2"
-                  sizes="(min-width: 1024px) 25vw, 62vw"
-                />
-              </div>
-            </div>
-
-            <div className="relative flex aspect-[4/5] min-w-[62vw] shrink-0 snap-start items-center justify-center overflow-hidden rounded-[24px] bg-white p-4 sm:min-w-0 sm:p-6">
-              <div className="relative h-full w-full">
-                <Image
-                  src={product.mainImage}
-                  alt={`${product.name} top down`}
-                  fill
-                  className="object-contain rotate-90 scale-105 p-2"
-                  sizes="(min-width: 1024px) 25vw, 62vw"
-                />
-              </div>
-            </div>
-
-            <div className="relative flex aspect-[4/5] min-w-[62vw] shrink-0 snap-start items-center justify-center overflow-hidden rounded-[24px] bg-white p-4 sm:min-w-0 sm:p-6">
-              <div className="relative h-full w-full">
-                <Image
-                  src={product.mainImage}
-                  alt={`${product.name} texture closeup`}
-                  fill
-                  className="object-contain scale-175 translate-x-4 translate-y-4 p-2"
-                  sizes="(min-width: 1024px) 25vw, 62vw"
-                />
-              </div>
-            </div>
+            ))}
           </div>
 
           <div>
@@ -186,28 +157,17 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
               {product.category}
             </span>
 
-            <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+            <h1 className="mt-3 text-xl font-medium leading-snug tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">
               {product.name}
             </h1>
 
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1 text-amber-500">
-                <Star className="size-4 fill-current" />
-                <span className="text-sm font-bold text-slate-900">{product.rating}</span>
-              </div>
-              <span className="text-slate-300">•</span>
-              <span className="text-xs font-medium text-slate-500 sm:text-sm">
-                {product.reviewsCount}
-              </span>
-            </div>
-
             <div className="mt-6 flex flex-wrap items-baseline gap-3">
-              <span className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-                {product.price}
+              <span className="text-2xl font-medium tracking-tight text-slate-900 sm:text-3xl">
+                {formatINR(product.price)}
               </span>
               {product.oldPrice && (
                 <span className="text-lg text-slate-400 line-through sm:text-xl">
-                  {product.oldPrice}
+                  {formatINR(product.oldPrice)}
                 </span>
               )}
               {product.discount && (
@@ -217,45 +177,11 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
               )}
             </div>
 
-            <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
-              {product.description}
-            </p>
-
-            {product.colors.length > 0 && (
-              <div className="mt-6">
-                <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Select Finish
-                </span>
-                <div className="mt-3 flex items-center gap-3">
-                  {product.colors.map((color) => {
-                    const isSelected = selectedColor === color.name;
-                    return (
-                      <button
-                        key={color.name}
-                        type="button"
-                        onClick={() => setSelectedColor(color.name)}
-                        className={`group relative flex size-8 items-center justify-center rounded-full transition-transform hover:scale-110 ${
-                          isSelected ? "ring-2 ring-[#0a7ae6] ring-offset-2" : ""
-                        }`}
-                        style={{ backgroundColor: color.bg }}
-                        aria-label={`Select ${color.name} color`}
-                      >
-                        {isSelected && (
-                          <Check className="size-4 text-white drop-shadow-md" />
-                        )}
-                      </button>
-                    );
-                  })}
-                  <span className="ml-2 text-xs font-medium text-slate-800 sm:text-sm">
-                    {selectedColor}
-                  </span>
-                </div>
-              </div>
-            )}
+            <ProductDescriptionContent description={product.description} />
 
             {product.features.length > 0 && (
               <div className="mb-8 border-t border-slate-100 pt-6">
-                <h3 className="mb-4 text-sm font-semibold text-slate-900">Key Features</h3>
+                <h3 className="mb-4 text-sm font-medium text-slate-900">Key Features</h3>
                 <ul className="space-y-3">
                   {product.features.map((feature, idx) => {
                     const featureText =
@@ -279,31 +205,12 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
               </div>
             )}
 
-            {product.specs.length > 0 && (
-              <div className="mb-8 border-t border-slate-100 pt-6">
-                <h3 className="mb-3 text-sm font-semibold text-slate-900">Specifications</h3>
-                <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
-                  {product.specs.map((spec, idx) => {
-                    const labelText = typeof spec === "object" && spec ? spec.label : `Spec ${idx + 1}`;
-                    const valueText = typeof spec === "object" && spec ? spec.value : String(spec);
-                    return (
-                      <div key={labelText ? `${labelText}-${idx}` : `spec-${idx}`} className="rounded-xl bg-slate-50 p-2.5">
-                        <span className="block text-[11px] uppercase tracking-wider text-slate-400">
-                          {labelText}
-                        </span>
-                        <span className="font-semibold text-slate-900">{valueText}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             <p className="mb-6 text-[11px] leading-relaxed text-slate-400">{product.shippingNotice}</p>
 
             <div className="flex items-center gap-3">
               <Link
                 href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}`}
+                onClick={addProductToCart}
                 className="flex h-12 flex-1 items-center justify-center rounded-2xl bg-[#0a7ae6] text-sm font-medium text-white shadow-md shadow-blue-500/10 transition-all hover:bg-[#086ac9] active:scale-[0.99] sm:h-14 sm:rounded-full sm:text-base"
               >
                 Buy Now
@@ -311,8 +218,8 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
 
               <button
                 type="button"
-                onClick={() => setIsFavorite(!isFavorite)}
-                aria-label="Add to wishlist"
+                onClick={toggleProductWishlist}
+                aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
                 className={`flex size-12 shrink-0 items-center justify-center rounded-2xl border transition-all sm:size-14 ${
                   isFavorite
                     ? "border-red-200 bg-red-50 text-red-500"
@@ -324,6 +231,7 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
 
               <button
                 type="button"
+                onClick={addProductToCart}
                 aria-label="Add to shopping bag"
                 className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-800 transition-all hover:border-slate-400 hover:bg-slate-50 sm:size-14 sm:rounded-2xl"
               >
@@ -348,7 +256,7 @@ export default function ProductDetail({ initialProduct }: ProductDetailProps) {
           </div>
         </div>
 
-        <SimilarProductsSection products={similarProducts} />
+        <SimilarProductsSection products={initialRelatedProducts} />
       </div>
     </div>
   );

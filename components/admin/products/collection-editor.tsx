@@ -30,15 +30,15 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 const availableProducts = [
-  ["SUOS BAMBOO CREW TEE 1.0", "product9.png"],
-  ["SUOS BAMBOO TEE 1.0", "product8.png"],
-  ["SUOS PIN TUCK PANTS", "product7.png"],
-  ["SUOS RIBBED MUSCLE TANK", "product6.png"],
-  ["SUOS EASE PANTS", "product5.png"],
-  ["SUOS ALDEN SUEDE SLIDES", "product4.png"],
-  ["SUOS BLACK RESERVE DENIM", "product3.png"],
-  ["SUOS INDIGO RESERVE DENIM", "product2.png"],
-  ["SUOS STUDIO SNEAKERS", "product1.png"],
+  ["XELECTRON BAMBOO CREW TEE 1.0", "product9.png"],
+  ["XELECTRON BAMBOO TEE 1.0", "product8.png"],
+  ["XELECTRON PIN TUCK PANTS", "product7.png"],
+  ["XELECTRON RIBBED MUSCLE TANK", "product6.png"],
+  ["XELECTRON EASE PANTS", "product5.png"],
+  ["XELECTRON ALDEN SUEDE SLIDES", "product4.png"],
+  ["XELECTRON BLACK RESERVE DENIM", "product3.png"],
+  ["XELECTRON INDIGO RESERVE DENIM", "product2.png"],
+  ["XELECTRON STUDIO SNEAKERS", "product1.png"],
 ] as const
 
 type Product = (typeof availableProducts)[number]
@@ -74,15 +74,15 @@ const sortOptions = [
 type SortOption = (typeof sortOptions)[number]
 
 const productSortMetrics: Record<string, { sales: number; price: number; created: number }> = {
-  "SUOS BAMBOO CREW TEE 1.0": { sales: 43, price: 1499, created: 2 },
-  "SUOS BAMBOO TEE 1.0": { sales: 84, price: 1299, created: 7 },
-  "SUOS PIN TUCK PANTS": { sales: 37, price: 2599, created: 3 },
-  "SUOS RIBBED MUSCLE TANK": { sales: 66, price: 999, created: 8 },
-  "SUOS EASE PANTS": { sales: 29, price: 2899, created: 4 },
-  "SUOS ALDEN SUEDE SLIDES": { sales: 51, price: 2199, created: 5 },
-  "SUOS BLACK RESERVE DENIM": { sales: 72, price: 3499, created: 1 },
-  "SUOS INDIGO RESERVE DENIM": { sales: 58, price: 3299, created: 6 },
-  "SUOS STUDIO SNEAKERS": { sales: 91, price: 3999, created: 9 },
+  "XELECTRON BAMBOO CREW TEE 1.0": { sales: 43, price: 1499, created: 2 },
+  "XELECTRON BAMBOO TEE 1.0": { sales: 84, price: 1299, created: 7 },
+  "XELECTRON PIN TUCK PANTS": { sales: 37, price: 2599, created: 3 },
+  "XELECTRON RIBBED MUSCLE TANK": { sales: 66, price: 999, created: 8 },
+  "XELECTRON EASE PANTS": { sales: 29, price: 2899, created: 4 },
+  "XELECTRON ALDEN SUEDE SLIDES": { sales: 51, price: 2199, created: 5 },
+  "XELECTRON BLACK RESERVE DENIM": { sales: 72, price: 3499, created: 1 },
+  "XELECTRON INDIGO RESERVE DENIM": { sales: 58, price: 3299, created: 6 },
+  "XELECTRON STUDIO SNEAKERS": { sales: 91, price: 3999, created: 9 },
 }
 
 function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -254,7 +254,7 @@ export function CollectionEditor() {
               {products.length === 0 ? <ProductSkeletons /> : view === "grid" ? <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">{sortedProducts.map(([name, image]) => <article key={name} className="group overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><div className="relative aspect-square bg-[#fafafa]"><Image src={`/images/products/${image}`} alt={name} fill sizes="(max-width: 640px) 50vw, 150px" className="object-cover" /></div><p className="min-h-12 border-t border-black/[0.06] px-2 py-2 text-[11px] font-medium leading-4 text-black/75">{name}</p></article>)}</div> : <div className="divide-y divide-black/10">{sortedProducts.map(([name, image]) => <article key={name} className="group flex min-h-16 items-center gap-3 px-4 py-2.5 transition hover:bg-black/[0.02]"><Image src={`/images/products/${image}`} alt="" width={40} height={40} className="size-10 rounded-lg border border-black/10 object-cover" /><p className="min-w-0 flex-1 truncate text-sm font-medium text-black/85">{name}</p><button type="button" onClick={() => { setProducts((current) => current.filter(([productName]) => productName !== name)); setSaved(false) }} aria-label={`Remove ${name} from collection`} className="rounded-md p-1.5 text-black/25 transition hover:bg-black/[0.05] hover:text-black/65"><X className="size-4" /></button></article>)}</div>}
             </SectionCard>
 
-            <SectionCard><div className="flex items-center justify-between px-4 pt-4"><h2 className="text-sm font-semibold text-black/75">Search engine listing</h2><button type="button" aria-label="Edit search engine listing" className="rounded p-1 text-black/50 hover:bg-black/[0.04]"><Pencil className="size-4" /></button></div><div className="px-4 pb-5 pt-4"><p className="text-sm font-medium text-black/75">{title || "SUOS"}</p><p className="mt-1 text-sm text-black/55">https://suos.com › collections › {title ? title.toLowerCase().replaceAll(" ", "-") : ""}</p></div></SectionCard>
+            <SectionCard><div className="flex items-center justify-between px-4 pt-4"><h2 className="text-sm font-semibold text-black/75">Search engine listing</h2><button type="button" aria-label="Edit search engine listing" className="rounded p-1 text-black/50 hover:bg-black/[0.04]"><Pencil className="size-4" /></button></div><div className="px-4 pb-5 pt-4"><p className="text-sm font-medium text-black/75">{title || "Xelectron"}</p><p className="mt-1 text-sm text-black/55">https://xelectron.com › collections › {title ? title.toLowerCase().replaceAll(" ", "-") : ""}</p></div></SectionCard>
           </div>
 
           <aside className="space-y-3 xl:pt-0">

@@ -21,12 +21,12 @@ import {
   Plus,
   Minus,
   Trash2,
-  ArrowUpRight,
-  Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { dropdownItems } from "@/components/home/content";
-import { productsCatalog } from "@/lib/products-data";
+import { useCart } from "@/components/providers/cart-provider";
+import { formatINR } from "@/lib/format-price";
 
 function BrandLogo() {
   return (
@@ -78,7 +78,7 @@ function FlatNavLink({
 }: {
   label: string;
   href?: string;
-  icon?: any;
+  icon?: LucideIcon;
   onClick?: () => void;
   onMouseEnter?: () => void;
 }) {
@@ -137,7 +137,51 @@ function DropdownNavItem({
 
 const MENU_ORDER = ["PRODUCT", "WARRANTY", "SUPPORT & SERVICE"];
 
+type StoreCategory = {
+  id: string;
+  title: string;
+  slug: string;
+  visible: boolean;
+};
+
+type SearchDrawerProduct = {
+  id: string;
+  slug: string;
+  name: string;
+  price: string | number;
+  description?: string | null;
+  mainImage?: string | null;
+  media?: { url: string }[];
+  category?: { title?: string | null } | string | null;
+};
+
+function searchProductCategory(product: SearchDrawerProduct) {
+  if (typeof product.category === "string") return product.category;
+  return product.category?.title || "XElectron";
+}
+
+function searchProductImage(product: SearchDrawerProduct) {
+  return product.mainImage || product.media?.[0]?.url || "/category-smartphone.png";
+}
+
+function searchProductPrice(price: SearchDrawerProduct["price"]) {
+  return formatINR(price);
+}
+
 export default function Navbar() {
+  const {
+    items: cartItems,
+    cartCount,
+    subtotal: cartSubtotal,
+    addItem,
+    addItems,
+    updateQuantity,
+    removeItem,
+    wishlistItems,
+    wishlistCount,
+    removeWishlistItem,
+    clearWishlist,
+  } = useCart();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [slideDirection, setSlideDirection] = useState<"from-right" | "from-left" | "from-top">("from-top");
   const prevMenuRef = useRef<string | null>(null);
@@ -166,46 +210,78 @@ export default function Navbar() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
-  const [wishlistItems, setWishlistItems] = useState([
-    {
-      id: "techno-android",
-      name: "XElectron Techno Android",
-      price: 6990,
-      oldPrice: 21999,
-      image: "/product-white-projector-card.png",
-      category: "Projectors",
-    },
-    {
-      id: "c9-plus",
-      name: "XElectron Android C9 Plus",
-      price: 10990,
-      oldPrice: 19999,
-      image: "/product-black-projector-card.png",
-      category: "Projectors",
-    },
-  ]);
-  const [cartItems, setCartItems] = useState([
-    {
-      id: "55-smart-tv",
-      name: "XElectron 55 Inch LED TV",
-      price: 29999,
-      image: "/product-tv-card.png",
-      quantity: 1,
-      category: "Smart TVs",
-    },
-    {
-      id: "techno-projector",
-      name: "XElectron Techno Android",
-      price: 6990,
-      image: "/product-white-projector-card.png",
-      quantity: 1,
-      category: "Projectors",
-    },
-  ]);
+  const [searchProducts, setSearchProducts] = useState<SearchDrawerProduct[]>([]);
+  const [isLoadingSearchProducts, setIsLoadingSearchProducts] = useState(false);
+  const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
+  const [areStoreCategoriesLoaded, setAreStoreCategoriesLoaded] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const lastScrollY = useRef(0);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadStoreCategories() {
+      try {
+        const response = await fetch("/api/categories");
+        const payload = await response.json();
+
+        if (isCurrent && response.ok && payload.success && Array.isArray(payload.data)) {
+          setStoreCategories(
+            payload.data.filter(
+              (category: StoreCategory) => category.visible && category.title && category.slug,
+            ),
+          );
+        }
+      } catch {
+        // Keep the menu usable even if categories are temporarily unavailable.
+      } finally {
+        if (isCurrent) {
+          setAreStoreCategoriesLoaded(true);
+        }
+      }
+    }
+
+    void loadStoreCategories();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSearchDrawerOpen) return;
+
+    let isCurrent = true;
+
+    async function loadSearchProducts() {
+      setIsLoadingSearchProducts(true);
+
+      try {
+        const response = await fetch("/api/products");
+        const payload = await response.json();
+
+        if (isCurrent && response.ok && payload.success && Array.isArray(payload.data)) {
+          setSearchProducts(payload.data);
+        }
+      } catch {
+        if (isCurrent) {
+          setSearchProducts([]);
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingSearchProducts(false);
+        }
+      }
+    }
+
+    void loadSearchProducts();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isSearchDrawerOpen]);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -279,13 +355,17 @@ export default function Navbar() {
 
   // Prevent background scrolling when mobile menu, cart, wishlist, or search drawer is open
   useEffect(() => {
-    if (mobileOpen || isCartOpen || isWishlistOpen || isSearchDrawerOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    const shouldLockPage = mobileOpen || isCartOpen || isWishlistOpen || isSearchDrawerOpen;
+    if (!shouldLockPage) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousDocumentOverflow;
     };
   }, [mobileOpen, isCartOpen, isWishlistOpen, isSearchDrawerOpen]);
 
@@ -310,6 +390,17 @@ export default function Navbar() {
         return Package;
     }
   };
+
+  const searchTerm = searchQuery.trim().toLocaleLowerCase();
+  const visibleSearchProducts = searchTerm
+    ? searchProducts.filter((product) =>
+        [product.name, product.description, searchProductCategory(product)]
+          .filter(Boolean)
+          .some((value) => value?.toLocaleLowerCase().includes(searchTerm)),
+      )
+    : searchProducts;
+  const searchProductCards = visibleSearchProducts.slice(0, 4);
+  const searchProductListItems = visibleSearchProducts.slice(4);
 
   return (
     <>
@@ -361,7 +452,7 @@ export default function Navbar() {
             </IconButton>
             <IconButton
               label="Wishlist"
-              badge={wishlistItems.length}
+              badge={wishlistCount}
               onClick={() => setIsWishlistOpen(true)}
             >
               <Heart className="size-4 text-slate-700 stroke-[1.8]" />
@@ -373,7 +464,7 @@ export default function Navbar() {
             </Link>
             <IconButton
               label="Shopping bag"
-              badge={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
+              badge={cartCount}
               onClick={() => setIsCartOpen(true)}
             >
               <ShoppingBag className="size-4 text-slate-700 stroke-[1.8]" />
@@ -387,14 +478,14 @@ export default function Navbar() {
             </IconButton>
             <IconButton
               label="Wishlist"
-              badge={wishlistItems.length}
+              badge={wishlistCount}
               onClick={() => setIsWishlistOpen(true)}
             >
               <Heart className="size-4 text-slate-800 stroke-[1.8]" />
             </IconButton>
             <IconButton
               label="Shopping bag"
-              badge={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
+              badge={cartCount}
               onClick={() => setIsCartOpen(true)}
             >
               <ShoppingBag className="size-4 text-slate-800 stroke-[1.8]" />
@@ -484,25 +575,23 @@ export default function Navbar() {
                         CATEGORIES
                       </h4>
                       <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-                        {[
-                          { name: "Smart TVs", href: "/shop?filter=smart-tvs" },
-                          { name: "Projectors", href: "/shop?filter=projectors" },
-                          { name: "Headphones", href: "/shop?filter=headphones" },
-                          { name: "Speakers", href: "/shop?filter=speakers" },
-                          { name: "Cameras", href: "/shop?filter=cameras" },
-                          { name: "Digital Frames", href: "/shop?filter=digital-photo-frame" },
-                        ].map((cat) => (
+                        {storeCategories.map((category) => (
                           <Link
-                            key={cat.name}
-                            href={cat.href}
+                            key={category.id}
+                            href={`/shop?filter=${encodeURIComponent(category.slug)}`}
                             onClick={() => setOpenMenu(null)}
                             className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600 hover:bg-slate-50 hover:text-[#0a7ae6] transition-all duration-200"
                           >
                             <span className="group-hover:translate-x-0.5 transition-transform">
-                              {cat.name}
+                              {category.title}
                             </span>
                           </Link>
                         ))}
+                        {areStoreCategoriesLoaded && storeCategories.length === 0 ? (
+                          <p className="col-span-2 px-3 py-2 text-xs text-slate-400">
+                            No categories available
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -801,6 +890,18 @@ export default function Navbar() {
                   {dropdownItems.map((group) => {
                     const IconComponent = getCategoryIcon(group.label);
                     const isExpanded = expandedMobileCategory === group.label;
+                    const mobileItems = group.label === "PRODUCT"
+                      ? [
+                        { key: "new-arrivals", label: "New Arrivals", href: "/shop?filter=new-arrivals" },
+                        { key: "best-sellers", label: "Best Sellers", href: "/shop?filter=best-sellers" },
+                        { key: "all-products", label: "All Products", href: "/shop" },
+                        ...storeCategories.map((category) => ({
+                          key: category.id,
+                          label: category.title,
+                          href: `/shop?filter=${encodeURIComponent(category.slug)}`,
+                        })),
+                      ]
+                      : group.items.map((item) => ({ key: item, label: item, href: "/" }));
 
                     return (
                       <div
@@ -824,24 +925,21 @@ export default function Navbar() {
 
                         {isExpanded && (
                           <div className="border-t border-slate-100 bg-white px-3.5 py-2 space-y-1">
-                            {group.items.map((item) => {
-                              let href = "/";
-                              if (group.label === "PRODUCT") {
-                                if (item === "New Arrivals") href = "/shop?filter=new-arrivals";
-                                else if (item === "Best Sellers") href = "/shop?filter=best-sellers";
-                                else if (item === "All Products") href = "/shop";
-                              }
-                              return (
+                            {mobileItems.map((item) => (
                                 <Link
-                                  key={item}
-                                  href={href}
+                                  key={item.key}
+                                  href={item.href}
                                   onClick={handleNavigate}
                                   className="block rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 hover:bg-[#0a7ae6]/5 hover:text-[#0a7ae6]"
                                 >
-                                  <span>{item}</span>
+                                  <span>{item.label}</span>
                                 </Link>
-                              );
-                            })}
+                            ))}
+                            {group.label === "PRODUCT" && areStoreCategoriesLoaded && storeCategories.length === 0 ? (
+                              <p className="px-3 py-2 text-[13px] text-slate-400">
+                                No categories available
+                              </p>
+                            ) : null}
                           </div>
                         )}
                       </div>
@@ -912,7 +1010,7 @@ export default function Navbar() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 p-5">
             <h2 className="text-base sm:text-lg font-medium uppercase tracking-wider text-slate-900">
-              Shopping Cart ({cartItems.reduce((acc, item) => acc + item.quantity, 0)})
+              Shopping Cart ({cartCount})
             </h2>
             <button
               onClick={() => setIsCartOpen(false)}
@@ -949,11 +1047,7 @@ export default function Navbar() {
                       <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-1">
                         <button
                           onClick={() => {
-                            setCartItems((prev) =>
-                              prev.map((x) =>
-                                x.id === item.id ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x
-                              )
-                            );
+                            updateQuantity(item.id, -1);
                           }}
                           className="p-1 text-slate-500 hover:text-slate-900"
                         >
@@ -962,11 +1056,7 @@ export default function Navbar() {
                         <span className="px-2 text-xs font-medium text-slate-800">{item.quantity}</span>
                         <button
                           onClick={() => {
-                            setCartItems((prev) =>
-                              prev.map((x) =>
-                                x.id === item.id ? { ...x, quantity: x.quantity + 1 } : x
-                              )
-                            );
+                            updateQuantity(item.id, 1);
                           }}
                           className="p-1 text-slate-500 hover:text-slate-900"
                         >
@@ -982,7 +1072,7 @@ export default function Navbar() {
 
                   <button
                     onClick={() => {
-                      setCartItems((prev) => prev.filter((x) => x.id !== item.id));
+                      removeItem(item.id);
                     }}
                     className="self-start p-1 text-slate-400 hover:text-red-500 transition-colors"
                   >
@@ -1011,7 +1101,7 @@ export default function Navbar() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-slate-600">Subtotal</span>
                 <span className="text-xl font-medium text-slate-900">
-                  ₹{cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0).toLocaleString("en-IN")}
+                  ₹{cartSubtotal.toLocaleString("en-IN")}
                 </span>
               </div>
               <p className="text-[10px] text-slate-400 mb-5 font-normal">
@@ -1095,17 +1185,8 @@ export default function Navbar() {
                       <button
                         type="button"
                         onClick={() => {
-                          setCartItems((prev) => [
-                            ...prev,
-                            {
-                              id: item.id,
-                              name: item.name,
-                              price: item.price,
-                              image: item.image,
-                              quantity: 1,
-                              category: item.category,
-                            },
-                          ]);
+                          addItem(item);
+                          removeWishlistItem(item.id);
                           setIsWishlistOpen(false);
                           setIsCartOpen(true);
                         }}
@@ -1117,9 +1198,7 @@ export default function Navbar() {
                   </div>
 
                   <button
-                    onClick={() => {
-                      setWishlistItems((prev) => prev.filter((x) => x.id !== item.id));
-                    }}
+                    onClick={() => removeWishlistItem(item.id)}
                     className="self-start p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                   >
                     <Trash2 className="size-4" />
@@ -1156,17 +1235,8 @@ export default function Navbar() {
               <div className="space-y-2">
                 <button
                   onClick={() => {
-                    setCartItems((prev) => [
-                      ...prev,
-                      ...wishlistItems.map((item) => ({
-                        id: item.id,
-                        name: item.name,
-                        price: item.price,
-                        image: item.image,
-                        quantity: 1,
-                        category: item.category,
-                      })),
-                    ]);
+                    addItems(wishlistItems);
+                    clearWishlist();
                     setIsWishlistOpen(false);
                     setIsCartOpen(true);
                   }}
@@ -1175,7 +1245,7 @@ export default function Navbar() {
                   Move All to Cart
                 </button>
                 <button
-                  onClick={() => setWishlistItems([])}
+                  onClick={clearWishlist}
                   className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-center text-xs font-medium uppercase tracking-wider text-slate-500 transition-all hover:bg-red-50 hover:border-red-200 hover:text-red-600 cursor-pointer"
                 >
                   Clear Wishlist
@@ -1197,7 +1267,8 @@ export default function Navbar() {
 
         {/* Drawer Panel */}
         <div
-          className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white shadow-2xl transition-transform duration-500 ease-in-out ${isSearchDrawerOpen ? "translate-x-0" : "translate-x-full"
+          data-lenis-prevent
+          className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-500 ease-in-out ${isSearchDrawerOpen ? "translate-x-0" : "translate-x-full"
             }`}
         >
           {/* Header */}
@@ -1229,175 +1300,82 @@ export default function Navbar() {
           </div>
 
           {/* Results List */}
-          <div className="flex-1 overflow-y-auto p-5">
-            {searchQuery.trim() !== "" ? (
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
-                  Search Results
-                </p>
-                <div className="space-y-4">
-                  {(() => {
-                    const filtered = Object.values(productsCatalog).filter(
-                      (p) =>
-                        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        p.category.toLowerCase().includes(searchQuery.toLowerCase())
-                    );
-                    if (filtered.length === 0) {
-                      return <p className="text-sm text-slate-400 text-center py-8">No products found matching your search.</p>;
-                    }
-                    const cards = filtered.slice(0, 4);
-                    const listItems = filtered.slice(4);
-
-                    return (
-                      <>
-                        {/* 4 Cards Grid */}
-                        <div className="grid grid-cols-2 gap-3 mb-6">
-                          {cards.map((product) => (
-                            <Link
-                              key={product.id}
-                              href={`/product/${product.id}`}
-                              onClick={() => setIsSearchDrawerOpen(false)}
-                              className="group flex flex-col rounded-lg border border-slate-200/80 bg-white p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                            >
-                              <div className="relative h-[80px] w-full bg-slate-50/60 rounded-md p-1 flex items-center justify-center mb-2 overflow-hidden">
-                                <Image
-                                  src={product.mainImage}
-                                  alt={product.name}
-                                  fill
-                                  className="object-contain p-1 transition-transform group-hover:scale-105"
-                                  sizes="120px"
-                                />
-                              </div>
-                              <span className="text-[8px] font-bold uppercase tracking-wider text-[#0a7ae6] truncate">
-                                {product.category}
-                              </span>
-                              <h4 className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-[#0a7ae6] transition-colors mt-0.5">
-                                {product.name}
-                              </h4>
-                              <span className="text-xs font-black text-slate-900 mt-1">
-                                {product.price}
-                              </span>
-                            </Link>
-                          ))}
-                        </div>
-
-                        {/* Remainder List */}
-                        {listItems.length > 0 && (
-                          <div className="space-y-3 pt-4 border-t border-slate-100">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">More Results</p>
-                            {listItems.map((product) => (
-                              <Link
-                                key={product.id}
-                                href={`/product/${product.id}`}
-                                onClick={() => setIsSearchDrawerOpen(false)}
-                                className="flex gap-3 border-b border-slate-100 pb-3 group items-center"
-                              >
-                                <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-white border border-slate-100 p-1 flex items-center justify-center">
-                                  <Image
-                                    src={product.mainImage}
-                                    alt={product.name}
-                                    width={32}
-                                    height={32}
-                                    className="object-contain"
-                                  />
-                                </div>
-                                <div className="flex flex-1 flex-col justify-center min-w-0">
-                                  <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-[#0a7ae6] transition-colors">
-                                    {product.name}
-                                  </h4>
-                                  <p className="text-[9px] text-slate-400 font-semibold truncate mt-0.5">
-                                    {product.category} • <span className="text-slate-950 font-bold">{product.price}</span>
-                                  </p>
-                                </div>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 touch-pan-y [-webkit-overflow-scrolling:touch]">
+            {isLoadingSearchProducts ? (
+              <p className="py-10 text-center text-sm text-slate-400">Loading products…</p>
+            ) : visibleSearchProducts.length === 0 ? (
+              <p className="py-10 text-center text-sm text-slate-400">
+                {searchTerm ? "No products found matching your search." : "No products are available yet."}
+              </p>
             ) : (
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
-                  Popular Products
+                <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {searchTerm ? "Search results" : "Popular products"}
                 </p>
-                <div className="space-y-4">
-                  {(() => {
-                    const allProducts = Object.values(productsCatalog);
-                    const cards = allProducts.slice(0, 4);
-                    const listItems = allProducts.slice(4);
 
-                    return (
-                      <>
-                        {/* 4 Cards Grid */}
-                        <div className="grid grid-cols-2 gap-3 mb-6">
-                          {cards.map((product) => (
-                            <Link
-                              key={product.id}
-                              href={`/product/${product.id}`}
-                              onClick={() => setIsSearchDrawerOpen(false)}
-                              className="group flex flex-col rounded-lg border border-slate-200/80 bg-white p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                            >
-                              <div className="relative h-[80px] w-full bg-slate-50/60 rounded-md p-1 flex items-center justify-center mb-2 overflow-hidden">
-                                <Image
-                                  src={product.mainImage}
-                                  alt={product.name}
-                                  fill
-                                  className="object-contain p-1 transition-transform group-hover:scale-105"
-                                  sizes="120px"
-                                />
-                              </div>
-                              <span className="text-[8px] font-bold uppercase tracking-wider text-[#0a7ae6] truncate">
-                                {product.category}
-                              </span>
-                              <h4 className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-[#0a7ae6] transition-colors mt-0.5">
-                                {product.name}
-                              </h4>
-                              <span className="text-xs font-black text-slate-900 mt-1">
-                                {product.price}
-                              </span>
-                            </Link>
-                          ))}
-                        </div>
-
-                        {/* Remainder List */}
-                        {listItems.length > 0 && (
-                          <div className="space-y-3 pt-4 border-t border-slate-100">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">More Popular Products</p>
-                            {listItems.map((product) => (
-                              <Link
-                                key={product.id}
-                                href={`/product/${product.id}`}
-                                onClick={() => setIsSearchDrawerOpen(false)}
-                                className="flex gap-3 border-b border-slate-100 pb-3 group items-center"
-                              >
-                                <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-white border border-slate-100 p-1 flex items-center justify-center">
-                                  <Image
-                                    src={product.mainImage}
-                                    alt={product.name}
-                                    width={32}
-                                    height={32}
-                                    className="object-contain"
-                                  />
-                                </div>
-                                <div className="flex flex-1 flex-col justify-center min-w-0">
-                                  <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-[#0a7ae6] transition-colors">
-                                    {product.name}
-                                  </h4>
-                                  <p className="text-[9px] text-slate-400 font-semibold truncate mt-0.5">
-                                    {product.category} • <span className="text-slate-950 font-bold">{product.price}</span>
-                                  </p>
-                                </div>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                <div className="mb-6 grid grid-cols-2 gap-3">
+                  {searchProductCards.map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/product/${product.slug || product.id}`}
+                      onClick={() => setIsSearchDrawerOpen(false)}
+                      className="group flex flex-col rounded-lg border border-slate-200/80 bg-white p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <div className="relative mb-2 flex h-[80px] w-full items-center justify-center overflow-hidden rounded-md bg-slate-50/60 p-1">
+                        <Image
+                          src={searchProductImage(product)}
+                          alt={product.name}
+                          fill
+                          className="object-contain p-1 transition-transform group-hover:scale-105"
+                          sizes="120px"
+                        />
+                      </div>
+                      <span className="truncate text-[8px] font-bold uppercase tracking-wider text-[#0a7ae6]">
+                        {searchProductCategory(product)}
+                      </span>
+                      <h4 className="mt-0.5 line-clamp-1 text-xs font-bold text-slate-900 transition-colors group-hover:text-[#0a7ae6]">
+                        {product.name}
+                      </h4>
+                      <span className="mt-1 text-xs font-black text-slate-900">
+                        {searchProductPrice(product.price)}
+                      </span>
+                    </Link>
+                  ))}
                 </div>
+
+                {searchProductListItems.length > 0 ? (
+                  <div className="space-y-3 border-t border-slate-100 pt-4">
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {searchTerm ? "More results" : "More popular products"}
+                    </p>
+                    {searchProductListItems.map((product) => (
+                      <Link
+                        key={product.id}
+                        href={`/product/${product.slug || product.id}`}
+                        onClick={() => setIsSearchDrawerOpen(false)}
+                        className="group flex items-center gap-3 border-b border-slate-100 pb-3"
+                      >
+                        <div className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-100 bg-white p-1">
+                          <Image
+                            src={searchProductImage(product)}
+                            alt={product.name}
+                            width={32}
+                            height={32}
+                            className="object-contain"
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="truncate text-xs font-bold text-slate-900 transition-colors group-hover:text-[#0a7ae6]">
+                            {product.name}
+                          </h4>
+                          <p className="mt-0.5 truncate text-[9px] font-semibold text-slate-400">
+                            {searchProductCategory(product)} • <span className="font-bold text-slate-950">{searchProductPrice(product.price)}</span>
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
           </div>

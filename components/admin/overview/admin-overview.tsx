@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import {
   CartesianGrid,
   Line,
@@ -12,60 +13,63 @@ import {
 } from "recharts"
 import { CalendarDays, ChevronDown, ChevronUp } from "lucide-react"
 
-const salesData = [
-  { date: "Jun 15", current: 0, previous: 0 },
-  { date: "Jun 18", current: 2, previous: 1 },
-  { date: "Jun 21", current: 0, previous: 1 },
-  { date: "Jun 24", current: 4, previous: 2 },
-  { date: "Jun 27", current: 6, previous: 3 },
-  { date: "Jun 30", current: 5, previous: 2 },
-  { date: "Jul 3", current: 4, previous: 2 },
-  { date: "Jul 6", current: 0, previous: 3 },
-  { date: "Jul 9", current: 18, previous: 8 },
-  { date: "Jul 12", current: 4, previous: 3 },
-  { date: "Jul 15", current: 1, previous: 1 },
-]
-
-const metrics = [
-  { label: "Sessions", value: "58", change: "↘ 9%", active: true },
-  { label: "Total sales", value: "₹8,258", change: "—" },
-  { label: "Orders", value: "1", change: "—" },
-  { label: "Conversion rate", value: "3.44%", change: "—" },
-]
-
-const miniGraphPoints: Record<string, string> = {
-  Sessions: "0,18 5,18 8,6 11,18 20,18 24,12 28,18 34,18 38,8 42,18 54,18",
-  "Total sales": "0,18 4,18 7,6 10,18 22,18 27,14 31,18 54,18",
-  Orders: "0,18 4,18 8,5 11,18 22,18 26,13 30,18 54,18",
-  "Conversion rate": "0,18 6,18 9,9 13,18 24,18 29,14 33,18 54,18",
+type DashboardData = {
+  totalSales: number
+  periodSales: number
+  orderCount: number
+  periodOrderCount: number
+  productCount: number
+  customerCount: number
+  itemsOrdered: number
+  fulfilledOrders: number
+  deliveredOrders: number
+  pendingOrders: number
+  lowStockCount: number
+  outOfStockCount: number
+  currentPeriodLabel: string
+  previousPeriodLabel: string
+  chartData: { date: string; current: number; previous: number }[]
+  recentOrders: { id: string; status: string; total: number; customerName: string; itemCount: number }[]
+  topProducts: { name: string; quantity: number }[]
 }
 
-function MiniSparkline({ metric }: { metric: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 54 20"
-      className="pointer-events-none absolute bottom-2 right-3 h-5 w-14"
-      preserveAspectRatio="none"
-    >
-      <polyline
-        points={miniGraphPoints[metric]}
-        fill="none"
-        stroke="#08a7f5"
-        strokeWidth="1.2"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  )
+const currencyFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 2,
+})
+
+function formatOrderReference(id: string) {
+  return `#${id.slice(-8).toUpperCase()}`
 }
 
-export function AdminOverview() {
+function formatOrderStatus(status: string) {
+  return status.charAt(0) + status.slice(1).toLowerCase()
+}
+
+export function AdminOverview({ data }: { data: DashboardData }) {
   const [isExpanded, setIsExpanded] = useState(true)
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [rangeLabel, setRangeLabel] = useState("Last 30 days")
-  const [selectedMetric, setSelectedMetric] = useState("Sessions")
+  const [selectedMetric, setSelectedMetric] = useState("Total sales")
   const hour = new Date().getHours()
   const greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening"
+  const metrics = [
+    { label: "Sessions", value: "—", change: "No data" },
+    { label: "Total sales", value: currencyFormatter.format(data.periodSales), change: "Last 30 days" },
+    { label: "Orders", value: data.periodOrderCount.toLocaleString("en-IN"), change: "Last 30 days" },
+    { label: "Conversion rate", value: "—", change: "No data" },
+  ]
+  const chartMaximum = Math.max(10, ...data.chartData.flatMap((point) => [point.current, point.previous]))
+  const today = new Date()
+  const calendarMonths = [-1, 0].map((offset) => {
+    const month = new Date(today.getFullYear(), today.getMonth() + offset, 1)
+    return {
+      label: month.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
+      firstDay: month.getDay(),
+      dayCount: new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate(),
+    }
+  })
 
   return (
     <section className="relative flex flex-1 flex-col gap-4 bg-[#f5f5f5] p-4 pt-6">
@@ -122,14 +126,14 @@ export function AdminOverview() {
                 </label>
               </div>
               <div className="mt-5 grid grid-cols-2 gap-6 text-xs text-black/75">
-                {["June 2026", "July 2026"].map((month) => (
-                  <div key={month}>
-                    <p className="mb-3 text-center font-semibold">{month}</p>
+                {calendarMonths.map((month) => (
+                  <div key={month.label}>
+                    <p className="mb-3 text-center font-semibold">{month.label}</p>
                     <div className="grid grid-cols-7 gap-y-2 text-center text-black/60">
                       {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => <span key={day} className="text-[10px]">{day}</span>)}
-                      {Array.from({ length: 35 }, (_, index) => {
-                        const day = index - (month === "June 2026" ? 0 : 1)
-                        return <span key={index} className={day === 15 ? "rounded bg-black px-1 py-0.5 text-white" : "px-1 py-0.5"}>{day > 0 && day < 31 ? day : ""}</span>
+                      {Array.from({ length: month.firstDay + month.dayCount }, (_, index) => {
+                        const day = index - month.firstDay + 1
+                        return <span key={index} className="px-1 py-0.5">{day > 0 ? day : ""}</span>
                       })}
                     </div>
                   </div>
@@ -175,14 +179,13 @@ export function AdminOverview() {
               <p className="mt-1 text-sm font-semibold text-black">
                 {metric.value} <span className="font-normal text-black/55">{metric.change}</span>
               </p>
-              {!isExpanded ? <MiniSparkline metric={metric.label} /> : null}
             </button>
           ))}
         </div>
 
         {isExpanded ? <div className="mt-4 h-[220px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={salesData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <LineChart data={data.chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="#e5e5e5" vertical={false} />
               <XAxis
                 dataKey="date"
@@ -192,8 +195,8 @@ export function AdminOverview() {
                 dy={8}
               />
               <YAxis
-                domain={[0, 40]}
-                ticks={[0, 20, 40]}
+                domain={[0, chartMaximum]}
+                tickCount={3}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "#737373", fontSize: 11 }}
@@ -229,20 +232,20 @@ export function AdminOverview() {
 
         {isExpanded ? <div className="flex justify-center gap-5 pt-2 text-[11px] text-black/55">
           <span className="inline-flex items-center gap-2">
-            <span className="size-2 rounded-full bg-[#08a7f5]" /> Jun 15–Jul 15, 2026
+            <span className="size-2 rounded-full bg-[#08a7f5]" /> {data.currentPeriodLabel}
           </span>
           <span className="inline-flex items-center gap-2">
-            <span className="size-2 rounded-full bg-[#8bd4f5]" /> May 15–Jun 14, 2026
+            <span className="size-2 rounded-full bg-[#8bd4f5]" /> {data.previousPeriodLabel}
           </span>
         </div> : null}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="flex items-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium">
-          <span aria-hidden>▣</span> 4 orders to fulfil
+          <span aria-hidden>▣</span> {data.pendingOrders} {data.pendingOrders === 1 ? "order" : "orders"} to fulfil
         </div>
         <div className="flex items-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium">
-          <span aria-hidden>▱</span> 1 payment to capture
+          <span aria-hidden>▱</span> Payment capture data unavailable
         </div>
       </div>
 
@@ -250,41 +253,46 @@ export function AdminOverview() {
         <section className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">Recent orders</h2>
-            <button type="button" className="text-xs text-black/55 underline underline-offset-2 hover:text-black">
+            <Link href="/dashboard/orders" className="text-xs text-black/55 underline underline-offset-2 hover:text-black">
               View all
-            </button>
+            </Link>
           </div>
-          <div className="mt-3 divide-y divide-black/10">
-            {["#SUOS-1048", "#SUOS-1047", "#SUOS-1046"].map((order, index) => (
-              <button key={order} type="button" className="flex w-full items-center justify-between gap-3 py-3 text-left text-xs hover:bg-black/[0.02]">
-                <span className="font-medium">{order}</span>
-                <span className="text-black/55">{index === 0 ? "Processing" : "Delivered"}</span>
-                <span className="font-medium">₹{index === 0 ? "2,800" : index === 1 ? "5,600" : "1,950"}</span>
-              </button>
-            ))}
-          </div>
+          {data.recentOrders.length === 0 ? (
+            <p className="mt-3 py-3 text-center text-xs text-black/55">No orders have been placed yet.</p>
+          ) : (
+            <div className="mt-3 divide-y divide-black/10">
+              {data.recentOrders.map((order) => (
+                <Link key={order.id} href="/dashboard/orders" className="flex items-center justify-between gap-3 py-3 text-xs hover:bg-black/[0.02]">
+                  <span className="font-medium">{formatOrderReference(order.id)}</span>
+                  <span className="text-black/55">{formatOrderStatus(order.status)}</span>
+                  <span className="font-medium">{currencyFormatter.format(order.total)}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Top products</h2>
-          <div className="mt-3 space-y-3">
-            {["Bootcut Denim", "Panelled Overshirt", "Relaxed Trousers"].map((product, index) => (
-              <div key={product} className="flex items-center justify-between gap-3 text-xs">
-                <span className="truncate text-black/70">{product}</span>
-                <span className="shrink-0 font-medium">{[24, 18, 12][index]} sold</span>
-              </div>
-            ))}
-          </div>
+          {data.topProducts.length === 0 ? (
+            <p className="mt-3 py-3 text-xs text-black/55">Top products will appear after an order is placed.</p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {data.topProducts.map((product) => (
+                <div key={product.name} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="truncate text-black/70">{product.name}</span>
+                  <span className="shrink-0 font-medium">{product.quantity} sold</span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Quick actions</h2>
           <div className="mt-3 grid gap-2">
-            {["Add product", "Manage collection", "View customers"].map((action) => (
-              <button key={action} type="button" className="rounded-md border border-black/15 px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-black hover:text-white">
-                {action}
-              </button>
-            ))}
+            <Link href="/dashboard/products/new" className="rounded-md border border-black/15 px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-black hover:text-white">Add product</Link>
+            <Link href="/dashboard/customers" className="rounded-md border border-black/15 px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-black hover:text-white">View customers</Link>
           </div>
         </section>
       </div>
@@ -293,41 +301,34 @@ export function AdminOverview() {
         <section className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">Store health</h2>
-            <span className="size-2 rounded-full bg-emerald-500" />
+            <span className="size-2 rounded-full bg-black/25" />
           </div>
-          <p className="mt-3 text-2xl font-semibold">98%</p>
-          <p className="mt-1 text-xs text-black/55">All systems operational</p>
+          <p className="mt-3 text-2xl font-semibold">—</p>
+          <p className="mt-1 text-xs text-black/55">Health monitoring is not configured</p>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/10">
-            <div className="h-full w-[98%] rounded-full bg-emerald-500" />
+            <div className="h-full w-0 rounded-full bg-emerald-500" />
           </div>
         </section>
 
         <section className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Traffic sources</h2>
-          <div className="mt-3 space-y-2.5 text-xs">
-            {[['Direct', '46%'], ['Instagram', '32%'], ['Search', '22%']].map(([source, value]) => (
-              <div key={source}>
-                <div className="flex justify-between text-black/70"><span>{source}</span><span className="font-medium text-black">{value}</span></div>
-                <div className="mt-1 h-1 rounded-full bg-black/10"><div className="h-full rounded-full bg-[#08a7f5]" style={{ width: value }} /></div>
-              </div>
-            ))}
-          </div>
+          <p className="mt-3 py-3 text-xs text-black/55">No traffic data has been collected yet.</p>
         </section>
 
         <section className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Inventory alerts</h2>
           <div className="mt-3 space-y-3 text-xs">
-            <div className="flex items-center justify-between"><span className="text-black/70">Low stock</span><span className="rounded-full bg-amber-100 px-2 py-1 font-medium text-amber-800">6 items</span></div>
-            <div className="flex items-center justify-between"><span className="text-black/70">Out of stock</span><span className="rounded-full bg-red-100 px-2 py-1 font-medium text-red-800">2 items</span></div>
-            <button type="button" className="pt-1 text-black/55 underline underline-offset-2 hover:text-black">Review inventory</button>
+            <div className="flex items-center justify-between"><span className="text-black/70">Low stock</span><span className="rounded-full bg-amber-100 px-2 py-1 font-medium text-amber-800">{data.lowStockCount} items</span></div>
+            <div className="flex items-center justify-between"><span className="text-black/70">Out of stock</span><span className="rounded-full bg-red-100 px-2 py-1 font-medium text-red-800">{data.outOfStockCount} items</span></div>
+            <Link href="/dashboard/products/inventory" className="inline-block pt-1 text-black/55 underline underline-offset-2 hover:text-black">Review inventory</Link>
           </div>
         </section>
 
         <section className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Customer snapshot</h2>
-          <p className="mt-3 text-2xl font-semibold">1,284</p>
+          <p className="mt-3 text-2xl font-semibold">{data.customerCount.toLocaleString("en-IN")}</p>
           <p className="mt-1 text-xs text-black/55">Total customers</p>
-          <p className="mt-3 text-xs font-medium text-emerald-700">↗ 12.4% this period</p>
+          <p className="mt-3 text-xs font-medium text-black/55">No comparison data yet</p>
         </section>
       </div>
 

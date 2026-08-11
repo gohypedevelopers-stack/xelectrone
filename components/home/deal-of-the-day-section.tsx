@@ -2,35 +2,56 @@
 
 import Image from "next/image";
 import Link from "next/link";
+
+import { formatINR } from "@/lib/format-price";
 import { useEffect, useRef, useState } from "react";
 import { Flame, Sparkles } from "lucide-react";
 
-export default function DealOfTheDaySection() {
+export type StorefrontDealOfTheDay = {
+  title: string;
+  description: string;
+  image: string;
+  badge: string | null;
+  features: string[];
+  unitsLeft: number;
+  totalUnits: number;
+  endsAt: string | null;
+  product: { slug: string; name: string; price: string; oldPrice: string | null };
+};
+
+function getTimeLeft(endsAt: string) {
+  const remaining = Math.max(0, new Date(endsAt).getTime() - Date.now());
+  return {
+    hours: Math.floor(remaining / 3_600_000),
+    minutes: Math.floor((remaining % 3_600_000) / 60_000),
+    seconds: Math.floor((remaining % 60_000) / 1_000),
+  };
+}
+
+function displayPrice(price: string) {
+  return formatINR(price);
+}
+
+export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTheDay }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [isWhite, setIsWhite] = useState(false);
-  const [timeLeft, setTimeLeft] = useState({
-    hours: 6,
-    minutes: 37,
-    seconds: 8,
-  });
+  const [timeLeft, setTimeLeft] = useState({ hours: 7, minutes: 0, seconds: 0 });
+  const claimedPercent = Math.max(0, Math.min(100, Math.round(((deal.totalUnits - deal.unitsLeft) / deal.totalUnits) * 100)));
 
   // COUNTDOWN TIMER
   useEffect(() => {
+    // The original storefront deal has no configured deadline, so give it a
+    // short seven-hour countdown. Saved dashboard deals always use their end date.
+    const countdownEnd = deal.endsAt || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
+    const updateTimeLeft = () => setTimeLeft(getTimeLeft(countdownEnd));
+
+    updateTimeLeft();
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: 59, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return { hours: 0, minutes: 0, seconds: 0 };
-      });
+      updateTimeLeft();
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [deal.endsAt]);
 
   // SCROLL TRIGGER: FIRST BLACK, THEN TRANSITIONS TO WHITE ON IN-VIEW
   useEffect(() => {
@@ -85,7 +106,7 @@ export default function DealOfTheDaySection() {
           >
             <div className="flex items-center gap-1">
               <Flame className="h-3 w-3 fill-[#0a7ae6] text-[#0a7ae6] animate-pulse" />
-              <span className="text-[10px] font-extrabold">16 Left</span>
+              <span className="text-[10px] font-extrabold">{deal.unitsLeft} Left</span>
             </div>
             <div className={`h-3 w-px ${isWhite ? "bg-slate-300/80" : "bg-slate-700"}`} />
             <div className="flex items-center gap-1">
@@ -113,8 +134,8 @@ export default function DealOfTheDaySection() {
           >
             <div className="relative h-full w-full min-h-[210px] sm:min-h-[460px] lg:min-h-[550px]">
               <Image
-                src="/deal-soundbar.png"
-                alt="XElectron Blaze B2000 Soundbar System"
+                src={deal.image}
+                alt={deal.title}
                 fill
                 className="object-cover transition-transform duration-700 hover:scale-105"
                 sizes="(min-width: 1024px) 50vw, 100vw"
@@ -125,7 +146,7 @@ export default function DealOfTheDaySection() {
               {/* DOLBY AUDIO BADGE */}
               <div className="absolute bottom-3 right-3 sm:bottom-5 sm:right-5 flex items-center gap-2 rounded-xl bg-black/80 backdrop-blur-md px-3 py-1.5 sm:px-3.5 sm:py-2 text-white border border-white/10 shadow-lg">
                 <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">
-                  Dolby Audio
+                  {deal.badge || "Deal of the day"}
                 </span>
               </div>
             </div>
@@ -157,7 +178,7 @@ export default function DealOfTheDaySection() {
                       isWhite ? "text-slate-900" : "text-white"
                     }`}
                   >
-                    16
+                    {deal.unitsLeft}
                   </p>
                   <p
                     className={`mt-0.5 text-[10px] font-semibold uppercase tracking-widest transition-colors duration-700 ${
@@ -211,19 +232,19 @@ export default function DealOfTheDaySection() {
                     isWhite ? "text-slate-900" : "text-white"
                   }`}
                 >
-                  BLAZE B2000
+                  {deal.title}
                 </h3>
                 <p
                   className={`mt-1 text-sm sm:text-base leading-relaxed transition-colors duration-700 ${
                     isWhite ? "text-slate-600" : "text-slate-300"
                   }`}
                 >
-                  Powerhouse home audio system designed to turn your living room into a cinematic experience.
+                  {deal.description}
                 </p>
 
                 {/* SPECIFICATION PILLS WITH WEIGHT SEMIBOLD & 11PX */}
                 <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-2.5">
-                  {["DOLBY AUDIO", "900W", "5.2 CHANNEL", "3D SURROUND"].map((spec) => (
+                  {deal.features.map((spec) => (
                     <span
                       key={spec}
                       className={`rounded-full border px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider transition-all duration-700 ${
@@ -251,18 +272,18 @@ export default function DealOfTheDaySection() {
                         isWhite ? "text-slate-900" : "text-white"
                       }`}
                     >
-                      ₹ 14,999
+                      {displayPrice(deal.product.price)}
                     </span>
-                    <span
+                    {deal.product.oldPrice ? <span
                       className={`text-xs font-normal line-through transition-colors duration-700 sm:text-sm ${
                         isWhite ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
-                      ₹ 32,999
+                      {displayPrice(deal.product.oldPrice)}
                     </span>
-                  </div>
+                    : null}</div>
                   <p className="mt-0.5 text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-[#0a7ae6]">
-                    EMI FROM ₹ 5,000/MONTH
+                    Limited-time offer
                   </p>
                 </div>
 
@@ -275,7 +296,7 @@ export default function DealOfTheDaySection() {
                         isWhite ? "text-slate-500" : "text-slate-400"
                       }`}
                     >
-                      86% Claimed
+                      {claimedPercent}% Claimed
                     </span>
                   </div>
                   <div
@@ -283,16 +304,16 @@ export default function DealOfTheDaySection() {
                       isWhite ? "bg-slate-100" : "bg-slate-800"
                     }`}
                   >
-                    <div className="h-full w-[86%] rounded-full bg-gradient-to-r from-[#0a7ae6] to-[#025bb5] shadow-sm transition-all duration-500" />
+                    <div style={{ width: `${claimedPercent}%` }} className="h-full rounded-full bg-gradient-to-r from-[#0a7ae6] to-[#025bb5] shadow-sm transition-all duration-500" />
                   </div>
                 </div>
 
                 {/* BLUE CTA BUTTON */}
                 <Link
-                  href="/product?id=blaze-b2000"
+                  href={`/product/${deal.product.slug}`}
                   className="group relative mt-4 sm:mt-7 inline-flex h-12 sm:h-15 w-full items-center justify-center overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#0a7ae6] to-[#025bb5] text-sm sm:text-lg font-semibold tracking-wide text-white shadow-md shadow-blue-500/25 transition-all duration-300 hover:from-[#0869c7] hover:to-[#014993] hover:shadow-blue-500/40 active:scale-[0.99]"
                 >
-                  <span>GRAB IT NOW — ₹ 14,999</span>
+                  <span>GRAB IT NOW — {displayPrice(deal.product.price)}</span>
                 </Link>
               </div>
             </div>

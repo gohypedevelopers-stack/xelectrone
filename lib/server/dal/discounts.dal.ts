@@ -1,0 +1,33 @@
+import type { DiscountType } from "@prisma/client";
+
+import { db } from "@/lib/db";
+
+export type CreateDiscountInput = {
+  code?: string | null;
+  type: DiscountType;
+  value: number;
+  appliesTo?: string;
+};
+
+export function getAllDiscounts() {
+  return db.discount.findMany({ orderBy: { createdAt: "desc" } });
+}
+
+export function getDiscountByCode(code: string) {
+  return db.discount.findUnique({ where: { code } });
+}
+
+export function createDiscount(data: CreateDiscountInput) {
+  return db.discount.create({
+    data: {
+      code: data.code || null,
+      type: data.type,
+      value: data.value,
+      appliesTo: data.appliesTo || "ALL_PRODUCTS",
+    },
+  });
+}
+
+export function deleteDiscount(id: string) {
+  return db.discount.delete({ where: { id } });
+}

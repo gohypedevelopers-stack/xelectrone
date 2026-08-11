@@ -30,7 +30,7 @@ export function NavUser() {
   const { data: session } = authClient.useSession()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const user = {
-    name: session?.user.name ?? "SUOS Admin",
+    name: session?.user.name ?? "Xelectron Admin",
     email: session?.user.email ?? "",
     avatar: session?.user.image ?? "",
   }

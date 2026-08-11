@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { SimilarProductCard } from "@/lib/products-data";
+import { formatINR } from "@/lib/format-price";
 
 interface SimilarProductsSectionProps {
   products: SimilarProductCard[];
@@ -14,7 +15,7 @@ export default function SimilarProductsSection({ products }: SimilarProductsSect
       <div className="mx-auto max-w-[1440px]">
         <div className="px-4 sm:px-6 lg:px-8">
           <h2 className="text-[clamp(1.6rem,3.8vw,4.25rem)] font-medium uppercase leading-[0.95] tracking-[-0.06em] text-slate-950 sm:text-[clamp(2rem,3.8vw,4.25rem)]">
-            Get Similar Product
+            Related Products
           </h2>
         </div>
 
@@ -42,7 +43,7 @@ export default function SimilarProductsSection({ products }: SimilarProductsSect
 
               <div className="mt-4 flex items-end justify-between gap-3">
                 <span className="text-[16px] font-medium tracking-[-0.04em] text-slate-950 sm:text-[20px]">
-                  {product.price}
+                  {formatINR(product.price)}
                 </span>
                 <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-900 transition-colors group-hover:border-[#0a7ae6] group-hover:bg-[#0a7ae6] group-hover:text-white sm:px-4 sm:py-2 sm:text-[12px]">
                   Buy

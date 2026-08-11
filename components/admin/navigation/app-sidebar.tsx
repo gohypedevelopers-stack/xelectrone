@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Image from "next/image"
 
 import { NavMain } from "@/components/admin/navigation/nav-main"
 import { NavUser } from "@/components/admin/navigation/nav-user"
@@ -20,7 +19,7 @@ import {
   ChartNoAxesCombinedIcon,
   PackageIcon,
   UsersRoundIcon,
-  ChevronsUpDown,
+  FlameIcon,
 } from "lucide-react"
 
 const routeIcons: Record<string, React.ReactNode> = {
@@ -28,6 +27,7 @@ const routeIcons: Record<string, React.ReactNode> = {
   Orders: <InboxIcon className="size-4 shrink-0" />,
   Products: <PackageIcon className="size-4 shrink-0" />,
   Customers: <UsersRoundIcon className="size-4 shrink-0" />,
+  "Deal of the day": <FlameIcon className="size-4 shrink-0" />,
   Discounts: <BadgePercentIcon className="size-4 shrink-0" />,
   Analytics: <ChartNoAxesCombinedIcon className="size-4 shrink-0" />,
 }

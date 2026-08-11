@@ -1,8 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
-import { categories } from "@/components/home/content";
 
-export default function CategorySection() {
+export type StorefrontCategory = {
+  id: string;
+  title: string;
+  slug: string;
+  image: string;
+};
+
+export default function CategorySection({ categories }: { categories: StorefrontCategory[] }) {
+  if (categories.length === 0) return null;
+
   return (
     <section className="bg-white px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
       <div className="mx-auto max-w-[1400px]">
@@ -20,16 +28,12 @@ export default function CategorySection() {
         {/* SINGLE ROW CATEGORIES STRIP WITH NO BACKGROUND ARTIFACTS & CACHE BUSTING */}
         <div className="no-scrollbar flex w-full items-center justify-start gap-3.5 overflow-x-auto pt-4 pb-6 sm:gap-4 lg:justify-between">
           {categories.map((category) => {
-            let filterSlug = category.title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-            if (filterSlug === "led-tvs") {
-              filterSlug = "smart-tvs";
-            }
-            const cacheBustSrc = `${category.src}?v=no-cache-4`;
+            const cacheBustSrc = `${category.image}${category.image.includes("?") ? "&" : "?"}v=category`;
 
             return (
               <Link
-                key={category.title}
-                href={`/shop?filter=${filterSlug}`}
+                key={category.id}
+                href={`/shop?filter=${encodeURIComponent(category.slug)}`}
                 className="group flex min-w-[130px] shrink-0 sm:min-w-[150px] lg:min-w-0 lg:flex-1 flex-col items-center justify-center rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-3 h-[145px] sm:h-[170px] lg:h-[190px] text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#0a7ae6] hover:shadow-md"
               >
                 {/* CLEAN PRODUCT HERO IMAGE (FILLING CARD FULLY) */}
@@ -37,7 +41,7 @@ export default function CategorySection() {
                   <div className="relative h-full w-full transition-transform duration-300 ease-out group-hover:scale-105">
                     <Image
                       src={cacheBustSrc}
-                      alt={category.alt}
+                      alt={category.title}
                       fill
                       unoptimized
                       className="mix-blend-multiply object-contain filter drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)]"

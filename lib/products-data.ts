@@ -26,6 +26,7 @@ export type ProductDetailItem = {
   specs: ProductSpec[];
   shippingNotice: string;
   mainImage: string;
+  images?: string[];
 };
 
 export const productsCatalog: Record<string, ProductDetailItem> = {

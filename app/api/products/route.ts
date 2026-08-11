@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import * as productsController from "@/lib/server/controllers/products.controller";
 
 // GET /api/products?search=&category=
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const product = await productsController.createProduct(body);
+    revalidatePath("/");
     return NextResponse.json({ success: true, data: product }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";

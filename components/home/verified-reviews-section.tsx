@@ -178,7 +178,7 @@ export default function VerifiedReviewsSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative w-full bg-[#f8fafc] px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-24 overflow-hidden"
+      className="relative w-full bg-white px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-24 overflow-hidden"
     >
       <div className="mx-auto max-w-[1400px]">
         {/* HEADER TITLE & NAVIGATION BUTTONS IN ONE LINE */}

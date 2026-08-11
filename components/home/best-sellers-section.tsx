@@ -3,21 +3,35 @@
 import gsap from "gsap";
 import ScrollTrigger from "gsap/ScrollTrigger";
 import Image from "next/image";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { bestSellers } from "@/components/home/best-sellers-data";
+import Link from "next/link";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { bestSellers, type BestSellerItem } from "@/components/home/best-sellers-data";
+import { formatINR } from "@/lib/format-price";
 
 gsap.registerPlugin(ScrollTrigger);
 
 function SpecificationRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-2 gap-4 border-t border-slate-200/80 py-2 sm:py-2.5 first:border-t-0 first:pt-0 last:pb-0">
-      <div className="text-[13px] sm:text-[14px] font-medium text-slate-600">{label}</div>
-      <div className="text-right text-[13px] sm:text-[14px] font-semibold text-slate-900">{value}</div>
+    <div className="grid grid-cols-2 gap-4 border-t border-slate-200/80 py-2.5 sm:py-3 first:border-t-0 first:pt-0 last:pb-0">
+      <div className="text-[13px] sm:text-[15px] font-medium text-slate-600">{label}</div>
+      <div className="text-right text-[13px] sm:text-[15px] font-semibold text-slate-900">{value}</div>
     </div>
   );
 }
 
-export default function BestSellersSection() {
+export default function BestSellersSection({ additionalItems = [] }: { additionalItems?: BestSellerItem[] }) {
+  const items = useMemo(() => {
+    const selectedById = new Map(additionalItems.map((item) => [item.id, item]));
+    const defaultItemIds = new Set(bestSellers.map((item) => item.id));
+
+    // Keep the original storefront slides in place. A dashboard-selected product
+    // either refreshes its matching slide or is appended as another slide.
+    return [
+      ...bestSellers.map((item) => selectedById.get(item.id) ?? item),
+      ...additionalItems.filter((item) => !defaultItemIds.has(item.id)),
+    ];
+  }, [additionalItems]);
+
   const sectionRef = useRef<HTMLElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -28,7 +42,6 @@ export default function BestSellersSection() {
   const titleRefs = useRef<Array<HTMLHeadingElement | null>>([]);
 
   const [reduceMotion, setReduceMotion] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -36,14 +49,6 @@ export default function BestSellersSection() {
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
   }, []);
 
   useLayoutEffect(() => {
@@ -100,7 +105,7 @@ export default function BestSellersSection() {
       // Position title rail initially
       gsap.set(track, { x: getTitleX(0) });
 
-      const numSlides = bestSellers.length;
+      const numSlides = items.length;
       const scrollDistance = (numSlides - 1) * window.innerHeight;
 
       // Master Timeline scrubbed by ScrollTrigger
@@ -109,7 +114,7 @@ export default function BestSellersSection() {
           trigger: section,
           start: "top top",
           end: () => `+=${scrollDistance}`,
-          scrub: 0.8, // Smooth physics scrub dampening
+          scrub: 0.8,
           pin: section,
           pinSpacing: true,
           anticipatePin: 1,
@@ -117,11 +122,9 @@ export default function BestSellersSection() {
         },
       });
 
-      // For each transition step between slide i and slide i+1:
       for (let i = 0; i < numSlides - 1; i++) {
         const tStart = i;
 
-        // Phase 1 (t = i + 0.15 -> i + 0.45): Card i and Visual i fade out cleanly
         const cardCur = cardRefs.current[i];
         const visualCur = visualRefs.current[i];
         const glowCur = glowRefs.current[i];
@@ -152,7 +155,6 @@ export default function BestSellersSection() {
           );
         }
 
-        // Phase 2 (t = i + 0.2 -> i + 0.8): Title rail slides to center title i+1
         tl.to(
           track,
           {
@@ -163,7 +165,6 @@ export default function BestSellersSection() {
           tStart + 0.2
         );
 
-        // Phase 3 (t = i + 0.52 -> i + 0.87): Card i+1 and Visual i+1 fade in cleanly
         const cardNext = cardRefs.current[i + 1];
         const visualNext = visualRefs.current[i + 1];
         const glowNext = glowRefs.current[i + 1];
@@ -197,12 +198,12 @@ export default function BestSellersSection() {
     }, section);
 
     return () => ctx.revert();
-  }, [reduceMotion]);
+  }, [items, reduceMotion]);
 
   const goToSlide = (targetIndex: number) => {
     const section = sectionRef.current;
-    if (!section) return;
-    const numSlides = bestSellers.length;
+    if (!section || items.length < 2) return;
+    const numSlides = items.length;
     const scrollDistance = (numSlides - 1) * window.innerHeight;
     const targetProgress = targetIndex / (numSlides - 1);
     const targetScroll = section.offsetTop + targetProgress * scrollDistance;
@@ -221,38 +222,38 @@ export default function BestSellersSection() {
   } as const;
 
   const titleClass =
-    "shrink-0 whitespace-nowrap text-[clamp(1.2rem,2.8vw,2.8rem)] font-normal leading-[1.2] tracking-[-0.04em] will-change-transform cursor-pointer transition-opacity duration-300 hover:opacity-100 select-none py-1";
+    "shrink-0 whitespace-nowrap text-[clamp(1.8rem,4vw,4.2rem)] font-bold leading-[1.2] tracking-[-0.03em] will-change-transform cursor-pointer transition-opacity duration-300 hover:opacity-100 select-none py-1";
 
   if (reduceMotion) {
     return (
-      <section className="bg-white py-12 text-slate-900">
-        <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
-          <p className="text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[#0a7ae6]">
+      <section className="bg-white py-16 text-slate-900">
+        <div className="mx-auto max-w-[1600px] px-6 py-6 sm:px-8 lg:px-12">
+          <p className="text-center text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.1em] text-[#0a7ae6]">
             Best sellers
           </p>
         </div>
-        <div className="mx-auto max-w-[1600px] space-y-8 px-4 pb-10 sm:px-6 lg:px-8">
-          {bestSellers.map((item) => (
-            <div key={item.id} className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-              <div className="rounded-[28px] border border-slate-200 bg-[#f8fafc] px-6 py-6 md:px-8 md:py-7">
+        <div className="mx-auto max-w-[1600px] space-y-12 px-6 pb-12 sm:px-8 lg:px-12">
+          {items.map((item) => (
+            <div key={item.id} className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] items-center">
+              <div className="rounded-[28px] border border-slate-200 bg-[#f8fafc] px-6 py-6 md:px-8 md:py-8">
                 <div className="border-b border-slate-200 pb-5">
                   <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a7ae6]">
                     XElectron
                   </p>
-                  <h3 className="mt-1 text-[22px] font-bold text-slate-900 md:text-[26px]">
+                  <h3 className="mt-1 text-[22px] font-bold text-slate-900 md:text-[28px]">
                     {item.name}
                   </h3>
                   <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
-                    <span className="text-[27px] font-semibold text-slate-900">{item.price}</span>
+                    <span className="text-[27px] font-semibold text-slate-900">{formatINR(item.price)}</span>
                     {item.oldPrice && (
-                      <span className="text-[15px] text-slate-400 line-through">{item.oldPrice}</span>
+                      <span className="text-[15px] text-slate-400 line-through">{formatINR(item.oldPrice)}</span>
                     )}
                     {item.discount && (
                       <span className="text-[16px] font-medium text-[#0a7ae6]">{item.discount}</span>
                     )}
                   </div>
                 </div>
-                <p className="mt-5 max-w-[34rem] text-[17px] leading-8 text-slate-700 md:text-[18px]">
+                <p className="mt-5 max-w-[34rem] text-[16px] leading-7 text-slate-700 md:text-[17px]">
                   {item.description}
                 </p>
                 <div className="mt-6">
@@ -260,16 +261,16 @@ export default function BestSellersSection() {
                     <SpecificationRow key={spec.label} label={spec.label} value={spec.value} />
                   ))}
                 </div>
-                <a
-                  href={`/product?id=${item.id}`}
-                  className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[16px] font-medium text-white hover:bg-[#086ac9] transition-colors"
+                <Link
+                  href={`/product/${item.slug || item.id}`}
+                  className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[16px] font-medium text-white hover:bg-[#086ac9] transition-colors shadow-lg shadow-blue-500/15"
                 >
                   View Details & Buy
-                </a>
+                </Link>
               </div>
-              <div className="relative min-h-[350px] lg:h-full lg:min-h-[450px]">
+              <div className="relative min-h-[380px] lg:h-full lg:min-h-[520px]">
                 <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,_rgba(10,122,230,0.18)_0%,_rgba(10,122,230,0.08)_30%,_rgba(10,122,230,0)_68%)] blur-3xl" />
-                <Image src={item.image} alt={item.imageAlt} fill className="object-contain" sizes="100vw" />
+                <Image src={item.image} alt={item.imageAlt} fill className="object-contain scale-110" sizes="100vw" />
               </div>
             </div>
           ))}
@@ -285,20 +286,20 @@ export default function BestSellersSection() {
     >
       <div
         ref={viewportRef}
-        className="mx-auto flex h-full max-w-[1600px] flex-col justify-center px-3 pt-10 pb-2 sm:px-6 sm:pt-12 sm:pb-3 lg:px-8 lg:pt-14 lg:pb-4"
+        className="mx-auto flex h-full max-w-[1600px] flex-col justify-between px-4 pt-10 pb-8 sm:px-8 sm:pt-12 sm:pb-10 lg:px-12 lg:pt-14 lg:pb-12"
       >
         {/* TOP HEADER BLOCK: Badge + Giant Title Rail */}
-        <div className="relative z-20 shrink-0 flex flex-col items-center mb-1 sm:mb-1.5">
-          <p className="text-center text-[11px] sm:text-[12px] font-semibold uppercase tracking-[0.08em] text-[#0a7ae6]">
+        <div className="relative z-20 shrink-0 flex flex-col items-center mb-4 sm:mb-6">
+          <p className="text-center text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.1em] text-[#0a7ae6]">
             Best sellers
           </p>
 
-          <div className="relative mt-0.5 w-full overflow-hidden py-0.5" style={titleRailStyle}>
+          <div className="relative mt-2 w-full overflow-hidden py-1" style={titleRailStyle}>
             <div
               ref={trackRef}
-              className="flex w-max items-center gap-10 sm:gap-14 py-0.5 will-change-transform"
+              className="flex w-max items-center gap-12 sm:gap-16 py-1 will-change-transform"
             >
-              {bestSellers.map((item, index) => (
+              {items.map((item, index) => (
                 <h2
                   key={item.id}
                   ref={(node) => {
@@ -315,71 +316,71 @@ export default function BestSellersSection() {
         </div>
 
         {/* BOTTOM PRODUCT SHOWCASE GRID */}
-        <div className="relative z-10 grid w-full mt-1 sm:mt-2 lg:mt-2.5 items-start gap-2 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
-          <div className="relative order-2 min-h-[220px] pb-2 sm:min-h-[280px] sm:pb-4 lg:order-1 lg:min-h-[340px] lg:pb-0">
-            {bestSellers.map((item, index) => (
+        <div className="relative z-10 grid w-full flex-1 items-center gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-12">
+          <div className="relative order-2 min-h-[340px] sm:min-h-[420px] lg:order-1 lg:min-h-[480px] flex items-center">
+            {items.map((item, index) => (
               <div
                 key={item.id}
                 ref={(node) => {
                   cardRefs.current[index] = node;
                 }}
-                className="absolute inset-0 flex items-start pt-2 sm:pt-4 will-change-[transform,opacity]"
+                className="absolute inset-0 flex items-center will-change-[transform,opacity]"
               >
-                <div className="relative z-10 w-full max-w-[640px] rounded-[20px] sm:rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-md px-4 pt-3.5 pb-5 shadow-[0_20px_70px_rgba(15,23,42,0.05)] sm:px-6 sm:pt-5 sm:pb-6 md:px-8 md:pt-6 md:pb-6 max-h-[calc(100vh-210px)] overflow-y-auto no-scrollbar">
-                  <div className="border-b border-slate-200/80 pb-2.5 sm:pb-3">
-                    <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a7ae6]">
+                <div className="relative z-10 w-full max-w-[640px] rounded-[24px] sm:rounded-[32px] border border-slate-200/80 bg-white/90 backdrop-blur-md px-6 pt-5 pb-6 shadow-[0_20px_70px_rgba(15,23,42,0.05)] sm:px-8 sm:pt-7 sm:pb-8 max-h-[calc(100vh-240px)] overflow-y-auto no-scrollbar">
+                  <div className="border-b border-slate-200/80 pb-4">
+                    <p className="text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.2em] text-[#0a7ae6]">
                       XElectron
                     </p>
-                    <h3 className="mt-0.5 text-[17px] sm:text-[22px] font-bold tracking-tight text-slate-900">
+                    <h3 className="mt-1 text-[22px] sm:text-[28px] font-bold tracking-tight text-slate-900">
                       {item.name}
                     </h3>
-                    <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-1">
-                      <span className="text-[19px] font-semibold text-slate-900 sm:text-[26px]">
-                        {item.price}
+                    <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
+                      <span className="text-[24px] font-semibold text-slate-900 sm:text-[30px]">
+                        {formatINR(item.price)}
                       </span>
                       {item.oldPrice && (
-                        <span className="text-[12px] text-slate-400 line-through sm:text-[14px]">
-                          {item.oldPrice}
+                        <span className="text-[14px] text-slate-400 line-through sm:text-[16px]">
+                          {formatINR(item.oldPrice)}
                         </span>
                       )}
                       {item.discount && (
-                        <span className="text-[12px] font-medium text-[#0a7ae6] sm:text-[15px]">
+                        <span className="text-[14px] font-medium text-[#0a7ae6] sm:text-[17px]">
                           {item.discount}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <p className="mt-2 sm:mt-3 max-w-[34rem] text-[12px] leading-4 text-slate-700 sm:text-[15px] sm:leading-6 md:text-[16px]">
+                  <p className="mt-4 max-w-[34rem] text-[14px] leading-6 text-slate-700 sm:text-[16px] sm:leading-7">
                     {item.description}
                   </p>
 
-                  <div className="mt-2 sm:mt-4">
+                  <div className="mt-4 sm:mt-6">
                     {item.specs.map((spec) => (
                       <SpecificationRow key={spec.label} label={spec.label} value={spec.value} />
                     ))}
                   </div>
 
-                  <a
-                    href={`/product?id=${item.id}`}
-                    className="mt-3 sm:mt-5 inline-flex h-9 sm:h-12 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[12px] sm:text-[14px] font-medium text-white transition-all hover:bg-[#086ac9] shadow-lg shadow-blue-500/15 active:scale-[0.99]"
+                  <Link
+                    href={`/product/${item.slug || item.id}`}
+                    className="mt-6 inline-flex h-12 sm:h-14 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[14px] sm:text-[16px] font-medium text-white transition-all hover:bg-[#086ac9] shadow-lg shadow-blue-500/15 active:scale-[0.99]"
                   >
                     View Details & Buy
-                  </a>
+                  </Link>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="relative order-1 flex items-center justify-center pb-0 lg:order-2 lg:justify-end lg:pb-0">
-            <div className="relative min-h-[160px] w-full max-w-[900px] sm:min-h-[280px] lg:min-h-[340px]">
-              {bestSellers.map((item, index) => (
+          <div className="relative order-1 flex items-center justify-center lg:order-2 lg:justify-end h-full">
+            <div className="relative min-h-[320px] w-full max-w-[900px] sm:min-h-[460px] lg:min-h-[580px] flex items-center justify-center">
+              {items.map((item, index) => (
                 <div
                   key={item.id}
                   ref={(node) => {
                     visualRefs.current[index] = node;
                   }}
-                  className="absolute inset-0 flex items-center justify-center pb-0 will-change-[transform,opacity]"
+                  className="absolute inset-0 flex items-center justify-center will-change-[transform,opacity]"
                 >
                   <div
                     ref={(node) => {
@@ -391,7 +392,7 @@ export default function BestSellersSection() {
                     src={item.image}
                     alt={item.imageAlt}
                     fill
-                    className="object-contain filter drop-shadow-[0_25px_45px_rgba(15,23,42,0.12)]"
+                    className="object-contain filter drop-shadow-[0_25px_45px_rgba(15,23,42,0.12)] scale-110 sm:scale-120 lg:scale-125"
                     sizes="(min-width: 1024px) 50vw, 100vw"
                     priority={index === 0}
                   />

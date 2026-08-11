@@ -16,8 +16,8 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 export const metadata: Metadata = {
-  title: "Inventory | SUOS Admin",
-  description: "Manage inventory levels for SUOS products.",
+  title: "Inventory | Xelectron Admin",
+  description: "Manage inventory levels for Xelectron products.",
 }
 
 const inventoryRows = [

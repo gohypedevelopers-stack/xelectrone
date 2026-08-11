@@ -42,22 +42,38 @@ export async function createProduct(data: CreateProductInput) {
 // ─── Update ──────────────────────────────────────────────────────────────────
 
 export async function updateProduct(
-  id: string,
+  idOrSlug: string,
   data: Parameters<typeof productsDal.updateProduct>[1]
 ) {
-  const existing = await productsDal.getProductById(id);
+  const existing =
+    (await productsDal.getProductById(idOrSlug)) ??
+    (await productsDal.getProductBySlug(idOrSlug));
   if (!existing) {
     throw new Error("Product not found");
   }
-  return productsDal.updateProduct(id, data);
+
+  if (data.slug && data.slug !== existing.slug) {
+    const duplicate = await productsDal.getProductBySlug(data.slug);
+    if (duplicate && duplicate.id !== existing.id) {
+      throw new Error(`Product with slug "${data.slug}" already exists`);
+    }
+  }
+
+  return productsDal.updateProduct(existing.id, data);
+}
+
+export async function listBestSellerProducts() {
+  return productsDal.getBestSellerProducts();
 }
 
 // ─── Delete ──────────────────────────────────────────────────────────────────
 
 export async function deleteProduct(id: string) {
-  const existing = await productsDal.getProductById(id);
+  const existing =
+    (await productsDal.getProductById(id)) ??
+    (await productsDal.getProductBySlug(id));
   if (!existing) {
     throw new Error("Product not found");
   }
-  return productsDal.deleteProduct(id);
+  return productsDal.deleteProduct(existing.id);
 }

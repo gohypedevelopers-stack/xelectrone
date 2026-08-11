@@ -1,0 +1,192 @@
+"use client";
+
+import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronRight, Pencil, Tag } from "lucide-react";
+
+import { ProductAdditionalDetailsSection } from "@/components/admin/products/product-additional-details-section";
+import { ProductDescriptionEditor } from "@/components/admin/products/product-description-editor";
+import { HomeShowcaseToggle } from "@/components/admin/products/home-showcase-toggle";
+import { ProductMediaUploader } from "@/components/admin/products/product-media-uploader";
+import { ProductVariantsSection } from "@/components/admin/products/product-variants-section";
+import { uploadProductImage } from "@/lib/client/upload-product-image";
+
+export type ProductCategoryOption = {
+  id: string;
+  title: string;
+};
+
+type CardProps = {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+  actions?: React.ReactNode;
+};
+
+const inputClass = "h-10 w-full rounded-lg border border-black/25 bg-white px-3 text-sm outline-none focus:border-black/50";
+
+function Card({ title, children, className = "", actions }: CardProps) {
+  return (
+    <section className={`overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm ${className}`}>
+      <div className="flex items-center justify-between gap-3 px-4 py-4">
+        <h2 className="text-sm font-semibold text-black/75">{title}</h2>
+        {actions}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+export function AddProductForm({ categories }: { categories: ProductCategoryOption[] }) {
+  const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("0.00");
+  const [compareAtPrice, setCompareAtPrice] = useState("");
+  const [quantity, setQuantity] = useState("0");
+  const [showInBestSellers, setShowInBestSellers] = useState(false);
+  const [status, setStatus] = useState("active");
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.id === categoryId),
+    [categories, categoryId]
+  );
+
+  async function saveProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const numericPrice = Number(price);
+    const numericCompareAtPrice = compareAtPrice.trim() ? Number(compareAtPrice) : undefined;
+    const numericQuantity = Number(quantity);
+
+    if (!title.trim() || !description.trim() || !categoryId || !Number.isFinite(numericPrice) || numericPrice < 0 || !Number.isSafeInteger(numericQuantity) || numericQuantity < 0) {
+      setMessage("Add a title, category, description, valid price, and whole-number quantity before saving.");
+      return;
+    }
+
+    if (numericCompareAtPrice !== undefined && (!Number.isFinite(numericCompareAtPrice) || numericCompareAtPrice < 0)) {
+      setMessage("Enter a valid compare-at price or leave it blank.");
+      return;
+    }
+
+    const slug = slugify(title);
+    if (!slug) {
+      setMessage("Use letters or numbers in the product title.");
+      return;
+    }
+
+    setIsSaving(true);
+    setMessage("");
+    try {
+      const uploadedMedia = await Promise.all(
+        mediaFiles.map(async (file, sortOrder) => ({
+          ...(await uploadProductImage(file)),
+          mimeType: file.type,
+          sortOrder,
+        }))
+      );
+      const mainImage = uploadedMedia[0]?.url || "/category-smartphone.png";
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: title.trim(),
+          slug,
+          categoryId,
+          price: `₹${numericPrice.toFixed(2)}`,
+          oldPrice: numericCompareAtPrice !== undefined ? `₹${numericCompareAtPrice.toFixed(2)}` : undefined,
+          description: description.trim(),
+          mainImage,
+          shippingNotice: "Shipping details will be provided at checkout.",
+          quantity: numericQuantity,
+          showInBestSellers,
+          media: uploadedMedia,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Unable to save the product");
+      }
+
+      router.push("/dashboard/products");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to save the product");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={saveProduct}>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="flex items-center gap-2 text-lg font-semibold"><Tag className="size-4" /><ChevronRight className="size-4 text-black/45" />Add product</h1>
+        <button type="submit" disabled={isSaving} className="rounded-lg bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:bg-black/15">
+          {isSaving ? "Saving…" : "Save"}
+        </button>
+      </div>
+      {message ? <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{message}</p> : null}
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_318px]">
+        <div>
+          <Card title="Product details">
+            <div className="space-y-4 px-4 pb-4">
+              <label className="grid gap-1.5 text-sm text-black/75">
+                <span>Title</span>
+                <input value={title} onChange={(event) => setTitle(event.target.value)} className={inputClass} placeholder="Short sleeve t-shirt" />
+              </label>
+              <label className="grid gap-1.5 text-sm text-black/75">
+                <span>Category</span>
+                <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className={inputClass}>
+                  <option value="">Choose a product category</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.title}</option>)}
+                </select>
+                <span className="text-xs text-black/60">Determines tax rates and helps customers find the product.</span>
+              </label>
+            </div>
+          </Card>
+
+          <Card title="Description" className="mt-4">
+            <div className="px-4 pb-4"><ProductDescriptionEditor value={description} onChange={setDescription} /></div>
+          </Card>
+
+          <Card title="Media" className="mt-4">
+            <div className="px-4 pb-4"><ProductMediaUploader onFilesChange={setMediaFiles} /></div>
+          </Card>
+
+          <Card title="Price" className="mt-4">
+            <div className="grid gap-4 px-4 pb-4 sm:grid-cols-2">
+              <label className="grid gap-1.5 text-sm text-black/75"><span>Price</span><span className="relative block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-black/65">₹</span><input aria-label="Price" value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" className={`${inputClass} pl-7`} /></span></label>
+              <label className="grid gap-1.5 text-sm text-black/75"><span>Compare-at price</span><span className="relative block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-black/65">₹</span><input aria-label="Compare-at price" value={compareAtPrice} onChange={(event) => setCompareAtPrice(event.target.value)} inputMode="decimal" placeholder="0.00" className={`${inputClass} pl-7`} /></span></label>
+            </div>
+          </Card>
+
+          <Card title="Inventory" className="mt-4">
+            <div className="px-4 pb-4"><label className="grid gap-1.5 text-sm text-black/75"><span>Quantity</span><input aria-label="Quantity" type="number" min="0" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="numeric" className={inputClass} /></label><p className="mt-2 text-xs text-black/55">Number of units currently available for sale.</p></div>
+          </Card>
+
+          <ProductVariantsSection />
+          <ProductAdditionalDetailsSection />
+          <Card title="Search engine listing" className="mt-4" actions={<Pencil className="size-4 text-black/55" />}><p className="px-4 pb-5 text-sm text-black/65">{title ? `${title} · ${selectedCategory?.title || "Choose a category"}` : "Add a title and description to see how this product might appear in a search engine listing."}</p></Card>
+        </div>
+
+        <aside className="space-y-4">
+          <Card title="Status"><div className="px-4 pb-4"><select value={status} onChange={(event) => setStatus(event.target.value)} className={inputClass}><option value="active">Active</option><option value="draft">Draft</option></select><p className="mt-2 text-xs text-black/55">Status will be stored when product publishing is added.</p></div></Card>
+          <Card title="Home page"><div className="px-4 pb-4"><HomeShowcaseToggle checked={showInBestSellers} onCheckedChange={setShowInBestSellers} /></div></Card>
+          <Card title="Product organization"><div className="space-y-4 px-4 pb-4 text-sm"><div><p className="text-black/75">Category</p><p className="mt-1 text-black/55">{selectedCategory?.title || "Choose a category in Product details."}</p></div><div><p className="text-black/75">Collections and tags</p><p className="mt-1 text-black/55">Available when those records are added to the database.</p></div></div></Card>
+        </aside>
+      </div>
+    </form>
+  );
+}

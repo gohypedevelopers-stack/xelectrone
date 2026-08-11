@@ -13,7 +13,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 export const metadata: Metadata = {
-  title: "Reports | SUOS Admin",
+  title: "Reports | Xelectron Admin",
   description: "Browse store analytics reports.",
 }
 

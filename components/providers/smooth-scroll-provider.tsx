@@ -21,6 +21,7 @@ export default function SmoothScrollProvider({ children }: SmoothScrollProviderP
       smoothWheel: true,
       wheelMultiplier: 1,
       touchMultiplier: 1.5,
+      prevent: (node) => node.closest("[data-lenis-prevent]") !== null,
     });
 
     // Synchronize Lenis scroll position with GSAP ScrollTrigger

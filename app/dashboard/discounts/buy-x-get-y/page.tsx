@@ -6,8 +6,8 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 export const metadata: Metadata = {
-  title: "Create Buy X get Y discount | SUOS Admin",
-  description: "Create a Buy X get Y discount for SUOS.",
+  title: "Create Buy X get Y discount | Xelectron Admin",
+  description: "Create a Buy X get Y discount for Xelectron.",
 }
 
 export default function BuyXGetYPage() {

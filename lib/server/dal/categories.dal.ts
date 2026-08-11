@@ -8,6 +8,7 @@ export async function getAllCategories() {
     include: {
       _count: { select: { products: true } },
       children: { select: { id: true, title: true, slug: true } },
+      products: { select: { mainImage: true }, take: 1, orderBy: { createdAt: "desc" } },
     },
     orderBy: { title: "asc" },
   });

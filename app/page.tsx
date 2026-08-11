@@ -12,18 +12,138 @@ import VerifiedReviewsSection from "@/components/home/verified-reviews-section";
 import BrandMarqueeSection from "@/components/home/brand-marquee-section";
 import BlogSection from "@/components/home/blog-section";
 import Footer from "@/components/footer/footer";
+import type { BestSellerItem } from "@/components/home/best-sellers-data";
+import type { StorefrontProduct } from "@/components/home/product-showcase-section";
+import * as productsController from "@/lib/server/controllers/products.controller";
+import * as categoriesController from "@/lib/server/controllers/categories.controller";
+import * as dealOfTheDayController from "@/lib/server/controllers/deal-of-the-day.controller";
+import { defaultDealOfTheDay } from "@/lib/shared/default-deal-of-the-day";
 
-export default function Home() {
+export default async function Home() {
+  let selectedBestSellers: BestSellerItem[] = [];
+  let storefrontCategories: Array<{ id: string; title: string; slug: string; image: string }> = [];
+  let featuredProducts: StorefrontProduct[] = [];
+  let dealOfTheDay: React.ComponentProps<typeof DealOfTheDaySection>["deal"] | null = {
+    title: defaultDealOfTheDay.title,
+    description: defaultDealOfTheDay.description,
+    image: defaultDealOfTheDay.image,
+    badge: defaultDealOfTheDay.badge,
+    features: [...defaultDealOfTheDay.features],
+    unitsLeft: defaultDealOfTheDay.unitsLeft,
+    totalUnits: defaultDealOfTheDay.totalUnits,
+    endsAt: null,
+    product: {
+      slug: defaultDealOfTheDay.productSlug,
+      name: defaultDealOfTheDay.title,
+      price: defaultDealOfTheDay.dealPrice,
+      oldPrice: defaultDealOfTheDay.compareAtPrice,
+    },
+  };
+
+  try {
+    const products = await productsController.listBestSellerProducts();
+    selectedBestSellers = products.map((product) => ({
+      // The carousel uses the product slug for its link and stable slide key.
+      id: product.slug,
+      slug: product.slug,
+      name: product.name,
+      price: product.price,
+      oldPrice: product.oldPrice || undefined,
+      discount: product.discount || undefined,
+      description: product.description,
+      image: product.mainImage || "/category-smartphone.png",
+      imageAlt: product.name,
+      specs: product.specs.length > 0
+        ? product.specs.slice(0, 3).map((spec) => ({ label: spec.label, value: spec.value }))
+        : [
+            { label: "Category", value: product.category?.title || "Electronics" },
+            { label: "Customer rating", value: `${product.rating.toFixed(1)} / 5` },
+            { label: "Availability", value: product.quantity > 0 ? "In stock" : "Out of stock" },
+          ],
+    }));
+  } catch {
+    // The existing Best Sellers content stays visible if the catalog is unavailable.
+  }
+
+  try {
+    const products = await productsController.listProducts();
+    // Best Seller products have their own home-page section, so do not repeat
+    // them in either of the regular catalogue sections below.
+    featuredProducts = products.filter((product) => !product.showInBestSellers).map((product) => ({
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      description: product.description,
+      image: product.mainImage,
+      hoverImage:
+        product.media.find((media) => media.url !== product.mainImage)?.url ?? null,
+      price: product.price,
+      oldPrice: product.oldPrice,
+      rating: product.rating,
+      reviews: product.reviewsCount,
+      category: product.category?.title || "XElectron",
+      discount: product.discount,
+    }));
+  } catch {
+    // Do not show the static sample products when the dashboard catalog is unavailable.
+  }
+
+  try {
+    const [savedDeal, activeDeal] = await Promise.all([
+      dealOfTheDayController.getDealOfTheDay(),
+      dealOfTheDayController.getActiveDealOfTheDay(),
+    ]);
+
+    // Keep the default offer only until the first dashboard deal is saved.
+    // Once a deal exists, an inactive or expired deal must hide the section.
+    if (savedDeal && !activeDeal) {
+      dealOfTheDay = null;
+    } else if (activeDeal) {
+      dealOfTheDay = {
+        title: activeDeal.title,
+        description: activeDeal.description,
+        image: activeDeal.image || activeDeal.product.mainImage,
+        badge: activeDeal.badge,
+        features: activeDeal.features,
+        unitsLeft: activeDeal.unitsLeft,
+        totalUnits: activeDeal.totalUnits,
+        endsAt: activeDeal.endsAt.toISOString(),
+        product: {
+          slug: activeDeal.product.slug,
+          name: activeDeal.product.name,
+          price: activeDeal.dealPrice || activeDeal.product.price,
+          oldPrice: activeDeal.compareAtPrice || activeDeal.product.oldPrice,
+        },
+      };
+    }
+  } catch {
+    // The home page remains available while the deal is not configured.
+  }
+
+  try {
+    const categories = await categoriesController.listCategories();
+    storefrontCategories = categories
+      .filter((category) => category.visible)
+      .map((category) => ({
+        id: category.id,
+        title: category.title,
+        slug: category.slug,
+        image: category.image ?? category.products[0]?.mainImage ?? "/category-smartphone.png",
+      }));
+  } catch {
+    // Keep the rest of the home page available if the category catalog is unavailable.
+  }
+
   return (
     <main className="min-h-screen bg-white text-[#1d1d1f]">
       <Navbar />
       <HeroShowcase />
-      <CategorySection />
-      <ProductShowcaseSection />
-      <BestSellersSection />
-      <DealOfTheDaySection />
+      <CategorySection categories={storefrontCategories} />
+      <ProductShowcaseSection products={featuredProducts} />
+      <BestSellersSection additionalItems={selectedBestSellers} />
+      {dealOfTheDay ? <DealOfTheDaySection deal={dealOfTheDay} /> : null}
       <BrandSetupSection />
-      <NewProductCardsSection />
+      <NewProductCardsSection products={featuredProducts.slice(4)} />
       <CreatorVideosSection />
       <BrandMarqueeSection />
       <VerifiedReviewsSection />
