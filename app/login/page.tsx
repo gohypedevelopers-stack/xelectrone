@@ -3,11 +3,12 @@
 import { useState, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/navbar/navbar";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Eye, EyeOff } from "lucide-react";
 
 function AuthForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
@@ -20,19 +21,63 @@ function AuthForm() {
     rememberMe: false,
     agreeTerms: false,
   });
-  const [submitted, setSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      alert(
-        mode === "login"
-          ? "Successfully signed in to your XElectron account!"
-          : "Account created successfully! Welcome to XElectron."
-      );
-    }, 600);
+    setErrorMsg(null);
+
+    if (mode === "signup" && formData.password !== formData.confirmPassword) {
+      setErrorMsg("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (mode === "login") {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+          }),
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Login failed. Please check your credentials.");
+        }
+
+        router.replace(data.redirectTo || "/");
+        router.refresh();
+      } else {
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: formData.fullName,
+            email: formData.email,
+            password: formData.password,
+          }),
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Failed to create account.");
+        }
+
+        router.replace(data.redirectTo || "/");
+        router.refresh();
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "An unexpected error occurred.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,6 +108,12 @@ function AuthForm() {
                   ? "Save your favourites, follow your orders, and receive access to our latest edits."
                   : "Access your saved products, track your orders, and manage your member profile."}
               </p>
+
+              {errorMsg && (
+                <div className="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+                  {errorMsg}
+                </div>
+              )}
             </div>
 
             {/* Form */}
@@ -108,34 +159,62 @@ function AuthForm() {
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-900 mb-1.5">
                       PASSWORD
                     </label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="8+ characters"
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      className="w-full rounded-none border border-slate-900 bg-white py-3 px-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        placeholder="8+ characters"
+                        value={formData.password}
+                        onChange={(e) =>
+                          setFormData({ ...formData, password: e.target.value })
+                        }
+                        className="w-full rounded-none border border-slate-900 bg-white py-3 pl-4 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-900 mb-1.5 truncate">
                       CONFIRM PASSWORD
                     </label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="Repeat password"
-                      value={formData.confirmPassword}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          confirmPassword: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-none border border-slate-900 bg-white py-3 px-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
+                        placeholder="Repeat password"
+                        value={formData.confirmPassword}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            confirmPassword: e.target.value,
+                          })
+                        }
+                        className="w-full rounded-none border border-slate-900 bg-white py-3 pl-4 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -153,16 +232,30 @@ function AuthForm() {
                       Forgot password?
                     </button>
                   </div>
-                  <input
-                    type="password"
-                    required
-                    placeholder="8+ characters"
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                    className="w-full rounded-none border border-slate-900 bg-white py-3 px-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="8+ characters"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      className="w-full rounded-none border border-slate-900 bg-white py-3 pl-4 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="size-4 stroke-[1.8]" />
+                      ) : (
+                        <Eye className="size-4 stroke-[1.8]" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -212,11 +305,11 @@ function AuthForm() {
               <div className="pt-4">
                 <button
                   type="submit"
-                  disabled={submitted}
+                  disabled={loading}
                   className="group relative flex w-full items-center justify-between rounded-none bg-black py-4 px-6 text-xs font-bold uppercase tracking-[0.2em] text-white transition-all hover:bg-slate-800 disabled:opacity-70"
                 >
                   <span className="mx-auto pl-4">
-                    {mode === "signup" ? "CREATE ACCOUNT" : "SIGN IN"}
+                    {loading ? "VERIFYING..." : mode === "signup" ? "CREATE ACCOUNT" : "SIGN IN"}
                   </span>
                   <ArrowUpRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </button>

@@ -17,6 +17,12 @@ export async function getUserById(id: string) {
   });
 }
 
+export async function getUserByIdWithPassword(id: string) {
+  return db.user.findUnique({
+    where: { id },
+  });
+}
+
 export async function getUserByEmail(email: string) {
   return db.user.findUnique({
     where: { email },
@@ -62,7 +68,7 @@ export async function createUser(data: CreateUserInput) {
 
 export async function updateUser(
   id: string,
-  data: { name?: string; email?: string; phone?: string }
+  data: { name?: string; email?: string; phone?: string; passwordHash?: string }
 ) {
   return db.user.update({
     where: { id },

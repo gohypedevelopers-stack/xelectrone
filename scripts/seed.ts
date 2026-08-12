@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, UserRole } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import "dotenv/config";
 
 const adapter = new PrismaPg({
@@ -375,6 +376,35 @@ async function main() {
     await prisma.category.update({ where: { id: cat.id }, data: { productCount: count } });
     console.log(`  ✅ ${cat.title}: ${count} products`);
   }
+
+  // 4. Create default users (Admin & Customer)
+  console.log("\n👤 Creating default users...");
+  const adminPasswordHash = await bcrypt.hash("adminpassword123", 10);
+  const customerPasswordHash = await bcrypt.hash("userpassword123", 10);
+
+  const adminUser = await prisma.user.upsert({
+    where: { email: "admin@xelectron.com" },
+    update: { role: UserRole.ADMIN },
+    create: {
+      name: "Admin User",
+      email: "admin@xelectron.com",
+      passwordHash: adminPasswordHash,
+      role: UserRole.ADMIN,
+    },
+  });
+  console.log(`  ✅ Admin User: ${adminUser.email} (Role: ${adminUser.role})`);
+
+  const customerUser = await prisma.user.upsert({
+    where: { email: "user@xelectron.com" },
+    update: { role: UserRole.CUSTOMER },
+    create: {
+      name: "Customer User",
+      email: "user@xelectron.com",
+      passwordHash: customerPasswordHash,
+      role: UserRole.CUSTOMER,
+    },
+  });
+  console.log(`  ✅ Customer User: ${customerUser.email} (Role: ${customerUser.role})`);
 
   console.log("\n🎉 Seed completed successfully!");
 }

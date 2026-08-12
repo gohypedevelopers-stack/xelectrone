@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireAdmin } from "@/lib/server/dal/auth";
+import { requireAdmin, AuthError } from "@/lib/server/dal/auth";
 import * as dealOfTheDayController from "@/lib/server/controllers/deal-of-the-day.controller";
 
 export async function GET() {
@@ -22,6 +22,9 @@ export async function PUT(request: NextRequest) {
     revalidatePath("/dashboard/deal-of-the-day");
     return NextResponse.json({ success: true, data: deal });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    }
     const message = error instanceof Error ? error.message : "Could not save the deal";
     return NextResponse.json({ success: false, error: message }, { status: 400 });
   }
