@@ -10,6 +10,7 @@ export async function getAllProducts() {
       specs: true,
       media: { orderBy: { sortOrder: "asc" } },
       category: { select: { id: true, title: true, slug: true } },
+      dealOfTheDay: true,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -25,6 +26,7 @@ export async function getBestSellerProducts() {
       specs: true,
       media: { orderBy: { sortOrder: "asc" } },
       category: { select: { id: true, title: true, slug: true } },
+      dealOfTheDay: true,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -39,6 +41,7 @@ export async function getProductById(id: string) {
       specs: true,
       media: { orderBy: { sortOrder: "asc" } },
       category: { select: { id: true, title: true, slug: true } },
+      dealOfTheDay: true,
     },
   });
 }
@@ -52,6 +55,7 @@ export async function getProductBySlug(slug: string) {
       specs: true,
       media: { orderBy: { sortOrder: "asc" } },
       category: { select: { id: true, title: true, slug: true } },
+      dealOfTheDay: true,
     },
   });
 }
@@ -65,6 +69,7 @@ export async function getProductsByCategory(categorySlug: string) {
       specs: true,
       media: { orderBy: { sortOrder: "asc" } },
       category: { select: { id: true, title: true, slug: true } },
+      dealOfTheDay: true,
     },
   });
 }
@@ -83,6 +88,7 @@ export async function searchProducts(query: string) {
       specs: true,
       media: { orderBy: { sortOrder: "asc" } },
       category: { select: { id: true, title: true, slug: true } },
+      dealOfTheDay: true,
     },
   });
 }
@@ -149,6 +155,7 @@ export async function createProduct(data: CreateProductInput) {
       specs: true,
       media: { orderBy: { sortOrder: "asc" } },
       category: { select: { id: true, title: true, slug: true } },
+      dealOfTheDay: true,
     },
   });
 }
@@ -189,6 +196,7 @@ export async function updateProduct(
       specs: true,
       media: { orderBy: { sortOrder: "asc" } },
       category: { select: { id: true, title: true, slug: true } },
+      dealOfTheDay: true,
     },
   });
 }

@@ -400,7 +400,7 @@ export const productsCatalog: Record<string, ProductDetailItem> = {
       { label: "Connectivity", value: "WiFi + Bluetooth 5.2 + HDMI" },
       { label: "Projection Size", value: '40" to 220" Screen' },
     ],
-    shippingNotice: "Free express shipping across India & 1-Year Brand Warranty",
+shippingNotice: "Free express shipping across India & 1-Year Brand Warranty",
     mainImage: "/product-black-projector-card.png",
   },
 };
@@ -411,7 +411,10 @@ export type SimilarProductCard = {
   name: string;
   category: string;
   price: string;
+  oldPrice?: string;
+  discount?: string;
   image: string;
+  hoverImage?: string;
   alt: string;
   swatches: string[];
 };
@@ -447,16 +450,22 @@ export function getSimilarProducts(currentId?: string, limit = 4): SimilarProduc
       return true;
     })
     .slice(0, limit)
-    .map((product) => ({
-      id: product.id,
-      slug: product.slug,
-      name: product.name,
-      category: product.category,
-      price: product.price,
-      image: product.mainImage,
-      alt: product.name,
-      swatches: product.colors.map((color) => color.bg).slice(0, 3),
-    }));
+    .map((product) => {
+      const hover = product.images?.[1] || (product.images?.[0] && product.images[0] !== product.mainImage ? product.images[0] : undefined);
+      return {
+        id: product.id,
+        slug: product.slug,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        oldPrice: product.oldPrice,
+        discount: product.discount,
+        image: product.mainImage,
+        hoverImage: hover,
+        alt: product.name,
+        swatches: product.colors.map((color) => color.bg).slice(0, 3),
+      };
+    });
 }
 
 export const defaultProduct = productsCatalog["yuqos-neosound-flex"];

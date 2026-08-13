@@ -1,16 +1,48 @@
 import * as productsDal from "@/lib/server/dal/products.dal";
 import type { CreateProductInput } from "@/lib/server/dal/products.dal";
+import { parsePriceNumber } from "@/lib/format-price";
+
+// ─── Price Override Helper ───────────────────────────────────────────────────
+
+function applyEffectivePrice(product: any) {
+  if (!product) return product;
+  
+  let effectivePrice = product.price;
+  let effectiveOldPrice = product.oldPrice;
+  
+  if (
+    product.dealOfTheDay &&
+    product.dealOfTheDay.isActive &&
+    (!product.dealOfTheDay.endsAt || new Date(product.dealOfTheDay.endsAt) > new Date())
+  ) {
+    effectivePrice = product.dealOfTheDay.dealPrice || product.price;
+    effectiveOldPrice = product.dealOfTheDay.compareAtPrice || (product.price !== effectivePrice ? product.price : product.oldPrice);
+  }
+  
+  let discount = product.discount;
+  if (effectivePrice && effectiveOldPrice && (effectivePrice !== product.price || !discount)) {
+    const numPrice = parsePriceNumber(effectivePrice);
+    const numOld = parsePriceNumber(effectiveOldPrice);
+    if (numOld > 0 && numPrice < numOld) {
+      discount = `${Math.round((1 - numPrice / numOld) * 100)}% off`;
+    }
+  }
+
+  return { ...product, price: effectivePrice, oldPrice: effectiveOldPrice, discount: discount || product.discount };
+}
 
 // ─── List / Search ───────────────────────────────────────────────────────────
 
 export async function listProducts(searchQuery?: string, categorySlug?: string) {
+  let products;
   if (searchQuery) {
-    return productsDal.searchProducts(searchQuery);
+    products = await productsDal.searchProducts(searchQuery);
+  } else if (categorySlug) {
+    products = await productsDal.getProductsByCategory(categorySlug);
+  } else {
+    products = await productsDal.getAllProducts();
   }
-  if (categorySlug) {
-    return productsDal.getProductsByCategory(categorySlug);
-  }
-  return productsDal.getAllProducts();
+  return products.map(applyEffectivePrice);
 }
 
 // ─── Get One ─────────────────────────────────────────────────────────────────
@@ -18,8 +50,9 @@ export async function listProducts(searchQuery?: string, categorySlug?: string) 
 export async function getProduct(idOrSlug: string) {
   // Try by ID first, then by slug
   const byId = await productsDal.getProductById(idOrSlug);
-  if (byId) return byId;
-  return productsDal.getProductBySlug(idOrSlug);
+  if (byId) return applyEffectivePrice(byId);
+  const bySlug = await productsDal.getProductBySlug(idOrSlug);
+  return applyEffectivePrice(bySlug);
 }
 
 // ─── Create ──────────────────────────────────────────────────────────────────

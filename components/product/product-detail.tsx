@@ -34,21 +34,10 @@ function toProductDetailItem(product: any, activeDeal?: any): ProductDetailItem 
   let priceStr = typeof product.price === "number" ? `₹${product.price.toLocaleString("en-IN")}` : String(product.price);
   let oldPriceStr = product.oldPrice ? (typeof product.oldPrice === "number" ? `₹${product.oldPrice.toLocaleString("en-IN")}` : String(product.oldPrice)) : undefined;
 
-  const isDealActive = activeDeal && (activeDeal.productId === product.id || activeDeal.product?.slug === product.slug);
-  if (isDealActive && activeDeal.dealPrice) {
-    priceStr = activeDeal.dealPrice;
-    oldPriceStr = activeDeal.compareAtPrice || product.price;
-  }
 
-  // Ensure priceStr is the lower discounted price and oldPriceStr is the higher original price
+
   const priceVal = priceToNumber(priceStr);
   const oldPriceVal = oldPriceStr ? priceToNumber(oldPriceStr) : 0;
-
-  if (oldPriceVal > 0 && priceVal > oldPriceVal && oldPriceStr) {
-    const temp = priceStr;
-    priceStr = oldPriceStr;
-    oldPriceStr = temp;
-  }
 
   return {
     id: product.id,

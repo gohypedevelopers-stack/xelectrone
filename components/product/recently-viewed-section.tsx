@@ -14,7 +14,10 @@ type RecentProductItem = {
   name: string;
   category: string;
   price: number | string;
+  oldPrice?: number | string | null;
+  discount?: string | null;
   image: string;
+  hoverImage?: string | null;
 };
 
 export default function RecentlyViewedSection({
@@ -38,14 +41,21 @@ export default function RecentlyViewedSection({
         const response = await fetch("/api/products");
         const payload = await response.json();
         if (isCurrent && response.ok && payload.success && Array.isArray(payload.data)) {
-          const allProductsList: RecentProductItem[] = payload.data.map((p: any) => ({
-            id: p.id,
-            slug: p.slug || p.id,
-            name: p.name,
-            category: p.category?.title || "XElectron",
-            price: p.price,
-            image: p.mainImage || p.media?.[0]?.url || "/category-smartphone.png",
-          }));
+          const allProductsList: RecentProductItem[] = payload.data.map((p: any) => {
+            const primaryImg = p.mainImage || p.media?.[0]?.url || "/category-smartphone.png";
+            const hoverImg = p.media?.[1]?.url || (p.media?.[0]?.url && p.media[0].url !== primaryImg ? p.media[0].url : null);
+            return {
+              id: p.id,
+              slug: p.slug || p.id,
+              name: p.name,
+              category: p.category?.title || "XElectron",
+              price: p.price,
+              oldPrice: p.oldPrice,
+              discount: p.discount,
+              image: primaryImg,
+              hoverImage: hoverImg,
+            };
+          });
 
           const allProductsMap = new Map(allProductsList.map((p) => [p.id, p]));
 
@@ -104,20 +114,45 @@ export default function RecentlyViewedSection({
                 {product.name}
               </h3>
 
-              <div className="relative mt-3 flex flex-1 items-center justify-center overflow-hidden rounded-[10px] bg-white py-3 sm:py-4">
+              <div className="relative mt-3 flex flex-1 items-center justify-center overflow-hidden rounded-[10px] bg-white py-3 sm:py-4 min-h-[180px] sm:min-h-[240px]">
                 <Image
                   src={product.image}
                   alt={product.name}
-                  width={360}
-                  height={360}
-                  className="h-[180px] w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03] sm:h-[240px]"
+                  fill
+                  className={`object-contain p-2 transition-all duration-300 ${
+                    product.hoverImage ? "opacity-100 group-hover:opacity-0" : "group-hover:scale-105"
+                  }`}
+                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                 />
+                {product.hoverImage && (
+                  <Image
+                    src={product.hoverImage}
+                    alt={`${product.name} alternate`}
+                    fill
+                    className="object-contain p-2 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105"
+                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                  />
+                )}
               </div>
 
               <div className="mt-4 flex items-end justify-between gap-3">
-                <span className="text-[15px] font-medium tracking-tight text-slate-900 sm:text-[18px]">
-                  {formatINR(product.price)}
-                </span>
+                <div className="flex flex-col">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[15px] font-bold tracking-tight text-slate-900 sm:text-[18px]">
+                      {formatINR(product.price)}
+                    </span>
+                    {product.oldPrice && (
+                      <span className="text-[11px] text-slate-400 line-through sm:text-[13px]">
+                        {formatINR(product.oldPrice)}
+                      </span>
+                    )}
+                  </div>
+                  {product.discount && (
+                    <span className="text-[10px] font-bold text-emerald-600 mt-0.5">
+                      {product.discount}
+                    </span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={(event) => {
@@ -126,7 +161,7 @@ export default function RecentlyViewedSection({
                     addItem({ id: product.id, slug: product.slug, name: product.name, price: priceToNumber(product.price), image: product.image, category: product.category });
                     router.push(`/checkout?product=${encodeURIComponent(product.slug || product.id)}`);
                   }}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-900 transition-colors hover:border-[#0a7ae6] hover:bg-[#0a7ae6] hover:text-white sm:px-4 sm:py-2 sm:text-[12px]"
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-900 transition-colors hover:border-[#0a7ae6] hover:bg-[#0a7ae6] hover:text-white sm:px-4 sm:py-2 sm:text-[12px] shrink-0"
                 >
                   Buy
                 </button>

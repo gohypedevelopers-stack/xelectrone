@@ -160,18 +160,14 @@ export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTh
         <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-12 lg:items-stretch">
           {/* LEFT COLUMN: LIFESTYLE IMAGE BANNER */}
           <div
-            className={`relative overflow-hidden rounded-lg sm:rounded-xl border transition-all duration-700 lg:col-span-6 flex flex-col h-[210px] sm:h-full sm:min-h-[460px] lg:min-h-[550px] ${
-              isWhite
-                ? "border-slate-200/80 bg-slate-900"
-                : "border-slate-800/90 bg-slate-950"
-            }`}
+            className="relative overflow-hidden rounded-lg sm:rounded-xl transition-all duration-700 lg:col-span-6 flex flex-col h-[210px] sm:h-full sm:min-h-[460px] lg:min-h-[550px] bg-transparent"
           >
             <div className="relative h-full w-full min-h-[210px] sm:min-h-[460px] lg:min-h-[550px]">
               <Image
                 src={deal.image}
                 alt={deal.title}
                 fill
-                className="object-cover transition-transform duration-700 hover:scale-105"
+                className="object-contain transition-transform duration-700 hover:scale-105"
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 priority
               />

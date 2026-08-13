@@ -10,6 +10,7 @@ import { HomeShowcaseToggle } from "@/components/admin/products/home-showcase-to
 import { ProductMediaUploader } from "@/components/admin/products/product-media-uploader";
 import { ProductVariantsSection } from "@/components/admin/products/product-variants-section";
 import { uploadProductImage } from "@/lib/client/upload-product-image";
+import { parsePriceNumber } from "@/lib/format-price";
 
 export type ProductCategoryOption = {
   id: string;
@@ -170,6 +171,13 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
               <label className="grid gap-1.5 text-sm text-black/75"><span>Price</span><span className="relative block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-black/65">₹</span><input aria-label="Price" value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" className={`${inputClass} pl-7`} /></span></label>
               <label className="grid gap-1.5 text-sm text-black/75"><span>Compare-at price</span><span className="relative block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-black/65">₹</span><input aria-label="Compare-at price" value={compareAtPrice} onChange={(event) => setCompareAtPrice(event.target.value)} inputMode="decimal" placeholder="0.00" className={`${inputClass} pl-7`} /></span></label>
             </div>
+            {parsePriceNumber(price) > parsePriceNumber(compareAtPrice) && parsePriceNumber(compareAtPrice) > 0 && (
+              <div className="px-4 pb-4">
+                <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                  Warning: The selling price is higher than the compare-at price. Typically, the compare-at price should be the higher, original MRP.
+                </p>
+              </div>
+            )}
           </Card>
 
           <Card title="Inventory" className="mt-4">

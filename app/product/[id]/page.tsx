@@ -24,16 +24,6 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
     ? (activeDeal.compareAtPrice || (dbProduct && dbProduct.price !== effectivePrice ? dbProduct.price : dbProduct?.oldPrice))
     : dbProduct?.oldPrice;
 
-  if (effectivePrice && effectiveOldPrice) {
-    const numPrice = parsePriceNumber(effectivePrice);
-    const numOld = parsePriceNumber(effectiveOldPrice);
-    if (numOld > 0 && numPrice > numOld) {
-      const temp = effectivePrice;
-      effectivePrice = effectiveOldPrice;
-      effectiveOldPrice = temp;
-    }
-  }
-
   const dashboardProducts = dbProduct ? await productsController.listProducts() : [];
   const relatedProducts: SimilarProductCard[] = dbProduct
     ? [
@@ -55,6 +45,8 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
           name: relatedProduct.name,
           category: relatedProduct.category?.title || "XElectron",
           price: relatedProduct.price,
+          oldPrice: relatedProduct.oldPrice,
+          discount: relatedProduct.discount,
           image: relatedProduct.mainImage || relatedProduct.media[0]?.url || "/category-smartphone.png",
           alt: relatedProduct.name,
           swatches: relatedProduct.colors.map((color: any) => color.bgHex).slice(0, 3),
