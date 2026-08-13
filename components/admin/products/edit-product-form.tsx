@@ -11,6 +11,7 @@ import { HomeShowcaseToggle } from "@/components/admin/products/home-showcase-to
 import { ProductMediaUploader } from "@/components/admin/products/product-media-uploader";
 import { uploadProductImage } from "@/lib/client/upload-product-image";
 import { parsePriceNumber } from "@/lib/format-price";
+import { ProductFeaturesSection } from "@/components/admin/products/product-features-section";
 
 type CategoryOption = {
   id: string;
@@ -30,6 +31,7 @@ type EditableProduct = {
   showInBestSellers: boolean;
   category: { title: string } | null;
   media: { id: string; url: string; sortOrder: number }[];
+  features?: { featureText: string }[];
 };
 
 type ExistingMediaItem = {
@@ -94,6 +96,7 @@ export function EditProductForm({ product, categories }: { product: EditableProd
   const [orderedMedia, setOrderedMedia] = useState<ExistingMediaItem[]>(() => getExistingMedia(product));
   const [draggedMediaIndex, setDraggedMediaIndex] = useState<number | null>(null);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [features, setFeatures] = useState<string[]>(() => product.features?.map(f => f.featureText) || []);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const isRestoringHistoryRef = useRef(false);
@@ -108,8 +111,11 @@ export function EditProductForm({ product, categories }: { product: EditableProd
       initialMedia.length !== orderedMedia.length ||
       initialMedia.some((media, index) => {
         const currentMedia = orderedMedia[index];
-        return media.id !== currentMedia?.id || media.url !== currentMedia.url;
+        return currentMedia?.url !== media.url || currentMedia?.id !== media.id;
       });
+    const featuresChanged = 
+      features.length !== (product.features?.length || 0) ||
+      features.some((f, i) => f !== product.features?.[i]?.featureText);
 
     return (
       title !== product.name ||
@@ -120,9 +126,10 @@ export function EditProductForm({ product, categories }: { product: EditableProd
       quantity !== String(product.quantity) ||
       showInBestSellers !== product.showInBestSellers ||
       mediaChanged ||
+      featuresChanged ||
       mediaFiles.length > 0
     );
-  }, [categoryId, compareAtPrice, description, mediaFiles.length, orderedMedia, price, product, quantity, showInBestSellers, title]);
+  }, [categoryId, compareAtPrice, description, features, mediaFiles.length, orderedMedia, price, product, quantity, showInBestSellers, title]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -255,6 +262,7 @@ export function EditProductForm({ product, categories }: { product: EditableProd
           mediaOrder: orderedMedia.flatMap((media, sortOrder) =>
             media.id ? [{ id: media.id, sortOrder }] : []
           ),
+          features: features.map(f => f.trim()).filter(f => f !== ""),
         }),
       });
       const result = await response.json();
@@ -296,6 +304,7 @@ export function EditProductForm({ product, categories }: { product: EditableProd
             </div>
           </Card>
           <Card title="Description"><ProductDescriptionEditor value={description} onChange={setDescription} /></Card>
+          <ProductFeaturesSection features={features} onChange={setFeatures} />
           <Card title="Media">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {orderedMedia.map((media, index) => (
@@ -351,9 +360,11 @@ export function EditProductForm({ product, categories }: { product: EditableProd
           <Card title="Inventory">
             <label className="grid gap-1.5 text-sm text-black/75">
               <span>Quantity</span>
-              <input aria-label="Quantity" type="number" min="0" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="numeric" className={inputClass} />
+              <input aria-label="Quantity" type="number" min="0" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="numeric" className={`${inputClass} ${Number(quantity) <= 5 ? "border-red-400 bg-red-50 text-red-700 focus:border-red-500 focus:ring-red-500/20" : ""}`} />
             </label>
-            <p className="mt-2 text-xs text-black/55">Number of units currently available for sale.</p>
+            <p className={`mt-2 text-xs ${Number(quantity) <= 5 ? "text-red-600 font-medium" : "text-black/55"}`}>
+              {Number(quantity) <= 5 ? (Number(quantity) === 0 ? "Out of stock!" : "Low stock warning.") : "Number of units currently available for sale."}
+            </p>
           </Card>
         </div>
 

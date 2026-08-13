@@ -71,15 +71,20 @@ export async function getProductsByCategory(categorySlug: string) {
       category: { select: { id: true, title: true, slug: true } },
       dealOfTheDay: true,
     },
+    orderBy: { createdAt: "desc" },
   });
 }
 
 export async function searchProducts(query: string) {
+  const searchTerm = query.trim();
+  if (!searchTerm) return [];
+
   return db.product.findMany({
     where: {
       OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { description: { contains: query, mode: "insensitive" } },
+        { name: { contains: searchTerm, mode: "insensitive" } },
+        { description: { contains: searchTerm, mode: "insensitive" } },
+        { category: { title: { contains: searchTerm, mode: "insensitive" } } },
       ],
     },
     include: {
@@ -90,18 +95,37 @@ export async function searchProducts(query: string) {
       category: { select: { id: true, title: true, slug: true } },
       dealOfTheDay: true,
     },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getRelatedProducts(categoryId: string, excludeProductId: string, limit = 4) {
+  return db.product.findMany({
+    where: {
+      categoryId,
+      id: { not: excludeProductId },
+    },
+    include: {
+      colors: true,
+      features: true,
+      specs: true,
+      media: { orderBy: { sortOrder: "asc" } },
+      category: { select: { id: true, title: true, slug: true } },
+      dealOfTheDay: true,
+    },
+    take: limit,
   });
 }
 
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
 export type CreateProductInput = {
-  slug: string;
   name: string;
+  slug: string;
   categoryId: string;
   price: string;
-  oldPrice?: string;
-  discount?: string;
+  oldPrice?: string | null;
+  discount?: string | null;
   rating?: number;
   reviewsCount?: string;
   description: string;
@@ -109,14 +133,13 @@ export type CreateProductInput = {
   shippingNotice: string;
   quantity?: number;
   showInBestSellers?: boolean;
-  colors?: { name: string; bgHex: string; borderHex?: string }[];
+  colors?: { name: string; bgHex: string }[];
   features?: string[];
   specs?: { label: string; value: string }[];
   media?: { key: string; url: string; mimeType: string; sortOrder: number }[];
 };
 
-export type UpdateProductInput = {
-  slug?: string;
+export type UpdateProductInput = Partial<CreateProductInput> & {
   name?: string;
   categoryId?: string;
   price?: string;
@@ -164,7 +187,7 @@ export async function updateProduct(
   id: string,
   data: UpdateProductInput
 ) {
-  const { categoryId, newMedia, mediaOrder, removeMediaIds, ...productData } = data;
+  const { categoryId, newMedia, mediaOrder, removeMediaIds, features, ...productData } = data;
 
   const mediaChanges =
     newMedia?.length || mediaOrder?.length || removeMediaIds?.length
@@ -189,6 +212,10 @@ export async function updateProduct(
       ...productData,
       category: categoryId ? { connect: { id: categoryId } } : undefined,
       media: mediaChanges,
+      features: features !== undefined ? {
+        deleteMany: {},
+        create: features.map(f => ({ featureText: f }))
+      } : undefined,
     },
     include: {
       colors: true,
@@ -212,18 +239,11 @@ export async function decrementProductStock(productId: string, quantityToDecreme
     where: { id: productId },
     select: { quantity: true },
   });
-
-  if (!product) return;
-
-  const currentQuantity = typeof product.quantity === "number" ? product.quantity : 0;
-  const newQuantity = Math.max(0, currentQuantity - quantityToDecrement);
+  if (!product) throw new Error("Product not found");
+  if (product.quantity < quantityToDecrement) throw new Error("Insufficient stock");
 
   return db.product.update({
     where: { id: productId },
-    data: { quantity: newQuantity },
+    data: { quantity: { decrement: quantityToDecrement } },
   });
-}
-
-export async function countProducts() {
-  return db.product.count();
 }

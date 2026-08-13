@@ -398,7 +398,7 @@ export function AdminOverview({ data }: { data: DashboardData }) {
           <div className="mt-3 space-y-3 text-xs">
             <div className="flex items-center justify-between"><span className="text-black/70">Low stock</span><span className="rounded-full bg-amber-100 px-2 py-1 font-medium text-amber-800">{currentData.lowStockCount} items</span></div>
             <div className="flex items-center justify-between"><span className="text-black/70">Out of stock</span><span className="rounded-full bg-red-100 px-2 py-1 font-medium text-red-800">{currentData.outOfStockCount} items</span></div>
-            <Link href="/dashboard/products/inventory" className="inline-block pt-1 text-black/55 underline underline-offset-2 hover:text-black">Review inventory</Link>
+            <Link href="/dashboard/products" className="inline-block pt-1 text-black/55 underline underline-offset-2 hover:text-black">Review inventory</Link>
           </div>
         </section>
 

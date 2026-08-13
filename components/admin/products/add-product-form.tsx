@@ -11,6 +11,7 @@ import { ProductMediaUploader } from "@/components/admin/products/product-media-
 import { ProductVariantsSection } from "@/components/admin/products/product-variants-section";
 import { uploadProductImage } from "@/lib/client/upload-product-image";
 import { parsePriceNumber } from "@/lib/format-price";
+import { ProductFeaturesSection } from "@/components/admin/products/product-features-section";
 
 export type ProductCategoryOption = {
   id: string;
@@ -57,6 +58,7 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
   const [showInBestSellers, setShowInBestSellers] = useState(false);
   const [status, setStatus] = useState("active");
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [features, setFeatures] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -113,6 +115,7 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
           quantity: numericQuantity,
           showInBestSellers,
           media: uploadedMedia,
+          features: features.map(f => f.trim()).filter(f => f !== ""),
         }),
       });
       const result = await response.json();
@@ -161,6 +164,8 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
           <Card title="Description" className="mt-4">
             <div className="px-4 pb-4"><ProductDescriptionEditor value={description} onChange={setDescription} /></div>
           </Card>
+          
+          <ProductFeaturesSection features={features} onChange={setFeatures} />
 
           <Card title="Media" className="mt-4">
             <div className="px-4 pb-4"><ProductMediaUploader onFilesChange={setMediaFiles} /></div>
@@ -181,7 +186,15 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
           </Card>
 
           <Card title="Inventory" className="mt-4">
-            <div className="px-4 pb-4"><label className="grid gap-1.5 text-sm text-black/75"><span>Quantity</span><input aria-label="Quantity" type="number" min="0" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="numeric" className={inputClass} /></label><p className="mt-2 text-xs text-black/55">Number of units currently available for sale.</p></div>
+            <div className="px-4 pb-4">
+              <label className="grid gap-1.5 text-sm text-black/75">
+                <span>Quantity</span>
+                <input aria-label="Quantity" type="number" min="0" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="numeric" className={`${inputClass} ${Number(quantity) <= 5 ? "border-red-400 bg-red-50 text-red-700 focus:border-red-500 focus:ring-red-500/20" : ""}`} />
+              </label>
+              <p className={`mt-2 text-xs ${Number(quantity) <= 5 ? "text-red-600 font-medium" : "text-black/55"}`}>
+                {Number(quantity) <= 5 ? (Number(quantity) === 0 ? "Out of stock!" : "Low stock warning.") : "Number of units currently available for sale."}
+              </p>
+            </div>
           </Card>
 
           <ProductVariantsSection />
