@@ -148,14 +148,14 @@ export default function ProductDetail({
             hasOneProductImage ? "sm:grid-cols-1" : "sm:grid-cols-2"
           }`}>
             {productImages.map((image, index) => (
-              <div key={image} className="group relative flex aspect-square min-w-[62vw] shrink-0 snap-start items-center justify-center overflow-hidden rounded-[24px] bg-white p-4 sm:min-w-0 sm:p-6">
+              <div key={image} className="group relative flex aspect-square min-w-[85vw] shrink-0 snap-start items-center justify-center overflow-hidden rounded-[24px] bg-white p-4 sm:min-w-0 sm:p-6">
                 <div className="relative h-full w-full">
                   <Image
                     src={image}
                     alt={`${product.name} image ${index + 1}`}
                     fill
                     className="object-contain object-top p-2 transition-transform duration-500 group-hover:scale-105"
-                    sizes="(min-width: 1024px) 25vw, 62vw"
+                    sizes="(min-width: 1024px) 25vw, 85vw"
                     priority={index === 0}
                   />
                 </div>
@@ -164,11 +164,11 @@ export default function ProductDetail({
           </div>
 
           <div>
-            <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-600">
+            <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-600">
               {product.category}
             </span>
 
-            <h1 className="mt-3 text-xl font-medium leading-snug tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">
+            <h1 className="mt-2.5 text-lg font-medium leading-snug tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">
               {product.name}
             </h1>
 

@@ -62,9 +62,9 @@ function FooterColumn({
 
 export default function Footer() {
   return (
-    <footer className="bg-transparent px-[20px] pt-4 pb-0">
-      {/* CHARCOAL DARK GRAY FOOTER CARD WITH TOP ROUNDED CORNERS */}
-      <div className="mx-auto flex max-w-[1600px] flex-col rounded-t-[20px] rounded-b-none bg-[#18191c] border-t border-x border-slate-800/60 px-6 pt-8 pb-6 text-white shadow-2xl sm:px-8 sm:pt-10 sm:pb-8 lg:px-12 lg:pt-12 lg:pb-10">
+    <footer className="bg-transparent px-0 sm:px-[20px] pt-0 sm:pt-4 pb-0">
+      {/* CHARCOAL DARK GRAY FOOTER CARD WITH TOP ROUNDED CORNERS ON DESKTOP */}
+      <div className="mx-auto flex max-w-[1600px] flex-col rounded-none sm:rounded-t-[20px] bg-[#18191c] border-t sm:border-x border-slate-800/60 px-6 pt-8 pb-6 text-white shadow-2xl sm:px-8 sm:pt-10 sm:pb-8 lg:px-12 lg:pt-12 lg:pb-10">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-12">
           <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 sm:gap-8 lg:flex lg:gap-16 xl:gap-20">
             <FooterColumn title="Product" links={productLinks} className="col-span-1" />
