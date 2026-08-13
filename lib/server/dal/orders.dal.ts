@@ -20,7 +20,7 @@ export async function getOrderById(id: string) {
   return db.order.findUnique({
     where: { id },
     include: {
-      user: { select: { id: true, name: true, email: true } },
+      user: { select: { id: true, name: true, email: true, phone: true } },
       items: {
         include: {
           product: {
@@ -52,6 +52,8 @@ export type CreateOrderInput = {
   userId: string;
   total: number;
   shippingAddress?: string;
+  phone?: string;
+  discountCode?: string;
   items: {
     productId: string;
     quantity: number;
@@ -60,19 +62,21 @@ export type CreateOrderInput = {
 };
 
 export async function createOrder(data: CreateOrderInput) {
-  const { items, ...orderData } = data;
-
   return db.order.create({
     data: {
-      ...orderData,
-      items: { create: items },
+      userId: data.userId,
+      total: data.total,
+      shippingAddress: data.shippingAddress,
+      items: {
+        create: data.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+      },
     },
     include: {
-      items: {
-        include: {
-          product: { select: { id: true, name: true, slug: true } },
-        },
-      },
+      items: true,
     },
   });
 }

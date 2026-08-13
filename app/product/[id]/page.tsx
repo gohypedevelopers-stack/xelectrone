@@ -4,6 +4,8 @@ import Footer from "@/components/footer/footer";
 import ProductDetail from "@/components/product/product-detail";
 import { getProductById, type SimilarProductCard } from "@/lib/products-data";
 import * as productsController from "@/lib/server/controllers/products.controller";
+import * as dealOfTheDayController from "@/lib/server/controllers/deal-of-the-day.controller";
+import { parsePriceNumber } from "@/lib/format-price";
 
 interface DynamicProductPageProps {
   params: Promise<{ id: string }>;
@@ -11,24 +13,43 @@ interface DynamicProductPageProps {
 
 export default async function DynamicProductPage({ params }: DynamicProductPageProps) {
   const { id } = await params;
-  const dbProduct = await productsController.getProduct(id);
+  const [dbProduct, activeDeal] = await Promise.all([
+    productsController.getProduct(id),
+    dealOfTheDayController.getActiveDealOfTheDay(),
+  ]);
+
+  const isDealActiveForProduct = activeDeal && dbProduct && (activeDeal.productId === dbProduct.id || activeDeal.product.slug === dbProduct.slug);
+  let effectivePrice = isDealActiveForProduct && activeDeal.dealPrice ? activeDeal.dealPrice : dbProduct?.price;
+  let effectiveOldPrice = isDealActiveForProduct
+    ? (activeDeal.compareAtPrice || (dbProduct && dbProduct.price !== effectivePrice ? dbProduct.price : dbProduct?.oldPrice))
+    : dbProduct?.oldPrice;
+
+  if (effectivePrice && effectiveOldPrice) {
+    const numPrice = parsePriceNumber(effectivePrice);
+    const numOld = parsePriceNumber(effectiveOldPrice);
+    if (numOld > 0 && numPrice > numOld) {
+      const temp = effectivePrice;
+      effectivePrice = effectiveOldPrice;
+      effectiveOldPrice = temp;
+    }
+  }
 
   const dashboardProducts = dbProduct ? await productsController.listProducts() : [];
   const relatedProducts: SimilarProductCard[] = dbProduct
     ? [
         ...dashboardProducts.filter(
-          (relatedProduct) =>
+          (relatedProduct: any) =>
             relatedProduct.id !== dbProduct.id &&
             relatedProduct.category?.slug === dbProduct.category?.slug,
         ),
         ...dashboardProducts.filter(
-          (relatedProduct) =>
+          (relatedProduct: any) =>
             relatedProduct.id !== dbProduct.id &&
             relatedProduct.category?.slug !== dbProduct.category?.slug,
         ),
       ]
         .slice(0, 4)
-        .map((relatedProduct) => ({
+        .map((relatedProduct: any) => ({
           id: relatedProduct.id,
           slug: relatedProduct.slug,
           name: relatedProduct.name,
@@ -36,7 +57,7 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
           price: relatedProduct.price,
           image: relatedProduct.mainImage || relatedProduct.media[0]?.url || "/category-smartphone.png",
           alt: relatedProduct.name,
-          swatches: relatedProduct.colors.map((color) => color.bgHex).slice(0, 3),
+          swatches: relatedProduct.colors.map((color: any) => color.bgHex).slice(0, 3),
         }))
     : [];
 
@@ -47,22 +68,22 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
         name: dbProduct.name,
         category: dbProduct.category?.title || "Electronics",
         categorySlug: dbProduct.category?.slug || "general",
-        price: dbProduct.price,
-        oldPrice: dbProduct.oldPrice || undefined,
+        price: effectivePrice || dbProduct.price,
+        oldPrice: effectiveOldPrice || undefined,
         discount: dbProduct.discount || undefined,
         rating: dbProduct.rating,
         reviewsCount: `${dbProduct.reviewsCount} Reviews`,
         description: dbProduct.description,
-        colors: dbProduct.colors.map((color) => ({
+        colors: dbProduct.colors.map((color: any) => ({
           name: color.name,
           bg: color.bgHex,
           border: color.borderHex || undefined,
         })),
-        features: dbProduct.features.map((feature) => feature.featureText),
-        specs: dbProduct.specs.map((spec) => ({ label: spec.label, value: spec.value })),
+        features: dbProduct.features.map((feature: any) => feature.featureText),
+        specs: dbProduct.specs.map((spec: any) => ({ label: spec.label, value: spec.value })),
         shippingNotice: dbProduct.shippingNotice,
         mainImage: dbProduct.mainImage,
-        images: [...new Set([dbProduct.mainImage, ...dbProduct.media.map((media) => media.url)])],
+        images: [...new Set([dbProduct.mainImage, ...dbProduct.media.map((media: any) => media.url)])],
       }
     : getProductById(id);
 

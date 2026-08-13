@@ -18,3 +18,10 @@ export function formatINR(value: string | number | null | undefined) {
     maximumFractionDigits: fractionDigits,
   })}`;
 }
+
+export function parsePriceNumber(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === "") return 0;
+  const numericText = String(value).replace(/[^\d.]/g, "");
+  const num = Number(numericText);
+  return Number.isFinite(num) ? num : 0;
+}

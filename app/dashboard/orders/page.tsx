@@ -15,8 +15,20 @@ export const metadata: Metadata = {
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
-  maximumFractionDigits: 2,
+  maximumFractionDigits: 0,
 });
+
+function extractPaymentMethod(address: string | null): string {
+  if (!address) return "—";
+  const match = address.match(/\[Payment:\s*([A-Z_]+)\]/i);
+  if (!match) return "—";
+  const method = match[1].toUpperCase();
+  if (method === "CARD") return "Credit / Debit Card";
+  if (method === "UPI") return "UPI";
+  if (method === "COD") return "Cash on Delivery";
+  if (method === "NETBANKING") return "Net Banking";
+  return method;
+}
 
 const dateFormatter = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
@@ -43,17 +55,17 @@ function statusClass(status: string) {
 
 export default async function OrdersPage() {
   const orders = await getOrdersForDashboard();
-  const activeOrders = orders.filter((order) => order.status !== "CANCELLED");
+  const activeOrders = orders.filter((order: any) => order.status !== "CANCELLED");
   const itemsOrdered = activeOrders.reduce(
-    (sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+    (sum: number, order: any) => sum + order.items.reduce((itemSum: number, item: any) => itemSum + item.quantity, 0),
     0
   );
   const summary = [
     { label: "Orders", value: orders.length },
     { label: "Items ordered", value: itemsOrdered },
-    { label: "Open orders", value: orders.filter((order) => ["PENDING", "CONFIRMED", "PROCESSING"].includes(order.status)).length },
-    { label: "Fulfilled", value: orders.filter((order) => ["SHIPPED", "DELIVERED"].includes(order.status)).length },
-    { label: "Delivered", value: orders.filter((order) => order.status === "DELIVERED").length },
+    { label: "Open orders", value: orders.filter((order: any) => ["PENDING", "CONFIRMED", "PROCESSING"].includes(order.status)).length },
+    { label: "Fulfilled", value: orders.filter((order: any) => ["SHIPPED", "DELIVERED"].includes(order.status)).length },
+    { label: "Delivered", value: orders.filter((order: any) => order.status === "DELIVERED").length },
   ];
 
   return (
@@ -94,27 +106,33 @@ export default async function OrdersPage() {
                 <table className="w-full min-w-[800px] border-collapse text-left text-xs">
                   <thead className="bg-black/[0.025] text-black/65">
                     <tr>
-                      {['Order', 'Date', 'Customer', 'Total', 'Status', 'Items', 'Shipping'].map((heading) => (
-                        <th key={heading} className="border-b border-black/10 px-3 py-2.5 font-medium">{heading}</th>
+                      {['Order', 'Date', 'Customer', 'Total', 'Status', 'Items', 'Payment', 'Shipping'].map((heading) => (
+                        <th key={heading} className={`border-b border-black/10 px-3 py-2.5 font-medium ${heading === 'Total' ? 'text-right' : ''}`}>{heading}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {orders.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-10 text-center text-sm text-black/55">No orders yet. Create your first order to see it here.</td>
+                        <td colSpan={8} className="px-4 py-10 text-center text-sm text-black/55">No orders yet. Create your first order to see it here.</td>
                       </tr>
-                    ) : orders.map((order) => {
-                      const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+                    ) : orders.map((order: any) => {
+                      const itemCount = order.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+                      const cleanAddress = (order.shippingAddress || "").replace(/\[Payment:\s*[A-Z_]+\]/gi, "").trim();
                       return (
-                        <tr key={order.id} className="hover:bg-black/[0.02]">
-                          <td className="border-b border-black/10 px-3 py-2.5 font-medium">{orderReference(order.id)}</td>
-                          <td className="border-b border-black/10 px-3 py-2.5">{dateFormatter.format(order.createdAt)}</td>
-                          <td className="border-b border-black/10 px-3 py-2.5">{order.user.name}</td>
-                          <td className="border-b border-black/10 px-3 py-2.5 text-right">{currencyFormatter.format(order.total)}</td>
-                          <td className="border-b border-black/10 px-3 py-2.5"><span className={`rounded-md px-2 py-1 ${statusClass(order.status)}`}>{formatStatus(order.status)}</span></td>
-                          <td className="border-b border-black/10 px-3 py-2.5">{itemCount} {itemCount === 1 ? "item" : "items"}</td>
-                          <td className="max-w-56 truncate border-b border-black/10 px-3 py-2.5 text-black/65">{order.shippingAddress || "—"}</td>
+                        <tr key={order.id} className="transition-colors hover:bg-black/[0.03] cursor-pointer group">
+                          <td className="border-b border-black/10 px-3 py-2.5 font-semibold text-black">
+                            <Link href={`/dashboard/orders/${order.id}`} className="text-black group-hover:underline font-bold block">
+                              {orderReference(order.id)}
+                            </Link>
+                          </td>
+                          <td className="border-b border-black/10 px-3 py-2.5"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{dateFormatter.format(order.createdAt)}</Link></td>
+                          <td className="border-b border-black/10 px-3 py-2.5 font-medium"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{order.user.name}</Link></td>
+                          <td className="border-b border-black/10 px-3 py-2.5 text-right font-semibold tabular-nums"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{currencyFormatter.format(order.total)}</Link></td>
+                          <td className="border-b border-black/10 px-3 py-2.5"><Link href={`/dashboard/orders/${order.id}`} className="block"><span className={`rounded-md px-2 py-1 font-semibold ${statusClass(order.status)}`}>{formatStatus(order.status)}</span></Link></td>
+                          <td className="border-b border-black/10 px-3 py-2.5"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{itemCount} {itemCount === 1 ? "item" : "items"}</Link></td>
+                          <td className="border-b border-black/10 px-3 py-2.5 font-medium text-black/80"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{extractPaymentMethod(order.shippingAddress)}</Link></td>
+                          <td className="max-w-xs border-b border-black/10 px-3 py-2.5 text-black/80 font-medium leading-normal"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{cleanAddress || "—"}</Link></td>
                         </tr>
                       );
                     })}

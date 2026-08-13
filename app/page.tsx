@@ -42,7 +42,7 @@ export default async function Home() {
 
   try {
     const products = await productsController.listBestSellerProducts();
-    selectedBestSellers = products.map((product) => ({
+    selectedBestSellers = products.map((product: any) => ({
       // The carousel uses the product slug for its link and stable slide key.
       id: product.slug,
       slug: product.slug,
@@ -54,7 +54,7 @@ export default async function Home() {
       image: product.mainImage || "/category-smartphone.png",
       imageAlt: product.name,
       specs: product.specs.length > 0
-        ? product.specs.slice(0, 3).map((spec) => ({ label: spec.label, value: spec.value }))
+        ? product.specs.slice(0, 3).map((spec: any) => ({ label: spec.label, value: spec.value }))
         : [
             { label: "Category", value: product.category?.title || "Electronics" },
             { label: "Customer rating", value: `${product.rating.toFixed(1)} / 5` },
@@ -69,14 +69,14 @@ export default async function Home() {
     const products = await productsController.listProducts();
     // Best Seller products have their own home-page section, so do not repeat
     // them in either of the regular catalogue sections below.
-    featuredProducts = products.filter((product) => !product.showInBestSellers).map((product) => ({
+    featuredProducts = products.filter((product: any) => !product.showInBestSellers).map((product: any) => ({
       id: product.id,
       slug: product.slug,
       name: product.name,
       description: product.description,
       image: product.mainImage,
       hoverImage:
-        product.media.find((media) => media.url !== product.mainImage)?.url ?? null,
+        product.media.find((media: any) => media.url !== product.mainImage)?.url ?? null,
       price: product.price,
       oldPrice: product.oldPrice,
       rating: product.rating,
@@ -99,6 +99,11 @@ export default async function Home() {
     if (savedDeal && !activeDeal) {
       dealOfTheDay = null;
     } else if (activeDeal) {
+      const dealPrice = activeDeal.dealPrice || activeDeal.product.price;
+      const compareAtPrice =
+        activeDeal.compareAtPrice ||
+        (activeDeal.product.price !== dealPrice ? activeDeal.product.price : activeDeal.product.oldPrice);
+
       dealOfTheDay = {
         title: activeDeal.title,
         description: activeDeal.description,
@@ -111,8 +116,8 @@ export default async function Home() {
         product: {
           slug: activeDeal.product.slug,
           name: activeDeal.product.name,
-          price: activeDeal.dealPrice || activeDeal.product.price,
-          oldPrice: activeDeal.compareAtPrice || activeDeal.product.oldPrice,
+          price: dealPrice,
+          oldPrice: compareAtPrice && compareAtPrice !== dealPrice ? compareAtPrice : null,
         },
       };
     }
@@ -123,8 +128,8 @@ export default async function Home() {
   try {
     const categories = await categoriesController.listCategories();
     storefrontCategories = categories
-      .filter((category) => category.visible)
-      .map((category) => ({
+      .filter((category: any) => category.visible)
+      .map((category: any) => ({
         id: category.id,
         title: category.title,
         slug: category.slug,

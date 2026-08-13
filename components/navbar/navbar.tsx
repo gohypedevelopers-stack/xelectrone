@@ -16,6 +16,7 @@ import {
   User,
   PhoneCall,
   Package,
+  LogOut,
   Home as HomeIcon,
   Info,
   Plus,
@@ -33,9 +34,9 @@ function BrandLogo() {
     <Image
       src="/xelectron-logo.png"
       alt="XElectron"
-      width={280}
-      height={80}
-      className="h-14 sm:h-14 md:h-14 lg:h-15 w-auto object-contain object-left"
+      width={360}
+      height={120}
+      className="h-12 sm:h-14 md:h-16 lg:h-18 w-auto object-contain object-left transition-transform duration-200"
       priority
     />
   );
@@ -153,6 +154,8 @@ type SearchDrawerProduct = {
   mainImage?: string | null;
   media?: { url: string }[];
   category?: { title?: string | null } | string | null;
+  showInBestSellers?: boolean;
+  createdAt?: string;
 };
 
 function searchProductCategory(product: SearchDrawerProduct) {
@@ -166,6 +169,10 @@ function searchProductImage(product: SearchDrawerProduct) {
 
 function searchProductPrice(price: SearchDrawerProduct["price"]) {
   return formatINR(price);
+}
+
+function menuProductImage(product: SearchDrawerProduct) {
+  return product.mainImage || product.media?.[0]?.url || "/category-smartphone.png";
 }
 
 export default function Navbar() {
@@ -202,6 +209,33 @@ export default function Navbar() {
     setOpenMenu(newMenu);
   };
 
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string; role: string } | null>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.user) {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    } catch {
+      window.location.href = "/login";
+    }
+  };
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedMobileCategory, setExpandedMobileCategory] = useState<
     string | null
@@ -212,6 +246,9 @@ export default function Navbar() {
   const [isSearchDrawerOpen, setIsSearchDrawerOpen] = useState(false);
   const [searchProducts, setSearchProducts] = useState<SearchDrawerProduct[]>([]);
   const [isLoadingSearchProducts, setIsLoadingSearchProducts] = useState(false);
+  const [menuProducts, setMenuProducts] = useState<SearchDrawerProduct[]>([]);
+  const [isLoadingMenuProducts, setIsLoadingMenuProducts] = useState(false);
+  const [areMenuProductsLoaded, setAreMenuProductsLoaded] = useState(false);
   const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
   const [areStoreCategoriesLoaded, setAreStoreCategoriesLoaded] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
@@ -282,6 +319,40 @@ export default function Navbar() {
       isCurrent = false;
     };
   }, [isSearchDrawerOpen]);
+
+  useEffect(() => {
+    if (openMenu !== "PRODUCT") return;
+
+    let isCurrent = true;
+
+    async function loadMenuProducts() {
+      setIsLoadingMenuProducts(true);
+
+      try {
+        const response = await fetch("/api/products");
+        const payload = await response.json();
+
+        if (isCurrent && response.ok && payload.success && Array.isArray(payload.data)) {
+          setMenuProducts(payload.data);
+        }
+      } catch {
+        if (isCurrent) {
+          setMenuProducts([]);
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingMenuProducts(false);
+          setAreMenuProductsLoaded(true);
+        }
+      }
+    }
+
+    void loadMenuProducts();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [openMenu]);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -401,16 +472,25 @@ export default function Navbar() {
     : searchProducts;
   const searchProductCards = visibleSearchProducts.slice(0, 4);
   const searchProductListItems = visibleSearchProducts.slice(4);
+  const menuFeaturedProducts = [...menuProducts]
+    .sort((left, right) => {
+      const bestSellerDifference = Number(Boolean(right.showInBestSellers)) - Number(Boolean(left.showInBestSellers));
+      if (bestSellerDifference !== 0) return bestSellerDifference;
+
+    return (Date.parse(right.createdAt || "") || 0) - (Date.parse(left.createdAt || "") || 0);
+    })
+    .slice(0, 2);
 
   return (
     <>
       <header
         ref={headerRef}
-        className={`sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl transition-transform duration-300 ease-out ${isHeaderVisible || openMenu ? "translate-y-0" : "-translate-y-full"
-          }`}
+        className={`sticky top-0 z-50 bg-white transition-transform duration-300 ease-out ${
+          isHeaderVisible || openMenu ? "translate-y-0" : "-translate-y-full"
+        }`}
         onMouseLeave={() => handleOpenMenu(null)}
       >
-        <div className="mx-auto flex h-[68px] max-w-[1600px] items-center justify-between px-4 sm:grid sm:h-[70px] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-[72px] max-w-[1600px] items-center justify-between px-4 sm:grid sm:h-[76px] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-6 lg:px-8">
           {/* Brand Logo */}
           <Link
             href="/"
@@ -457,11 +537,61 @@ export default function Navbar() {
             >
               <Heart className="size-4 text-slate-700 stroke-[1.8]" />
             </IconButton>
-            <Link href="/login" aria-label="My Account" className="inline-flex items-center">
-              <IconButton label="My Account">
-                <User className="size-4 text-slate-700 stroke-[1.8]" />
-              </IconButton>
-            </Link>
+
+            {currentUser ? (
+              <div className="relative">
+                <IconButton
+                  label="My Account"
+                  onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                >
+                  <User className="size-4 text-[#0a7ae6] stroke-[2.2]" />
+                </IconButton>
+
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2.5 w-60 rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl z-50">
+                    <div className="border-b border-slate-100 px-3.5 py-2.5">
+                      <p className="text-xs font-bold text-slate-900 truncate">{currentUser.name || "Customer"}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{currentUser.email}</p>
+                    </div>
+                    <div className="py-1">
+                      <Link
+                        href="/orders"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                      >
+                        <Package className="size-4 text-[#0a7ae6]" />
+                        My Orders
+                      </Link>
+                      {currentUser.role === "ADMIN" && (
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                        >
+                          <ShieldCheck className="size-4 text-emerald-600" />
+                          Admin Dashboard
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                      >
+                        <LogOut className="size-4" />
+                        Log Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link href="/login" aria-label="My Account" className="inline-flex items-center">
+                <IconButton label="My Account">
+                  <User className="size-4 text-slate-700 stroke-[1.8]" />
+                </IconButton>
+              </Link>
+            )}
+
             <IconButton
               label="Shopping bag"
               badge={cartCount}
@@ -507,19 +637,19 @@ export default function Navbar() {
 
         {/* Darkened Smooth Backdrop Blur Overlay */}
         <div
-          className={`hidden lg:block fixed inset-0 top-[70px] z-40 bg-slate-950/25 backdrop-blur-xs transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${openMenu
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none invisible"
-            }`}
+          className={`hidden lg:block fixed inset-0 top-[72px] sm:top-[76px] z-40 bg-slate-950/25 backdrop-blur-xs transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            openMenu ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none invisible"
+          }`}
           onClick={() => handleOpenMenu(null)}
         />
 
         {/* Full Width Mega Menu Dropdown */}
         <div
-          className={`hidden lg:block absolute top-full inset-x-0 z-50 grid border-b border-slate-200/90 bg-white/98 backdrop-blur-2xl shadow-[0_35px_80px_rgba(15,23,42,0.16)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${openMenu
-            ? "grid-rows-[1fr] opacity-100 translate-y-0 pointer-events-auto visible"
-            : "grid-rows-[0fr] opacity-0 -translate-y-3 pointer-events-none invisible"
-            }`}
+          className={`hidden lg:block absolute top-full inset-x-0 z-50 grid bg-white/98 backdrop-blur-2xl shadow-[0_35px_80px_rgba(15,23,42,0.16)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            openMenu
+              ? "grid-rows-[1fr] opacity-100 translate-y-0 pointer-events-auto visible"
+              : "grid-rows-[0fr] opacity-0 -translate-y-3 pointer-events-none invisible"
+          }`}
           onMouseEnter={() => openMenu && handleOpenMenu(openMenu)}
           onMouseLeave={() => handleOpenMenu(null)}
         >
@@ -537,7 +667,7 @@ export default function Navbar() {
                 {openMenu === "PRODUCT" && (
                   <div className="grid grid-cols-12 gap-8 items-stretch">
                     {/* Column 1: Featured Links */}
-                    <div className="col-span-3 border-r border-slate-100 pr-6 space-y-3">
+                    <div className="col-span-3 pr-6 space-y-3">
                       <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
                         FEATURED
                       </h4>
@@ -570,7 +700,7 @@ export default function Navbar() {
                     </div>
 
                     {/* Column 2: Categories */}
-                    <div className="col-span-4 border-r border-slate-100 pr-6 space-y-3">
+                    <div className="col-span-4 pr-6 space-y-3">
                       <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
                         CATEGORIES
                       </h4>
@@ -595,55 +725,42 @@ export default function Navbar() {
                       </div>
                     </div>
 
-                    {/* Column 3: High-End Spotlight Visual Cards */}
+                    {/* Column 3: current dashboard products */}
                     <div className="col-span-5 grid grid-cols-2 gap-4">
-                      {/* Spotlight Card 1 */}
-                      <Link
-                        href="/product/55-smart-tv"
-                        onClick={() => setOpenMenu(null)}
-                        className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
-                      >
-                        <Image
-                          src="/category-tv.png"
-                          alt="Spotlight TV"
-                          fill
-                          className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
-                          <div className="mb-1">
-                            <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
-                              SPOTLIGHT
-                            </span>
+                      {menuFeaturedProducts.map((product, index) => (
+                        <Link
+                          key={product.id}
+                          href={`/product/${product.slug}`}
+                          onClick={() => setOpenMenu(null)}
+                          className="group flex flex-col items-center justify-between rounded-xl p-2 transition-all duration-300 hover:-translate-y-0.5"
+                        >
+                          <div className="relative h-[135px] w-full overflow-hidden rounded-lg">
+                            <Image
+                              src={menuProductImage(product)}
+                              alt={product.name}
+                              fill
+                              sizes="(min-width: 1024px) 260px, 0px"
+                              className="object-contain object-center transition-transform duration-300 group-hover:scale-105"
+                            />
                           </div>
-                          <h5 className="text-xs font-medium uppercase text-white tracking-wider">
-                            OFF BEAT TV EDIT
+                          <h5 className="mt-2.5 w-full text-center text-xs font-bold uppercase tracking-wider text-slate-800 truncate group-hover:text-[#0a7ae6] transition-colors">
+                            {product.name}
                           </h5>
-                        </div>
-                      </Link>
+                        </Link>
+                      ))}
 
-                      {/* Spotlight Card 2 */}
-                      <Link
-                        href="/product/techno-projector"
-                        onClick={() => setOpenMenu(null)}
-                        className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
-                      >
-                        <Image
-                          src="/category-projector.png"
-                          alt="New Launch Projector"
-                          fill
-                          className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
-                          <div className="mb-1">
-                            <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
-                              NEW LAUNCH
-                            </span>
-                          </div>
-                          <h5 className="text-xs font-medium uppercase text-white tracking-wider">
-                            TECHNO PROJECTOR
-                          </h5>
+                      {(isLoadingMenuProducts || !areMenuProductsLoaded) && menuFeaturedProducts.length === 0 ? (
+                        <>
+                          <div className="h-[195px] animate-pulse bg-slate-100" />
+                          <div className="h-[195px] animate-pulse bg-slate-100" />
+                        </>
+                      ) : null}
+
+                      {areMenuProductsLoaded && !isLoadingMenuProducts && menuFeaturedProducts.length === 0 ? (
+                        <div className="col-span-2 flex h-[195px] items-center justify-center border border-dashed border-slate-200 px-6 text-center text-sm text-slate-400">
+                          Add products in the dashboard to show them here.
                         </div>
-                      </Link>
+                      ) : null}
                     </div>
                   </div>
                 )}
@@ -651,7 +768,7 @@ export default function Navbar() {
                 {openMenu === "WARRANTY" && (
                   <div className="grid grid-cols-12 gap-8 items-stretch">
                     {/* Column 1: Coverage */}
-                    <div className="col-span-3 border-r border-slate-100 pr-6 space-y-3">
+                    <div className="col-span-3 pr-6 space-y-3">
                       <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
                         COVERAGE
                       </h4>
@@ -678,7 +795,7 @@ export default function Navbar() {
                     </div>
 
                     {/* Column 2: Services */}
-                    <div className="col-span-4 border-r border-slate-100 pr-6 space-y-3">
+                    <div className="col-span-4 pr-6 space-y-3">
                       <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
                         SERVICES & REPAIRS
                       </h4>
@@ -707,47 +824,37 @@ export default function Navbar() {
                       <Link
                         href="/warranty"
                         onClick={() => setOpenMenu(null)}
-                        className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                        className="group flex flex-col items-center justify-between rounded-xl p-2 transition-all duration-300 hover:-translate-y-0.5"
                       >
-                        <Image
-                          src="/category-headphones.png"
-                          alt="Register Product"
-                          fill
-                          className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
-                          <div className="mb-1">
-                            <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
-                              REGISTRATION
-                            </span>
-                          </div>
-                          <h5 className="text-xs font-medium uppercase text-white tracking-wider">
-                            REGISTER YOUR GEAR
-                          </h5>
+                        <div className="relative h-[135px] w-full overflow-hidden rounded-lg">
+                          <Image
+                            src="/category-headphones.png"
+                            alt="Register Product"
+                            fill
+                            className="object-contain object-center transition-transform duration-300 group-hover:scale-105"
+                          />
                         </div>
+                        <h5 className="mt-2.5 w-full text-center text-xs font-bold uppercase tracking-wider text-slate-800 truncate group-hover:text-[#0a7ae6] transition-colors">
+                          Register Your Gear
+                        </h5>
                       </Link>
 
                       <Link
                         href="/warranty"
                         onClick={() => setOpenMenu(null)}
-                        className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                        className="group flex flex-col items-center justify-between rounded-xl p-2 transition-all duration-300 hover:-translate-y-0.5"
                       >
-                        <Image
-                          src="/banner-earbuds.png"
-                          alt="Care Plus"
-                          fill
-                          className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
-                          <div className="mb-1">
-                            <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
-                              PROTECTION
-                            </span>
-                          </div>
-                          <h5 className="text-xs font-medium uppercase text-white tracking-wider">
-                            XELECTRON CARE PLUS
-                          </h5>
+                        <div className="relative h-[135px] w-full overflow-hidden rounded-lg">
+                          <Image
+                            src="/banner-earbuds.png"
+                            alt="Care Plus"
+                            fill
+                            className="object-contain object-center transition-transform duration-300 group-hover:scale-105"
+                          />
                         </div>
+                        <h5 className="mt-2.5 w-full text-center text-xs font-bold uppercase tracking-wider text-slate-800 truncate group-hover:text-[#0a7ae6] transition-colors">
+                          Xelectron Care Plus
+                        </h5>
                       </Link>
                     </div>
                   </div>
@@ -756,7 +863,7 @@ export default function Navbar() {
                 {openMenu === "SUPPORT & SERVICE" && (
                   <div className="grid grid-cols-12 gap-8 items-stretch">
                     {/* Column 1: Help & Support */}
-                    <div className="col-span-3 border-r border-slate-100 pr-6 space-y-3">
+                    <div className="col-span-3 pr-6 space-y-3">
                       <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
                         HELP & SUPPORT
                       </h4>
@@ -783,7 +890,7 @@ export default function Navbar() {
                     </div>
 
                     {/* Column 2: Resources & Downloads */}
-                    <div className="col-span-4 border-r border-slate-100 pr-6 space-y-3">
+                    <div className="col-span-4 pr-6 space-y-3">
                       <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
                         RESOURCES & DOWNLOADS
                       </h4>
@@ -812,47 +919,37 @@ export default function Navbar() {
                       <Link
                         href="/contact"
                         onClick={() => setOpenMenu(null)}
-                        className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                        className="group flex flex-col items-center justify-between rounded-xl p-2 transition-all duration-300 hover:-translate-y-0.5"
                       >
-                        <Image
-                          src="/creator-projector.png"
-                          alt="Repair Center"
-                          fill
-                          className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
-                          <div className="mb-1">
-                            <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
-                              HELP CENTER
-                            </span>
-                          </div>
-                          <h5 className="text-xs font-medium uppercase text-white tracking-wider">
-                            NEED REPAIR HELP?
-                          </h5>
+                        <div className="relative h-[135px] w-full overflow-hidden rounded-lg">
+                          <Image
+                            src="/creator-projector.png"
+                            alt="Repair Center"
+                            fill
+                            className="object-contain object-center transition-transform duration-300 group-hover:scale-105"
+                          />
                         </div>
+                        <h5 className="mt-2.5 w-full text-center text-xs font-bold uppercase tracking-wider text-slate-800 truncate group-hover:text-[#0a7ae6] transition-colors">
+                          Need Repair Help?
+                        </h5>
                       </Link>
 
                       <Link
                         href="/support"
                         onClick={() => setOpenMenu(null)}
-                        className="group relative h-[195px] w-full overflow-hidden rounded-none bg-black shadow-md transition-all duration-300 hover:shadow-xl flex flex-col justify-end"
+                        className="group flex flex-col items-center justify-between rounded-xl p-2 transition-all duration-300 hover:-translate-y-0.5"
                       >
-                        <Image
-                          src="/blog-3.png"
-                          alt="Manuals"
-                          fill
-                          className="object-cover object-center opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-95"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-4 flex flex-col justify-end">
-                          <div className="mb-1">
-                            <span className="inline-block rounded-none bg-black text-white px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest border border-white/20">
-                              MANUALS
-                            </span>
-                          </div>
-                          <h5 className="text-xs font-medium uppercase text-white tracking-wider">
-                            USER GUIDES & DOCS
-                          </h5>
+                        <div className="relative h-[135px] w-full overflow-hidden rounded-lg">
+                          <Image
+                            src="/blog-3.png"
+                            alt="Manuals"
+                            fill
+                            className="object-contain object-center transition-transform duration-300 group-hover:scale-105"
+                          />
                         </div>
+                        <h5 className="mt-2.5 w-full text-center text-xs font-bold uppercase tracking-wider text-slate-800 truncate group-hover:text-[#0a7ae6] transition-colors">
+                          User Guides & Docs
+                        </h5>
                       </Link>
                     </div>
                   </div>
@@ -1004,7 +1101,7 @@ export default function Navbar() {
 
         {/* Drawer Panel */}
         <div
-          className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white shadow-2xl transition-transform duration-500 ease-in-out ${isCartOpen ? "translate-x-0" : "translate-x-full"
+          className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white transition-all duration-500 ease-in-out ${isCartOpen ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"
             }`}
         >
           {/* Header */}
@@ -1130,7 +1227,7 @@ export default function Navbar() {
 
         {/* Drawer Panel */}
         <div
-          className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white shadow-2xl transition-transform duration-500 ease-in-out ${isWishlistOpen ? "translate-x-0" : "translate-x-full"
+          className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white transition-all duration-500 ease-in-out ${isWishlistOpen ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"
             }`}
         >
           {/* Header */}
@@ -1268,7 +1365,7 @@ export default function Navbar() {
         {/* Drawer Panel */}
         <div
           data-lenis-prevent
-          className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col overflow-hidden bg-white shadow-2xl transition-transform duration-500 ease-in-out ${isSearchDrawerOpen ? "translate-x-0" : "translate-x-full"
+          className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col overflow-hidden bg-white transition-all duration-500 ease-in-out ${isSearchDrawerOpen ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"
             }`}
         >
           {/* Header */}

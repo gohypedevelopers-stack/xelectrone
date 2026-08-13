@@ -194,7 +194,26 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string) {
-  return db.product.delete({ where: { id } });
+  return db.product.delete({
+    where: { id },
+  });
+}
+
+export async function decrementProductStock(productId: string, quantityToDecrement: number) {
+  const product = await db.product.findUnique({
+    where: { id: productId },
+    select: { quantity: true },
+  });
+
+  if (!product) return;
+
+  const currentQuantity = typeof product.quantity === "number" ? product.quantity : 0;
+  const newQuantity = Math.max(0, currentQuantity - quantityToDecrement);
+
+  return db.product.update({
+    where: { id: productId },
+    data: { quantity: newQuantity },
+  });
 }
 
 export async function countProducts() {

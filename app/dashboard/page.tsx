@@ -4,8 +4,14 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { getDashboardOverview } from "@/lib/server/controllers/dashboard.controller"
 
-export default async function Page() {
-  const overview = await getDashboardOverview()
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>
+}) {
+  const params = await searchParams
+  const range = params?.range || "last30"
+  const overview = await getDashboardOverview(range)
 
   return (
     <TooltipProvider>

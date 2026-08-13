@@ -19,12 +19,45 @@ export type StorefrontDealOfTheDay = {
   product: { slug: string; name: string; price: string; oldPrice: string | null };
 };
 
-function getTimeLeft(endsAt: string) {
-  const remaining = Math.max(0, new Date(endsAt).getTime() - Date.now());
+function getTimeLeftInfo(endsAt: string | null) {
+  const now = new Date();
+  const deadline = endsAt ? new Date(endsAt) : new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  const remaining = Math.max(0, deadline.getTime() - now.getTime());
+
+  const totalHours = Math.floor(remaining / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  const seconds = Math.floor((remaining % 60_000) / 1_000);
+
+  const isMoreThan24Hours = remaining > 24 * 60 * 60 * 1000;
+  const isUrgent = remaining > 0 && remaining <= 3 * 60 * 60 * 1000;
+
+  let labelText = "Ends In";
+  let dateDisplay = "";
+
+  if (isMoreThan24Hours) {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const targetDay = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+    const dayDiff = Math.round((targetDay.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+
+    labelText = "Offer";
+
+    if (dayDiff <= 1) {
+      dateDisplay = "Ends Tomorrow";
+    } else {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      dateDisplay = `Ends ${deadline.getDate()} ${monthNames[deadline.getMonth()]}`;
+    }
+  }
+
   return {
-    hours: Math.floor(remaining / 3_600_000),
-    minutes: Math.floor((remaining % 3_600_000) / 60_000),
-    seconds: Math.floor((remaining % 60_000) / 1_000),
+    remaining,
+    totalHours,
+    minutes,
+    seconds,
+    isMoreThan24Hours,
+    isUrgent,
+    labelText,
+    dateDisplay,
   };
 }
 
@@ -35,21 +68,14 @@ function displayPrice(price: string) {
 export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTheDay }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [isWhite, setIsWhite] = useState(false);
-  const [timeLeft, setTimeLeft] = useState({ hours: 7, minutes: 0, seconds: 0 });
+  const [timerInfo, setTimerInfo] = useState(() => getTimeLeftInfo(deal.endsAt));
   const claimedPercent = Math.max(0, Math.min(100, Math.round(((deal.totalUnits - deal.unitsLeft) / deal.totalUnits) * 100)));
 
   // COUNTDOWN TIMER
   useEffect(() => {
-    // The original storefront deal has no configured deadline, so give it a
-    // short seven-hour countdown. Saved dashboard deals always use their end date.
-    const countdownEnd = deal.endsAt || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
-    const updateTimeLeft = () => setTimeLeft(getTimeLeft(countdownEnd));
-
-    updateTimeLeft();
-    const timer = setInterval(() => {
-      updateTimeLeft();
-    }, 1000);
-
+    const updateTimer = () => setTimerInfo(getTimeLeftInfo(deal.endsAt));
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
     return () => clearInterval(timer);
   }, [deal.endsAt]);
 
@@ -72,6 +98,8 @@ export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTh
   }, []);
 
   const formatTime = (num: number) => String(num).padStart(2, "0");
+
+  const isUrgent = timerInfo.isUrgent;
 
   return (
     <section
@@ -98,26 +126,32 @@ export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTh
 
           {/* MOBILE ONLY TIMER BADGE */}
           <div
-            className={`flex sm:hidden items-center gap-1.5 rounded-lg border px-2 py-1 shadow-xs transition-all duration-700 shrink-0 ${
-              isWhite
+            className={`flex sm:hidden items-center gap-1.5 rounded-lg border px-2.5 py-1 shadow-xs transition-all duration-700 shrink-0 ${
+              isUrgent
+                ? "border-rose-300 bg-rose-50 text-rose-700 animate-pulse"
+                : isWhite
                 ? "border-blue-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-blue-50/80 text-slate-900"
                 : "border-slate-800 bg-[#0f172a]/90 text-white"
             }`}
           >
             <div className="flex items-center gap-1">
-              <Flame className="h-3 w-3 fill-[#0a7ae6] text-[#0a7ae6] animate-pulse" />
+              <Flame className={`h-3 w-3 ${isUrgent ? "fill-rose-600 text-rose-600 animate-bounce" : "fill-[#0a7ae6] text-[#0a7ae6] animate-pulse"}`} />
               <span className="text-[10px] font-extrabold">{deal.unitsLeft} Left</span>
             </div>
-            <div className={`h-3 w-px ${isWhite ? "bg-slate-300/80" : "bg-slate-700"}`} />
+            <div className={`h-3 w-px ${isUrgent ? "bg-rose-200" : isWhite ? "bg-slate-300/80" : "bg-slate-700"}`} />
             <div className="flex items-center gap-1">
               <span className="text-[8px] font-bold uppercase tracking-wider text-slate-400">
-                Ends In
+                {timerInfo.labelText}
               </span>
-              <div className="font-mono text-[11px] font-extrabold tracking-tight">
-                <span>{formatTime(timeLeft.hours)}</span>:
-                <span>{formatTime(timeLeft.minutes)}</span>:
-                <span className="text-[#0a7ae6]">{formatTime(timeLeft.seconds)}</span>
-              </div>
+              {timerInfo.isMoreThan24Hours ? (
+                <span className="text-[10px] font-extrabold text-[#0a7ae6]">{timerInfo.dateDisplay}</span>
+              ) : (
+                <div className={`font-mono text-[11px] font-extrabold tracking-tight ${isUrgent ? "text-rose-600" : ""}`}>
+                  <span>{formatTime(timerInfo.totalHours)}</span>:
+                  <span>{formatTime(timerInfo.minutes)}</span>:
+                  <span className={isUrgent ? "text-rose-600" : "text-[#0a7ae6]"}>{formatTime(timerInfo.seconds)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -126,10 +160,10 @@ export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTh
         <div className="grid gap-4 sm:gap-6 lg:gap-8 lg:grid-cols-12 lg:items-stretch">
           {/* LEFT COLUMN: LIFESTYLE IMAGE BANNER */}
           <div
-            className={`relative overflow-hidden rounded-2xl sm:rounded-[30px] border transition-all duration-700 lg:col-span-6 flex flex-col h-[210px] sm:h-full sm:min-h-[460px] lg:min-h-[550px] ${
+            className={`relative overflow-hidden rounded-lg sm:rounded-xl border transition-all duration-700 lg:col-span-6 flex flex-col h-[210px] sm:h-full sm:min-h-[460px] lg:min-h-[550px] ${
               isWhite
-                ? "border-slate-200/80 bg-slate-900 shadow-md"
-                : "border-slate-800/90 bg-slate-950 shadow-2xl shadow-blue-950/40"
+                ? "border-slate-200/80 bg-slate-900"
+                : "border-slate-800/90 bg-slate-950"
             }`}
           >
             <div className="relative h-full w-full min-h-[210px] sm:min-h-[460px] lg:min-h-[550px]">
@@ -141,7 +175,6 @@ export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTh
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 priority
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               
               {/* DOLBY AUDIO BADGE */}
               <div className="absolute bottom-3 right-3 sm:bottom-5 sm:right-5 flex items-center gap-2 rounded-xl bg-black/80 backdrop-blur-md px-3 py-1.5 sm:px-3.5 sm:py-2 text-white border border-white/10 shadow-lg">
@@ -154,10 +187,12 @@ export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTh
 
           {/* RIGHT COLUMN: DEAL DETAILS CARD WITH DESKTOP TIMER BOX */}
           <div className="flex flex-col gap-4 sm:gap-5 lg:col-span-6 justify-between">
-            {/* DESKTOP TIMER BOX (EXACTLY AS IN SCREENSHOT) */}
+            {/* DESKTOP TIMER BOX */}
             <div
               className={`hidden sm:flex items-center justify-between rounded-[22px] border p-4.5 shadow-sm transition-all duration-700 ${
-                isWhite
+                isUrgent
+                  ? "border-rose-200 bg-rose-50/90 text-rose-950 ring-2 ring-rose-500/20"
+                  : isWhite
                   ? "border-blue-100 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-blue-50/70 text-slate-900"
                   : "border-slate-800 bg-[#0f172a]/90 text-white"
               }`}
@@ -165,24 +200,26 @@ export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTh
               <div className="flex items-center gap-3.5">
                 <div
                   className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors duration-700 ${
-                    isWhite
+                    isUrgent
+                      ? "bg-rose-100 border border-rose-300 text-rose-600"
+                      : isWhite
                       ? "bg-[#0a7ae6]/10 border border-[#0a7ae6]/20 text-[#0a7ae6]"
                       : "bg-[#0a7ae6]/20 border border-[#0a7ae6]/30 text-[#0a7ae6]"
                   }`}
                 >
-                  <Flame className="h-5.5 w-5.5 fill-[#0a7ae6] text-[#0a7ae6] animate-pulse" />
+                  <Flame className={`h-5.5 w-5.5 ${isUrgent ? "fill-rose-600 text-rose-600 animate-bounce" : "fill-[#0a7ae6] text-[#0a7ae6] animate-pulse"}`} />
                 </div>
                 <div>
                   <p
                     className={`text-base font-bold leading-none transition-colors duration-700 ${
-                      isWhite ? "text-slate-900" : "text-white"
+                      isUrgent ? "text-rose-900" : isWhite ? "text-slate-900" : "text-white"
                     }`}
                   >
                     {deal.unitsLeft}
                   </p>
                   <p
                     className={`mt-0.5 text-[10px] font-semibold uppercase tracking-widest transition-colors duration-700 ${
-                      isWhite ? "text-slate-500" : "text-slate-400"
+                      isUrgent ? "text-rose-600" : isWhite ? "text-slate-500" : "text-slate-400"
                     }`}
                   >
                     Units Left
@@ -192,28 +229,45 @@ export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTh
 
               <div
                 className={`h-8.5 w-px transition-colors duration-700 ${
-                  isWhite ? "bg-slate-200/80" : "bg-slate-800"
+                  isUrgent ? "bg-rose-200" : isWhite ? "bg-slate-200/80" : "bg-slate-800"
                 }`}
               />
 
-              {/* LIVE COUNTDOWN DISPLAY */}
+              {/* DYNAMIC TIMER / DATE DISPLAY */}
               <div className="text-right">
                 <p
                   className={`text-[10px] font-semibold uppercase tracking-widest transition-colors duration-700 ${
-                    isWhite ? "text-slate-400" : "text-slate-400"
+                    isUrgent ? "text-rose-600" : "text-slate-400"
                   }`}
                 >
-                  Ends In
+                  {timerInfo.labelText}
                 </p>
-                <div
-                  className={`mt-0.5 font-mono text-2xl sm:text-3xl font-extrabold tracking-tight transition-colors duration-700 ${
-                    isWhite ? "text-slate-900" : "text-white"
-                  }`}
-                >
-                  <span>{formatTime(timeLeft.hours)}</span>:
-                  <span>{formatTime(timeLeft.minutes)}</span>:
-                  <span className="text-[#0a7ae6]">{formatTime(timeLeft.seconds)}</span>
-                </div>
+
+                {timerInfo.isMoreThan24Hours ? (
+                  <div
+                    className={`mt-0.5 text-lg sm:text-2xl font-bold tracking-tight transition-colors duration-700 ${
+                      isWhite ? "text-[#0a7ae6]" : "text-sky-400"
+                    }`}
+                  >
+                    {timerInfo.dateDisplay}
+                  </div>
+                ) : (
+                  <div
+                    className={`mt-0.5 font-mono text-2xl sm:text-3xl font-extrabold tracking-tight transition-colors duration-700 ${
+                      isUrgent
+                        ? "text-rose-600"
+                        : isWhite
+                        ? "text-slate-900"
+                        : "text-white"
+                    }`}
+                  >
+                    <span>{formatTime(timerInfo.totalHours)}</span>:
+                    <span>{formatTime(timerInfo.minutes)}</span>:
+                    <span className={isUrgent ? "text-rose-600" : "text-[#0a7ae6]"}>
+                      {formatTime(timerInfo.seconds)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

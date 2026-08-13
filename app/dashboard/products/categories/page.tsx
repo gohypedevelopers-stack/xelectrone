@@ -20,7 +20,7 @@ export default async function CategoriesPage() {
         <AppSidebar />
         <SidebarInset>
           <CategoryManager
-            initialCategories={categories.map((category) => ({
+            initialCategories={categories.map((category: any) => ({
               id: category.id,
               title: category.title,
               slug: category.slug,

@@ -18,6 +18,7 @@ import {
   type SimilarProductCard,
 } from "@/lib/products-data";
 import SimilarProductsSection from "@/components/product/similar-products-section";
+import RecentlyViewedSection from "@/components/product/recently-viewed-section";
 import { ProductDescriptionContent } from "@/components/product/product-description-content";
 import { priceToNumber, useCart } from "@/components/providers/cart-provider";
 import { formatINR } from "@/lib/format-price";
@@ -29,15 +30,34 @@ interface ProductDetailProps {
   productId?: string;
 }
 
-function toProductDetailItem(product: any): ProductDetailItem {
+function toProductDetailItem(product: any, activeDeal?: any): ProductDetailItem {
+  let priceStr = typeof product.price === "number" ? `₹${product.price.toLocaleString("en-IN")}` : String(product.price);
+  let oldPriceStr = product.oldPrice ? (typeof product.oldPrice === "number" ? `₹${product.oldPrice.toLocaleString("en-IN")}` : String(product.oldPrice)) : undefined;
+
+  const isDealActive = activeDeal && (activeDeal.productId === product.id || activeDeal.product?.slug === product.slug);
+  if (isDealActive && activeDeal.dealPrice) {
+    priceStr = activeDeal.dealPrice;
+    oldPriceStr = activeDeal.compareAtPrice || product.price;
+  }
+
+  // Ensure priceStr is the lower discounted price and oldPriceStr is the higher original price
+  const priceVal = priceToNumber(priceStr);
+  const oldPriceVal = oldPriceStr ? priceToNumber(oldPriceStr) : 0;
+
+  if (oldPriceVal > 0 && priceVal > oldPriceVal && oldPriceStr) {
+    const temp = priceStr;
+    priceStr = oldPriceStr;
+    oldPriceStr = temp;
+  }
+
   return {
     id: product.id,
     slug: product.slug || product.id,
     name: product.name,
     category: product.category?.title || product.category || "Electronics",
     categorySlug: product.category?.slug || "general",
-    price: typeof product.price === "number" ? `₹${product.price.toLocaleString("en-IN")}` : String(product.price),
-    oldPrice: product.oldPrice || undefined,
+    price: priceStr,
+    oldPrice: oldPriceStr,
     discount: product.discount || undefined,
     rating: product.rating || 4.8,
     reviewsCount: `${product.reviewsCount || product.reviewCount || 0} Reviews`,
@@ -82,16 +102,17 @@ export default function ProductDetail({
     const targetId = productId || searchProductId;
     if (!targetId) return;
 
-    fetch(`/api/products/${encodeURIComponent(targetId)}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success && json.data) {
-          setApiProduct(toProductDetailItem(json.data));
+    Promise.all([
+      fetch(`/api/products/${encodeURIComponent(targetId)}`).then((res) => res.json()),
+      fetch(`/api/deal-of-the-day`).then((res) => res.json()).catch(() => null),
+    ])
+      .then(([productRes, dealRes]) => {
+        if (productRes.success && productRes.data) {
+          const activeDeal = dealRes && dealRes.success ? dealRes.data : null;
+          setApiProduct(toProductDetailItem(productRes.data, activeDeal));
         }
       })
-      .catch(() => {
-        // Silent fallback to static catalog
-      });
+      .catch(() => {});
   }, [productId, searchProductId]);
 
   useEffect(() => {
@@ -128,6 +149,7 @@ export default function ProductDetail({
       category: product.category,
     });
   };
+  const [recentDisplayedIds, setRecentDisplayedIds] = useState<string[]>([]);
 
   return (
     <div className="min-h-dvh bg-white px-4 py-4 text-slate-900 sm:px-6 lg:px-8 lg:py-6">
@@ -256,12 +278,15 @@ export default function ProductDetail({
           </div>
         </div>
 
-        <SimilarProductsSection products={initialRelatedProducts} />
+        <RecentlyViewedSection
+          currentProductId={product.id}
+          onDisplayedProductsChange={setRecentDisplayedIds}
+        />
+        <SimilarProductsSection
+          products={initialRelatedProducts}
+          excludeIds={[product.id, ...recentDisplayedIds]}
+        />
       </div>
     </div>
   );
 }
-
-
-
-

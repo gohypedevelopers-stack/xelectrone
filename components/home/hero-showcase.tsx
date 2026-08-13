@@ -1,18 +1,51 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { banners } from "@/components/home/content";
+import { banners as defaultBanners } from "@/components/home/content";
+
+type BannerType = {
+  src: string;
+  mobileSrc?: string | null;
+  alt: string;
+  title: string;
+  category?: string | null;
+  caption?: string | null;
+  cta?: string | null;
+  linkUrl?: string | null;
+};
 
 const SLIDE_DURATION = 6000;
 const PROGRESS_STEP = 50;
 
 export default function HeroShowcase() {
+  const [bannerList, setBannerList] = useState<BannerType[]>(defaultBanners);
+
+  useEffect(() => {
+    async function fetchBanners() {
+      try {
+        const res = await fetch("/api/banners");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setBannerList(data);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch active banners:", err);
+      }
+    }
+    fetchBanners();
+  }, []);
+
+  const activeBanners = bannerList.length > 0 ? bannerList : defaultBanners;
+
   // Extended array for seamless forward/backward infinite looping: [Last, ...Banners, First]
   const extendedBanners = [
-    banners[banners.length - 1],
-    ...banners,
-    banners[0],
+    activeBanners[activeBanners.length - 1],
+    ...activeBanners,
+    activeBanners[0],
   ];
 
   const [currentIndex, setCurrentIndex] = useState(1);
@@ -36,11 +69,11 @@ export default function HeroShowcase() {
     } else if (currentIndex === 0) {
       resetTimer = setTimeout(() => {
         setIsTransitioning(false);
-        setCurrentIndex(banners.length);
+        setCurrentIndex(activeBanners.length);
       }, 700);
     }
     return () => clearTimeout(resetTimer);
-  }, [currentIndex, extendedBanners.length]);
+  }, [currentIndex, extendedBanners.length, activeBanners.length]);
 
   // Re-enable transition after position reset
   useEffect(() => {
@@ -105,71 +138,78 @@ export default function HeroShowcase() {
   // Determine active 0-based index for banners
   const activeDotIndex =
     currentIndex === 0
-      ? banners.length - 1
+      ? activeBanners.length - 1
       : currentIndex === extendedBanners.length - 1
       ? 0
       : currentIndex - 1;
 
   return (
-    <section className="w-full bg-white pb-3 overflow-hidden rounded-none">
-      {/* FULL WIDTH SHARP CAROUSEL TRACK (INCREASED HEIGHT, SHARP CORNERS) */}
+    <section className="w-full bg-white overflow-hidden rounded-none">
+      {/* FULL WIDTH SHARP CAROUSEL TRACK */}
       <div
-        className="relative w-full h-[380px] sm:h-[580px] md:h-[660px] lg:h-[760px] sm:h-[calc(100vh-76px)] overflow-hidden touch-pan-y rounded-none"
+        className="relative w-full h-[400px] sm:h-[calc(100vh-72px)] md:h-[calc(100vh-76px)] min-h-[500px] md:min-h-[640px] overflow-hidden touch-pan-y rounded-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <div
-          className={`flex h-full w-full ${
+          className={`flex h-full ${
             isTransitioning
               ? "transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
               : "transition-none"
           }`}
           style={{
-            transform: `translateX(-${currentIndex * 100}%)`,
+            width: `${extendedBanners.length * 100}%`,
+            transform: `translateX(-${(currentIndex * 100) / extendedBanners.length}%)`,
           }}
         >
-          {extendedBanners.map((banner, index) => (
-            <div
-              key={`${banner.src}-${index}`}
-              className="relative h-full w-full shrink-0 overflow-hidden rounded-none bg-slate-950"
-            >
-              {/* DESKTOP BANNER */}
-              <div className="hidden sm:block relative h-full w-full">
-                <Image
-                  src={banner.src}
-                  alt={banner.alt}
-                  fill
-                  priority={index === 1}
-                  className="object-cover object-center"
-                  sizes="100vw"
-                />
-              </div>
+          {extendedBanners.map((banner, index) => {
+            const linkHref = banner.linkUrl || "/shop";
+            return (
+              <div
+                key={`${banner.src}-${index}`}
+                className="relative h-full shrink-0 overflow-hidden rounded-none bg-slate-950"
+                style={{ width: `${100 / extendedBanners.length}%` }}
+              >
+                <Link href={linkHref} className="block relative h-full w-full">
+                  {/* DESKTOP BANNER */}
+                  <div className="hidden sm:block relative h-full w-full">
+                    <Image
+                      src={banner.src}
+                      alt={banner.alt || banner.title}
+                      fill
+                      priority={index === 1}
+                      className="object-cover object-center"
+                      sizes="100vw"
+                    />
+                  </div>
 
-              {/* MOBILE BANNER */}
-              <div className="sm:hidden relative h-full w-full">
-                <Image
-                  src={banner.mobileSrc || banner.src}
-                  alt={banner.alt}
-                  fill
-                  priority={index === 1}
-                  className="object-cover object-center"
-                  sizes="100vw"
-                />
+                  {/* MOBILE BANNER */}
+                  <div className="sm:hidden relative h-full w-full">
+                    <Image
+                      src={banner.mobileSrc || banner.src}
+                      alt={banner.alt || banner.title}
+                      fill
+                      priority={index === 1}
+                      className="object-cover object-center"
+                      sizes="100vw"
+                    />
+                  </div>
+                </Link>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* PROGRESS DOT PAGINATION OVERLAY UPWARD ON HERO BANNER */}
         <div className="absolute inset-x-0 bottom-4 sm:bottom-6 z-20 flex items-center justify-center px-6">
           <div className="flex items-center gap-2.5">
-            {banners.map((banner, index) => {
+            {activeBanners.map((banner, index) => {
               const isActive = index === activeDotIndex;
 
               return isActive ? (
                 <button
-                  key={banner.src}
+                  key={`${banner.src}-${index}`}
                   type="button"
                   aria-label={`Go to slide ${index + 1}`}
                   onClick={() => {
@@ -185,7 +225,7 @@ export default function HeroShowcase() {
                 </button>
               ) : (
                 <button
-                  key={banner.src}
+                  key={`${banner.src}-${index}`}
                   type="button"
                   aria-label={`Go to slide ${index + 1}`}
                   onClick={() => {
@@ -220,4 +260,3 @@ export default function HeroShowcase() {
     </section>
   );
 }
-

@@ -45,11 +45,11 @@ export default async function AbandonedCheckoutsPage() {
                   <table className="w-full min-w-[760px] border-collapse text-left text-xs">
                     <thead className="bg-black/[0.025] text-black/65">
                       <tr>
-                        {['Customer', 'Products', 'Total', 'Last activity', ''].map((heading) => <th key={heading} className="border-b border-black/10 px-4 py-2.5 font-medium">{heading}</th>)}
+                        {['Customer', 'Products', 'Total', 'Last activity', ''].map((heading: string) => <th key={heading} className="border-b border-black/10 px-4 py-2.5 font-medium">{heading}</th>)}
                       </tr>
                     </thead>
                     <tbody>
-                      {checkouts.map((checkout) => {
+                      {checkouts.map((checkout: any) => {
                         const items = readAbandonedCheckoutItems(checkout.items);
                         const firstItem = items[0];
                         const customer = checkout.customerName || checkout.email || "Guest checkout";

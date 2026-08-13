@@ -11,6 +11,6 @@ export const metadata: Metadata = { title: "Add category | Xelectron Admin" }
 
 export default async function NewCategoryPage() {
   const [products, categories] = await Promise.all([productsController.listProducts(), categoriesController.listCategories()])
-  return <TooltipProvider><SidebarProvider className="min-h-svh"><AppSidebar /><SidebarInset><CategoryEditor products={products.map((product) => ({ id: product.id, title: product.name, slug: product.slug, price: product.price, image: product.mainImage }))} categories={categories.map((category) => ({ id: category.id, title: category.title }))} /></SidebarInset></SidebarProvider></TooltipProvider>
+  return <TooltipProvider><SidebarProvider className="min-h-svh"><AppSidebar /><SidebarInset><CategoryEditor products={products.map((product: any) => ({ id: product.id, title: product.name, slug: product.slug, price: product.price, image: product.mainImage }))} categories={categories.map((category: any) => ({ id: category.id, title: category.title }))} /></SidebarInset></SidebarProvider></TooltipProvider>
 }
 

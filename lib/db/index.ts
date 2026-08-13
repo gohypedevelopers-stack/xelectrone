@@ -14,14 +14,13 @@ function getDatabaseUrl() {
   const url = new URL(databaseUrl);
   const sslMode = url.searchParams.get("sslmode");
   if (sslMode === "prefer" || sslMode === "require" || sslMode === "verify-ca") {
-    // pg currently treats these modes as verify-full; make that behavior explicit.
     url.searchParams.set("sslmode", "verify-full");
   }
 
   return url.toString();
 }
 
-function createPrismaClient() {
+export function createPrismaClient(): PrismaClient {
   const adapter = new PrismaPg({
     connectionString: getDatabaseUrl(),
   });
@@ -32,8 +31,34 @@ function createPrismaClient() {
   });
 }
 
-export const db = globalForPrisma.prisma ?? createPrismaClient();
+function getDbInstance(): PrismaClient {
+  if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma) {
+    if (
+      typeof (globalForPrisma.prisma as any).heroBanner === "undefined" ||
+      typeof (globalForPrisma.prisma as any).creatorVideo === "undefined"
+    ) {
+      globalForPrisma.prisma = undefined;
+    }
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+
+  return globalForPrisma.prisma;
 }
+
+export const db: any = new Proxy({} as any, {
+  get(_target, prop) {
+    const instance = getDbInstance();
+    const value = (instance as any)[prop];
+    if (typeof value === "function") {
+      return value.bind(instance);
+    }
+    return value;
+  },
+  has(_target, prop) {
+    const instance = getDbInstance();
+    return prop in instance;
+  },
+});

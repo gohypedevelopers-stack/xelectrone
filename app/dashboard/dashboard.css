@@ -9,6 +9,7 @@
   min-height: 100svh;
   color: var(--admin-ink);
   background: var(--admin-canvas);
+  overflow-x: hidden;
 }
 
 .dashboard-shell :where(button, a, input, select, textarea) {

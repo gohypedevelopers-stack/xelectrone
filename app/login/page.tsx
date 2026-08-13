@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,6 +12,29 @@ function AuthForm() {
   const searchParams = useSearchParams();
   const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
+
+  // Auto-redirect if already authenticated
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.user) {
+          const paramRedirect = searchParams.get("redirectTo");
+          if (paramRedirect) {
+            router.replace(paramRedirect);
+          } else if (data.user.role === "ADMIN") {
+            router.replace("/dashboard");
+          } else {
+            router.replace("/orders");
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [router, searchParams]);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -48,11 +71,14 @@ function AuthForm() {
         });
         const data = await res.json();
 
+        const paramRedirect = searchParams.get("redirectTo");
+        const targetUrl = paramRedirect || data.redirectTo || "/";
+
         if (!res.ok || !data.success) {
           throw new Error(data.error || "Login failed. Please check your credentials.");
         }
 
-        router.replace(data.redirectTo || "/");
+        router.replace(targetUrl);
         router.refresh();
       } else {
         const res = await fetch("/api/auth/signup", {
@@ -66,11 +92,14 @@ function AuthForm() {
         });
         const data = await res.json();
 
+        const paramRedirect = searchParams.get("redirectTo");
+        const targetUrl = paramRedirect || data.redirectTo || "/";
+
         if (!res.ok || !data.success) {
           throw new Error(data.error || "Failed to create account.");
         }
 
-        router.replace(data.redirectTo || "/");
+        router.replace(targetUrl);
         router.refresh();
       }
     } catch (err) {

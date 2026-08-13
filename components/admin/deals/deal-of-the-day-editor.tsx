@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, ChevronRight, ExternalLink, Flame, ImagePlus, Sparkles } from "lucide-react";
+import { CalendarClock, ChevronDown, ChevronRight, ExternalLink, Flame, ImagePlus, Sparkles } from "lucide-react";
 
 import { Switch } from "@/components/ui/switch";
 import { uploadProductImage } from "@/lib/client/upload-product-image";
@@ -37,7 +37,14 @@ type EditableDeal = {
 const inputClass = "h-9 w-full rounded-lg border border-black/25 bg-white px-3 text-sm outline-none transition focus:border-black/55 focus:ring-2 focus:ring-black/5";
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm"><div className="px-4 py-4"><h2 className="text-sm font-semibold text-black/80">{title}</h2></div><div className="border-t border-black/10 px-4 pb-4 pt-4">{children}</div></section>;
+  return (
+    <section className="relative rounded-xl border border-black/10 bg-white shadow-sm">
+      <div className="px-4 py-4">
+        <h2 className="text-sm font-semibold text-black/80">{title}</h2>
+      </div>
+      <div className="border-t border-black/10 px-4 pb-4 pt-4">{children}</div>
+    </section>
+  );
 }
 
 function toDateTimeLocal(value?: string) {
@@ -46,13 +53,106 @@ function toDateTimeLocal(value?: string) {
   return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
 }
 
-function productOptionLabel(product: DealProduct) {
-  const maximumTitleLength = 68;
-  const name = product.name.length > maximumTitleLength
-    ? `${product.name.slice(0, maximumTitleLength - 1)}…`
-    : product.name;
+function formatShortTitle(name: string, maxLen = 42) {
+  if (name.length <= maxLen) return name;
+  return `${name.slice(0, maxLen - 1)}…`;
+}
 
-  return `${name} — ${product.price}`;
+function ProductSelectDropdown({
+  products,
+  selectedProductId,
+  onSelectProduct,
+}: {
+  products: DealProduct[];
+  selectedProductId: string;
+  onSelectProduct: (productId: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const selectedProduct = products.find((p) => p.id === selectedProductId);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={dropdownRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex min-h-[46px] w-full max-w-full items-center justify-between gap-2.5 overflow-hidden rounded-lg border border-black/25 bg-white px-3 py-1.5 text-left text-sm outline-none transition hover:border-black/40 focus:border-black/55 focus:ring-2 focus:ring-black/5 cursor-pointer"
+      >
+        {selectedProduct ? (
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <div className="relative size-8 shrink-0 overflow-hidden rounded border border-slate-200 bg-white p-0.5">
+              <Image
+                src={selectedProduct.image}
+                alt={selectedProduct.name}
+                fill
+                className="object-contain"
+                sizes="32px"
+              />
+            </div>
+            <span className="min-w-0 flex-1 truncate font-medium text-slate-900" title={selectedProduct.name}>
+              {formatShortTitle(selectedProduct.name)}
+            </span>
+            <span className="shrink-0 font-semibold text-slate-500">— {selectedProduct.price}</span>
+          </div>
+        ) : (
+          <span className="text-black/50">Select a product</span>
+        )}
+        <ChevronDown className={`size-4 shrink-0 text-black/45 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen ? (
+        <div
+          data-lenis-prevent
+          onWheel={(e) => e.stopPropagation()}
+          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 w-full max-w-full overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
+        >
+          {products.map((product) => {
+            const isSelected = product.id === selectedProductId;
+            return (
+              <button
+                key={product.id}
+                type="button"
+                onClick={() => {
+                  onSelectProduct(product.id);
+                  setIsOpen(false);
+                }}
+                className={`flex w-full max-w-full items-center justify-between gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-blue-50/80 cursor-pointer ${
+                  isSelected ? "bg-blue-50 font-semibold text-[#0a7ae6]" : "text-slate-900"
+                }`}
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <div className="relative size-8 shrink-0 overflow-hidden rounded border border-slate-200 bg-white p-0.5">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-contain"
+                      sizes="32px"
+                    />
+                  </div>
+                  <span className="min-w-0 flex-1 truncate font-medium text-slate-900" title={product.name}>
+                    {formatShortTitle(product.name)}
+                  </span>
+                </div>
+                <span className="shrink-0 font-semibold text-[#0a7ae6]">{product.price}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function DealOfTheDayEditor({ deal, products }: { deal: EditableDeal | null; products: DealProduct[] }) {
@@ -177,7 +277,14 @@ export function DealOfTheDayEditor({ deal, products }: { deal: EditableDeal | nu
           <div className="space-y-4">
             <SectionCard title="Deal details">
               <div className="grid gap-4">
-                <label className="grid gap-1.5 text-sm font-medium text-black/75">Product <select required value={productId} onChange={(event) => chooseProduct(event.target.value)} className={inputClass}><option value="">Select a product</option>{products.map((product) => <option key={product.id} value={product.id}>{productOptionLabel(product)}</option>)}</select></label>
+                <div className="grid gap-1.5 text-sm font-medium text-black/75">
+                  <span>Product</span>
+                  <ProductSelectDropdown
+                    products={products}
+                    selectedProductId={productId}
+                    onSelectProduct={chooseProduct}
+                  />
+                </div>
                 <label className="grid gap-1.5 text-sm font-medium text-black/75">Deal title <input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. BLAZE B2000" className={inputClass} /></label>
                 <label className="grid gap-1.5 text-sm font-medium text-black/75">Deal description <textarea required rows={4} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe why this limited-time offer is special" className="w-full resize-none rounded-lg border border-black/25 bg-white p-3 text-sm outline-none transition focus:border-black/55 focus:ring-2 focus:ring-black/5" /></label>
                 <div className="grid gap-1.5 text-sm font-medium text-black/75"><span>Deal image</span><input ref={imageInputRef} type="file" accept="image/avif,image/gif,image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => void uploadDealImage(event)} /><button type="button" disabled={isUploading} onClick={() => imageInputRef.current?.click()} className="relative flex h-52 overflow-hidden items-center justify-center rounded-lg border border-dashed border-black/30 bg-black/[0.02] text-sm text-black/60 transition hover:bg-black/[0.04] disabled:cursor-wait">{previewImage ? <><Image src={previewImage} alt="Deal preview" fill sizes="650px" className="object-cover" /><span className="relative rounded bg-white/90 px-3 py-1.5 text-xs font-semibold text-black">{isUploading ? "Uploading…" : "Replace image"}</span></> : <span className="flex flex-col items-center gap-2"><ImagePlus className="size-5" />{isUploading ? "Uploading…" : "Upload image"}</span>}</button>{image ? <button type="button" onClick={() => setImage("")} className="justify-self-start text-xs font-medium text-red-600 hover:underline">Use the product image instead</button> : <p className="text-xs font-normal text-black/55">If no custom image is uploaded, the selected product image is used.</p>}</div>

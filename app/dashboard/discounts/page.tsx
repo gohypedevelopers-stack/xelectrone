@@ -29,7 +29,7 @@ export default async function DiscountsPage() {
               </div>
               <Link href="/dashboard/discounts/new" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-black px-3 text-xs font-medium text-white hover:bg-black/80"><Plus className="size-3.5" /> Create discount</Link>
             </div>
-            {discounts.length ? <DiscountsTable discounts={discounts.map((discount) => ({ ...discount, createdAt: discount.createdAt.toISOString() }))} /> : (
+            {discounts.length ? <DiscountsTable discounts={discounts.map((discount: any) => ({ ...discount, createdAt: discount.createdAt.toISOString() }))} /> : (
               <section className="mt-4 rounded-xl border border-black/10 bg-white px-4 py-14 text-center shadow-sm">
                 <div className="mx-auto flex size-10 items-center justify-center rounded-xl bg-[#005BD3]/10 text-[#005BD3]"><Tag className="size-5" /></div>
                 <h2 className="mt-4 text-sm font-semibold">Create your first discount</h2>

@@ -19,10 +19,12 @@ export default function CategorySection({ categories }: { categories: Storefront
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#0a7ae6]">
             Categories
           </p>
-          <h2 className="mt-1.5 text-2xl font-normal tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-            Shop by Category
-          </h2>
-          <div className="mt-3 h-0.5 w-12 rounded-full bg-[#0a7ae6]" />
+          <div className="inline-block relative">
+            <h2 className="mt-1.5 text-2xl font-normal tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+              Shop by Category
+            </h2>
+            <div className="mt-2 h-0.5 w-12 rounded-full bg-[#0a7ae6] ml-auto" />
+          </div>
         </div>
 
         {/* SINGLE ROW CATEGORIES STRIP WITH NO BACKGROUND ARTIFACTS & CACHE BUSTING */}

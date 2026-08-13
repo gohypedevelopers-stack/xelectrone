@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { priceToNumber, useCart } from "@/components/providers/cart-provider";
 import { formatINR } from "@/lib/format-price";
@@ -22,6 +23,7 @@ export type StorefrontProduct = {
 };
 
 export default function ProductShowcaseSection({ products }: { products: StorefrontProduct[] }) {
+  const router = useRouter();
   const { addItem, wishlistItems, toggleWishlistItem } = useCart();
 
   const addProductToCart = (product: StorefrontProduct) => {
@@ -148,9 +150,18 @@ export default function ProductShowcaseSection({ products }: { products: Storefr
                       >
                         Add to cart
                       </button>
-                      <span className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md bg-[#0a7ae6] px-1 text-[10px] font-medium text-white truncate transition-opacity hover:opacity-90 sm:h-10 sm:text-[12px]">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          addProductToCart(product);
+                          router.push(`/checkout?product=${encodeURIComponent(product.slug || product.id)}`);
+                        }}
+                        className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md bg-[#0a7ae6] px-1 text-[10px] font-medium text-white truncate transition-opacity hover:opacity-90 sm:h-10 sm:text-[12px]"
+                      >
                         Buy
-                      </span>
+                      </button>
                     </div>
                   </div>
                 </div>

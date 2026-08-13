@@ -94,7 +94,7 @@ export default async function ProductsPage() {
             </section>
 
             <ProductsTable
-              products={dbProducts.map((product) => ({
+              products={dbProducts.map((product: any) => ({
                 id: product.id,
                 slug: product.slug,
                 name: product.name,

@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import Navbar from "@/components/navbar/navbar";
+import { useSearchParams } from "next/navigation";
 import { useCart } from "@/components/providers/cart-provider";
 
 const CHECKOUT_SESSION_KEY = "xelectron-active-checkout";
@@ -30,7 +31,97 @@ function createCheckoutSessionToken() {
 }
 
 function CheckoutContent() {
-  const { items: orderItems, subtotal, clearCart } = useCart();
+  const { items: orderItems, subtotal, clearCart, addItem } = useCart();
+  const searchParams = useSearchParams();
+  const [isMounted, setIsMounted] = useState(false);
+  const [productParamLoading, setProductParamLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Auto-resolve product param if passed via URL and not already in cart
+  useEffect(() => {
+    if (!isMounted) return;
+    const productParam = searchParams.get("product");
+    if (!productParam) {
+      setProductParamLoading(false);
+      return;
+    }
+
+    // Skip if the product is already in the cart (Buy button already added it)
+    const alreadyInCart = orderItems.some(
+      (item) => item.id === productParam || item.slug === productParam
+    );
+    if (alreadyInCart) {
+      setProductParamLoading(false);
+      return;
+    }
+
+    let isSubscribed = true;
+    setProductParamLoading(true);
+
+    fetch("/api/products")
+      .then((res) => res.json())
+      .then((json) => {
+        if (!isSubscribed || !json.success || !Array.isArray(json.data)) return;
+
+        const matched = json.data.find(
+          (p: { id: string; slug: string }) =>
+            p.id === productParam || p.slug === productParam
+        );
+
+        if (matched) {
+          const stillMissing = !orderItems.some((item) => item.id === matched.id);
+          if (stillMissing) {
+            const itemPrice =
+              typeof matched.price === "number"
+                ? matched.price
+                : parseFloat(String(matched.price).replace(/[^0-9.]/g, "")) || 0;
+
+            addItem({
+              id: matched.id,
+              name: matched.name,
+              price: itemPrice,
+              image: matched.mainImage || "/category-smartphone.png",
+              category: matched.category?.title || "Electronics",
+              slug: matched.slug,
+            });
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isSubscribed) setProductParamLoading(false);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted, searchParams]);
+
+  // Auth check
+  useEffect(() => {
+    if (!isMounted) return;
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.user) {
+          setCurrentUser(data.user);
+          if (data.user.name) {
+            const parts = data.user.name.split(" ");
+            setFirstName(parts[0] || "");
+            setLastName(parts.slice(1).join(" ") || "");
+          }
+          if (data.user.email) setEmail(data.user.email);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsAuthLoading(false));
+  }, [isMounted]);
 
   // Form State
   const [couponCode, setCouponCode] = useState("");
@@ -43,7 +134,7 @@ function CheckoutContent() {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [state, setState] = useState("Maharashtra");
+  const [state, setState] = useState("");
 
   const [shipToDifferent, setShipToDifferent] = useState(false);
   const [addressLine1, setAddressLine1] = useState("");
@@ -65,14 +156,16 @@ function CheckoutContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState("");
-  const [checkoutSessionToken] = useState(() => {
-    if (typeof window === "undefined") return "";
+  const [paidTotal, setPaidTotal] = useState(0);
+  const [checkoutSessionToken, setCheckoutSessionToken] = useState("");
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const existingSession = window.sessionStorage.getItem(CHECKOUT_SESSION_KEY);
     const sessionToken = existingSession || createCheckoutSessionToken();
     if (!existingSession) window.sessionStorage.setItem(CHECKOUT_SESSION_KEY, sessionToken);
-    return sessionToken;
-  });
+    setCheckoutSessionToken(sessionToken);
+  }, []);
 
   const discountAmount = useMemo(() => {
     if (couponDiscount > 0) {
@@ -111,9 +204,8 @@ function CheckoutContent() {
     return () => window.clearTimeout(timer);
   }, [checkoutSessionToken, orderComplete, orderItems.length, trackCheckout]);
 
-  // Apply Coupon Handler
-  const handleApplyCoupon = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Coupon Handling
+  const handleApplyCoupon = async () => {
     setCouponError("");
     setCouponSuccess("");
 
@@ -123,16 +215,51 @@ function CheckoutContent() {
       return;
     }
 
-    if (code === "WELCOME10" || code === "XELECTRON10") {
-      setAppliedCoupon(code);
-      setCouponDiscount(10);
-      setCouponSuccess("10% discount applied successfully!");
-    } else if (code === "SAVE20" || code === "FESTIVE20") {
-      setAppliedCoupon(code);
-      setCouponDiscount(20);
-      setCouponSuccess("20% special discount applied!");
-    } else {
-      setCouponError("Invalid coupon code. Try WELCOME10 or SAVE20");
+    try {
+      const res = await fetch("/api/discounts");
+      const json = await res.json();
+
+      let matchedDiscount: { code: string; type: string; value: number; status?: string } | undefined;
+
+      if (json.success && Array.isArray(json.data)) {
+        matchedDiscount = json.data.find(
+          (d: { code?: string; status?: string }) =>
+            d.code && d.code.toUpperCase() === code && d.status !== "EXPIRED"
+        );
+      }
+
+      if (matchedDiscount) {
+        setAppliedCoupon(matchedDiscount.code);
+        if (matchedDiscount.type === "PERCENTAGE") {
+          setCouponDiscount(matchedDiscount.value);
+          setCouponSuccess(`${matchedDiscount.value}% discount applied successfully!`);
+        } else if (matchedDiscount.type === "FIXED_AMOUNT") {
+          const percent = subtotal > 0 ? Math.min(100, (matchedDiscount.value / subtotal) * 100) : 10;
+          setCouponDiscount(percent);
+          setCouponSuccess(`₹${matchedDiscount.value.toLocaleString("en-IN")} discount applied successfully!`);
+        } else {
+          setCouponDiscount(10);
+          setCouponSuccess("Discount applied successfully!");
+        }
+      } else if (code === "WELCOME10" || code === "XELECTRON10") {
+        setAppliedCoupon(code);
+        setCouponDiscount(10);
+        setCouponSuccess("10% discount applied successfully!");
+      } else if (code === "SAVE20" || code === "FESTIVE20") {
+        setAppliedCoupon(code);
+        setCouponDiscount(20);
+        setCouponSuccess("20% special discount applied!");
+      } else {
+        setCouponError(`Invalid or expired coupon code "${code}".`);
+      }
+    } catch {
+      if (code === "WELCOME10" || code === "XELECTRON10" || code === "SAVE10") {
+        setAppliedCoupon(code);
+        setCouponDiscount(10);
+        setCouponSuccess("10% discount applied successfully!");
+      } else {
+        setCouponError("Unable to validate coupon code. Please try again.");
+      }
     }
   };
 
@@ -173,12 +300,32 @@ function CheckoutContent() {
     try {
       await trackCheckout();
 
-      // Create mock or real order via API
-      const randomOrderId = `XE-${Math.floor(100000 + Math.random() * 900000)}`;
-      setOrderId(randomOrderId);
+      const fullAddress = [addressLine1, addressLine2, city, state, postalCode].filter(Boolean).join(", ") + ` [Payment: ${paymentMethod.toUpperCase()}]`;
 
-      // Simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser?.id,
+          items: orderItems.map((item) => ({
+            productId: item.id,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          total,
+          shippingAddress: fullAddress,
+          paymentMethod: paymentMethod.toUpperCase(),
+          phone,
+          discountCode: appliedCoupon || undefined,
+        }),
+      });
+
+      const orderData = await res.json();
+      const newOrderId = orderData?.data?.id
+        ? orderData.data.id.slice(-8).toUpperCase()
+        : `XE-${Math.floor(100000 + Math.random() * 900000)}`;
+      setOrderId(newOrderId);
+      setPaidTotal(total);
 
       if (checkoutSessionToken) {
         await fetch("/api/abandoned-checkouts/complete", {
@@ -224,35 +371,65 @@ function CheckoutContent() {
               <span className="text-slate-500">Customer:</span>
               <span className="font-medium text-slate-900">{firstName} {lastName}</span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-200/60">
-              <span className="text-slate-500">Shipping to:</span>
-              <span className="font-medium text-slate-900 truncate max-w-[200px]">{addressLine1}, {city}</span>
+            <div className="flex justify-between gap-4 py-1 border-b border-slate-200/60">
+              <span className="text-slate-500 shrink-0">Shipping to:</span>
+              <span className="font-medium text-slate-900 text-right">{[addressLine1, addressLine2, city, state, postalCode].filter(Boolean).join(", ")}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500">Payment:</span>
-              <span className="font-medium text-slate-900 uppercase">{paymentMethod}</span>
+              <span className="font-medium text-slate-900 uppercase">{paymentMethod === 'card' ? 'Credit / Debit Card' : paymentMethod === 'upi' ? 'UPI' : 'Cash on Delivery'}</span>
             </div>
             <div className="flex justify-between pt-2 text-sm font-semibold text-slate-900">
               <span>Total Paid:</span>
-              <span className="text-[#0a7ae6]">₹{total.toLocaleString("en-IN")}</span>
+              <span className="text-[#0a7ae6]">₹{paidTotal.toLocaleString("en-IN")}</span>
             </div>
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/"
-              className="flex-1 rounded-xl bg-[#0a7ae6] py-3 text-center text-sm font-medium text-white shadow-md shadow-[#0a7ae6]/20 transition-all hover:bg-[#086ac9]"
+              href="/orders"
+              className="flex-1 rounded-xl bg-[#0a7ae6] py-3 text-center text-sm font-semibold text-white shadow-md shadow-[#0a7ae6]/20 transition-all hover:bg-[#086ac9]"
             >
-              Continue Shopping
+              View Orders
             </Link>
             <Link
               href="/shop"
-              className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-center text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Explore Products
             </Link>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Empty cart guard
+  if (!productParamLoading && orderItems.length === 0) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+            <Package className="size-10" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Your Cart is Empty</h2>
+          <p className="text-sm text-slate-500 mb-6">Looks like you haven&apos;t added anything yet. Browse our products to find something you love!</p>
+          <Link
+            href="/shop"
+            className="inline-flex items-center rounded-xl bg-[#0a7ae6] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#0a7ae6]/20 hover:bg-[#086ac9] transition-all"
+          >
+            Explore Products
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (!isMounted || productParamLoading || isAuthLoading) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#0a7ae6]" />
       </div>
     );
   }
@@ -387,21 +564,41 @@ function CheckoutContent() {
                 </label>
                 <div className="relative">
                   <select
+                    required
                     value={state}
                     onChange={(e) => setState(e.target.value)}
                     className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm text-slate-900 focus:border-[#0a7ae6] focus:outline-none focus:ring-2 focus:ring-[#0a7ae6]/15"
                   >
-                    <option value="Maharashtra">Maharashtra</option>
+                    <option value="" disabled>Select your state</option>
+                    <option value="Andhra Pradesh">Andhra Pradesh</option>
+                    <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                    <option value="Assam">Assam</option>
+                    <option value="Bihar">Bihar</option>
+                    <option value="Chhattisgarh">Chhattisgarh</option>
                     <option value="Delhi">Delhi NCR</option>
+                    <option value="Goa">Goa</option>
+                    <option value="Gujarat">Gujarat</option>
+                    <option value="Haryana">Haryana</option>
+                    <option value="Himachal Pradesh">Himachal Pradesh</option>
+                    <option value="Jharkhand">Jharkhand</option>
                     <option value="Karnataka">Karnataka</option>
+                    <option value="Kerala">Kerala</option>
+                    <option value="Madhya Pradesh">Madhya Pradesh</option>
+                    <option value="Maharashtra">Maharashtra</option>
+                    <option value="Manipur">Manipur</option>
+                    <option value="Meghalaya">Meghalaya</option>
+                    <option value="Mizoram">Mizoram</option>
+                    <option value="Nagaland">Nagaland</option>
+                    <option value="Odisha">Odisha</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                    <option value="Sikkim">Sikkim</option>
                     <option value="Tamil Nadu">Tamil Nadu</option>
                     <option value="Telangana">Telangana</option>
+                    <option value="Tripura">Tripura</option>
                     <option value="Uttar Pradesh">Uttar Pradesh</option>
-                    <option value="Gujarat">Gujarat</option>
+                    <option value="Uttarakhand">Uttarakhand</option>
                     <option value="West Bengal">West Bengal</option>
-                    <option value="Rajasthan">Rajasthan</option>
-                    <option value="Punjab">Punjab</option>
-                    <option value="Kerala">Kerala</option>
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-4 top-3.5 size-4 text-slate-400" />
                 </div>

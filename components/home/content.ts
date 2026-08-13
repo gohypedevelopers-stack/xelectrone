@@ -50,7 +50,18 @@ export const dropdownItems: NavDropdownItem[] = [
 
 export const flatItems = ["Home", "About Us", "Contact", "My Account"];
 
-export const banners = [
+export type BannerItem = {
+  src: string;
+  mobileSrc?: string;
+  alt: string;
+  title: string;
+  category?: string;
+  caption?: string;
+  cta?: string;
+  linkUrl?: string;
+};
+
+export const banners: BannerItem[] = [
   {
     src: "/hero-banner-projector-c9.png",
     mobileSrc: "/hero-banner-projector-c9-mobile.jpg",
@@ -59,6 +70,7 @@ export const banners = [
     category: "Projector",
     caption: "Smart Cinema • Full HD 1080p",
     cta: "Shop now",
+    linkUrl: "/shop",
   },
   {
     src: "/hero-banner-techno-projector.png",
@@ -68,6 +80,7 @@ export const banners = [
     category: "Projector",
     caption: "Portable • Crystal Clear Display",
     cta: "Explore now",
+    linkUrl: "/shop",
   },
   {
     src: "/hero-banner-tv.png",
@@ -77,6 +90,7 @@ export const banners = [
     category: "Smart TV",
     caption: "Big Screen • Bright Detail",
     cta: "View TV",
+    linkUrl: "/shop",
   },
 ];
 

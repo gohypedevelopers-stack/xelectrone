@@ -28,6 +28,25 @@ export function createDiscount(data: CreateDiscountInput) {
   });
 }
 
+export async function incrementDiscountUsage(code: string) {
+  try {
+    const formattedCode = code.trim().toUpperCase();
+    const existing = await db.discount.findFirst({
+      where: {
+        OR: [{ code: formattedCode }, { id: code }],
+      },
+    });
+    if (existing) {
+      return db.discount.update({
+        where: { id: existing.id },
+        data: { usageCount: { increment: 1 } },
+      });
+    }
+  } catch (error) {
+    console.error("Failed to increment discount usage:", error);
+  }
+}
+
 export function deleteDiscount(id: string) {
   return db.discount.delete({ where: { id } });
 }

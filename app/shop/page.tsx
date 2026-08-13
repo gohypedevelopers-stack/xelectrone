@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Footer from "@/components/footer/footer";
 import Navbar from "@/components/navbar/navbar";
 import ShopContent, { type ShopProduct } from "@/components/shop/shop-content";
@@ -8,13 +9,13 @@ export default async function ShopPage() {
 
   try {
     const dashboardProducts = await productsController.listProducts();
-    products = dashboardProducts.map((product) => ({
+    products = dashboardProducts.map((product: any) => ({
       id: product.id,
       slug: product.slug,
       name: product.name,
       description: product.description,
       mainImage: product.mainImage || "/category-smartphone.png",
-      hoverImage: product.media.find((media) => media.url !== product.mainImage)?.url ?? null,
+      hoverImage: product.media.find((media: any) => media.url !== product.mainImage)?.url ?? null,
       price: product.price,
       oldPrice: product.oldPrice,
       category: product.category?.title || "XElectron",
@@ -29,7 +30,9 @@ export default async function ShopPage() {
   return (
     <main className="min-h-screen bg-white">
       <Navbar />
-      <ShopContent products={products} />
+      <Suspense fallback={<div className="py-20 text-center text-slate-400">Loading products...</div>}>
+        <ShopContent products={products} />
+      </Suspense>
       <Footer />
     </main>
   );

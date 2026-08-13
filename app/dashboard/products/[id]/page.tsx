@@ -38,7 +38,7 @@ export default async function ProductEditPage({ params }: ProductEditPageProps) 
           <main className="min-h-full flex-1 bg-[#f5f5f5] p-4 text-black sm:p-5">
             <EditProductForm
               product={product}
-              categories={categories.map(({ id: categoryId, title }) => ({ id: categoryId, title }))}
+              categories={categories.map((c: any) => ({ id: c.id, title: c.title }))}
             />
           </main>
         </SidebarInset>

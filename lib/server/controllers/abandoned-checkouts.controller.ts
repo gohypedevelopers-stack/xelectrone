@@ -43,7 +43,7 @@ export async function trackAbandonedCheckout(data: unknown) {
     },
   });
 
-  const items = products.flatMap((product) => {
+  const items = products.flatMap((product: any) => {
     const quantity = quantities.get(product.id);
     if (!quantity) return [];
 
@@ -60,7 +60,7 @@ export async function trackAbandonedCheckout(data: unknown) {
 
   if (items.length === 0) throw new Error("No valid products were found for this checkout");
 
-  const subtotal = items.reduce((total, item) => total + item.unitPrice * item.quantity, 0);
+  const subtotal = items.reduce((total: number, item: any) => total + item.unitPrice * item.quantity, 0);
   return abandonedCheckoutsDal.saveAbandonedCheckout({
     sessionToken,
     customerName: cleanText(payload.customerName, 160) || undefined,
