@@ -1,15 +1,37 @@
 import Link from "next/link";
 
-const productLinks = ["Speaker", "Home Speaker", "Sound Bar", "Portable PA"];
-const customerServiceLinks = [
-  "Troubleshooting",
-  "Repair & Replacement",
-  "Order Tracking",
-  "Register Your Product",
-  "Contact Us",
+type FooterLink = {
+  label: string;
+  href: string;
+};
+
+const productLinks: FooterLink[] = [
+  { label: "Speaker", href: "/shop" },
+  { label: "Home Speaker", href: "/shop" },
+  { label: "Sound Bar", href: "/shop" },
+  { label: "Portable PA", href: "/shop" },
 ];
-const companyLinks = ["About Us", "Find a Store", "Careers", "Stories"];
-const policyLinks = ["Your privacy choices", "Privacy Policy", "Terms of Use"];
+
+const customerServiceLinks: FooterLink[] = [
+  { label: "Troubleshooting", href: "/troubleshooting" },
+  { label: "Repair & Replacement", href: "/repair-replacement" },
+  { label: "Order Tracking", href: "/orders" },
+  { label: "Register Your Product", href: "/warranty" },
+  { label: "Contact Us", href: "/contact" },
+];
+
+const companyLinks: FooterLink[] = [
+  { label: "About Us", href: "/about" },
+  { label: "Find a Store", href: "/find-a-store" },
+  { label: "Careers", href: "/careers" },
+  { label: "Stories", href: "/stories" },
+];
+
+const policyLinks: FooterLink[] = [
+  { label: "Your privacy choices", href: "/contact" },
+  { label: "Privacy Policy", href: "/contact" },
+  { label: "Terms of Use", href: "/contact" },
+];
 
 function FooterColumn({
   title,
@@ -17,19 +39,19 @@ function FooterColumn({
   className,
 }: {
   title: string;
-  links: string[];
+  links: FooterLink[];
   className?: string;
 }) {
   return (
     <div className={className}>
-      <h3 className="text-[12px] font-semibold uppercase tracking-[0.05em] text-white sm:text-[13px] lg:text-[14px]">
+      <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-[0.05em] text-white">
         {title}
       </h3>
-      <ul className="mt-3 space-y-2 text-[12px] uppercase leading-5 tracking-[0.01em] text-slate-400 sm:mt-4 sm:text-[13px]">
+      <ul className="mt-3.5 space-y-2 text-xs sm:text-sm uppercase leading-5 tracking-[0.01em] text-slate-400 font-normal sm:mt-4">
         {links.map((link) => (
-          <li key={link}>
-            <Link href="/" className="transition-colors hover:text-white">
-              {link}
+          <li key={link.label}>
+            <Link href={link.href} className="transition-colors hover:text-white">
+              {link.label}
             </Link>
           </li>
         ))}
@@ -41,13 +63,36 @@ function FooterColumn({
 export default function Footer() {
   return (
     <footer className="bg-transparent px-[20px] pt-4 pb-0">
-      {/* BLACK FOOTER CARD WITH TOP ROUNDED CORNERS, SIDE MARGINS, AND FLAT BOTTOM */}
-      <div className="mx-auto flex max-w-[1600px] flex-col rounded-t-[15px] rounded-b-none bg-[#09090b] px-6 pt-8 pb-6 text-white shadow-2xl sm:px-8 sm:pt-10 sm:pb-8 lg:px-12 lg:pt-12 lg:pb-10">
+      {/* CHARCOAL DARK GRAY FOOTER CARD WITH TOP ROUNDED CORNERS */}
+      <div className="mx-auto flex max-w-[1600px] flex-col rounded-t-[20px] rounded-b-none bg-[#18191c] border-t border-x border-slate-800/60 px-6 pt-8 pb-6 text-white shadow-2xl sm:px-8 sm:pt-10 sm:pb-8 lg:px-12 lg:pt-12 lg:pb-10">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-12">
           <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 sm:gap-8 lg:flex lg:gap-16 xl:gap-20">
             <FooterColumn title="Product" links={productLinks} className="col-span-1" />
             <FooterColumn title="Our Company" links={companyLinks} className="col-span-1 sm:order-3" />
             <FooterColumn title="Customer Service" links={customerServiceLinks} className="col-span-2 sm:col-span-1 sm:order-2" />
+          </div>
+
+          {/* Official Contact Info */}
+          <div className="text-xs sm:text-sm text-slate-400 space-y-2 border-t lg:border-t-0 border-slate-800 pt-4 lg:pt-0 max-w-md font-normal">
+            <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-[0.05em] text-white">
+              XElectron Technologies Pvt. Ltd.
+            </h3>
+            <p className="leading-relaxed text-slate-400">
+              2417, Tower A, The Corenthum, Sector – 62, Noida – 201301.
+            </p>
+            <p>
+              <span className="text-slate-300 font-normal">Customer Care:</span>{" "}
+              <a href="tel:8527312304" className="hover:text-white transition">8527312304</a> /{" "}
+              <a href="tel:01204550655" className="hover:text-white transition">0120-4550655</a>
+            </p>
+            <p>
+              <span className="text-slate-300 font-normal">Sales (Gaurav Sharma):</span>{" "}
+              <a href="tel:9870293008" className="hover:text-white transition">9870293008</a>
+            </p>
+            <p>
+              <span className="text-slate-300 font-normal">Email:</span>{" "}
+              <a href="mailto:customercare@xelectron.com" className="hover:text-white transition">customercare@xelectron.com</a>
+            </p>
           </div>
         </div>
 
@@ -62,11 +107,11 @@ export default function Footer() {
         </div>
 
         {/* POLICY LINKS */}
-        <ul className="order-3 mt-4 flex flex-nowrap items-center justify-center gap-x-2.5 text-center text-[9px] font-semibold uppercase tracking-[0.01em] text-slate-400 whitespace-nowrap sm:mt-4 sm:gap-x-6 sm:text-[11px] lg:order-2 lg:mt-6 lg:justify-end lg:pr-2 lg:text-[12px]">
+        <ul className="order-3 mt-4 flex flex-nowrap items-center justify-center gap-x-2.5 text-center text-[9px] font-medium uppercase tracking-[0.01em] text-slate-400 whitespace-nowrap sm:mt-4 sm:gap-x-6 sm:text-[11px] lg:order-2 lg:mt-6 lg:justify-end lg:pr-2 lg:text-[12px]">
           {policyLinks.map((link) => (
-            <li key={link}>
-              <Link href="/" className="transition-colors hover:text-white">
-                {link}
+            <li key={link.label}>
+              <Link href={link.href} className="transition-colors hover:text-white">
+                {link.label}
               </Link>
             </li>
           ))}

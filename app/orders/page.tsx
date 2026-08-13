@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatINR } from "@/lib/format-price";
 import Navbar from "@/components/navbar/navbar";
+import Footer from "@/components/footer/footer";
 import { CheckCircle2, Clock, Package, Truck, User, ArrowLeft, ShoppingBag } from "lucide-react";
 
 type OrderItem = {
@@ -268,6 +269,7 @@ export default function MyOrdersPage() {
       }>
         <OrdersContent />
       </Suspense>
+      <Footer />
     </main>
   );
 }

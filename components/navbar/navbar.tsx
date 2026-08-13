@@ -72,13 +72,13 @@ function IconButton({
 
 function FlatNavLink({
   label,
-  href = "/",
+  href,
   icon: Icon,
   onClick,
   onMouseEnter,
 }: {
   label: string;
-  href?: string;
+  href: string;
   icon?: LucideIcon;
   onClick?: () => void;
   onMouseEnter?: () => void;
@@ -521,8 +521,8 @@ export default function Navbar() {
                 onClose={() => handleOpenMenu(null)}
               />
             ))}
-            <FlatNavLink label="ABOUT US" href="/" onMouseEnter={() => handleOpenMenu(null)} />
-            <FlatNavLink label="CONTACT" href="/" onMouseEnter={() => handleOpenMenu(null)} />
+            <FlatNavLink label="ABOUT US" href="/about" onMouseEnter={() => handleOpenMenu(null)} />
+            <FlatNavLink label="CONTACT" href="/contact" onMouseEnter={() => handleOpenMenu(null)} />
           </nav>
 
           {/* Desktop Actions */}
