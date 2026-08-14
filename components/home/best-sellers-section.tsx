@@ -84,8 +84,9 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
         if (!visual) return;
         gsap.set(visual, {
           autoAlpha: i === 0 ? 1 : 0,
-          y: i === 0 ? 0 : 50,
-          scale: i === 0 ? 1 : 0.94,
+          y: i === 0 ? 0 : 100,
+          rotation: i === 0 ? 0 : -15,
+          scale: i === 0 ? 1 : 0.90,
         });
       });
 
@@ -140,7 +141,7 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
         if (visualCur) {
           tl.to(
             visualCur,
-            { autoAlpha: 0, y: -50, scale: 0.94, ease: "power2.in", duration: 0.35 },
+            { autoAlpha: 0, y: -100, rotation: 15, scale: 0.90, ease: "power3.in", duration: 0.4 },
             tStart + 0.15
           );
         }
@@ -180,7 +181,7 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
         if (visualNext) {
           tl.to(
             visualNext,
-            { autoAlpha: 1, y: 0, scale: 1, ease: "power2.out", duration: 0.35 },
+            { autoAlpha: 1, y: 0, rotation: 0, scale: 1, ease: "power3.out", duration: 0.55 },
             tStart + 0.52
           );
         }
@@ -226,7 +227,7 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
 
   if (reduceMotion) {
     return (
-      <section className="bg-white py-16 text-slate-900">
+      <section className="hidden lg:block bg-white py-16 text-slate-900">
         <div className="mx-auto max-w-[1600px] px-6 py-6 sm:px-8 lg:px-12">
           <p className="text-center text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.1em] text-[#0a7ae6]">
             Best sellers
@@ -282,7 +283,7 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen h-screen bg-white text-slate-900 overflow-hidden"
+      className="hidden lg:block relative min-h-screen h-screen bg-white text-slate-900 overflow-hidden"
     >
       <div
         ref={viewportRef}

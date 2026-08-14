@@ -144,7 +144,7 @@ export default function ProductDetail({
     <div className="min-h-dvh bg-white px-4 py-4 text-slate-900 sm:px-6 lg:px-8 lg:py-6">
       <div className="mx-auto max-w-[1440px]">
         <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
-          <div className={`no-scrollbar -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 sm:grid sm:mx-0 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 ${
+          <div className={`no-scrollbar -mx-4 flex snap-x snap-mandatory gap-1 overflow-x-auto px-4 pb-2 sm:grid sm:mx-0 sm:gap-1 sm:overflow-visible sm:px-0 sm:pb-0 ${
             hasOneProductImage ? "sm:grid-cols-1" : "sm:grid-cols-2"
           }`}>
             {productImages.map((image, index) => (
