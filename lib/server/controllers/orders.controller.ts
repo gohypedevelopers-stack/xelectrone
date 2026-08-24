@@ -6,9 +6,9 @@ import bcrypt from "bcryptjs";
 
 // ─── List ────────────────────────────────────────────────────────────────────
 
-export async function listOrders(userId?: string, query?: string) {
+export async function listOrders(userId?: string, query?: string, email?: string, phone?: string) {
   if (userId) {
-    return ordersDal.getOrdersByUserId(userId);
+    return ordersDal.getOrdersByUserId(userId, email, phone);
   }
   if (query) {
     return ordersDal.getOrdersByEmailOrPhone(query);

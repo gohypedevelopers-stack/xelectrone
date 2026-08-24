@@ -11,6 +11,7 @@ export type SessionUser = {
   name: string;
   email: string;
   role: "ADMIN" | "CUSTOMER";
+  phone?: string | null;
 };
 
 // ─── Errors ──────────────────────────────────────────────────────────────────
@@ -53,6 +54,7 @@ export async function verifySession(): Promise<SessionUser | null> {
     name: session.user.name,
     email: session.user.email,
     role: session.user.role as "ADMIN" | "CUSTOMER",
+    phone: session.user.phone,
   };
 }
 

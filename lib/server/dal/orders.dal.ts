@@ -32,9 +32,40 @@ export async function getOrderById(id: string) {
   });
 }
 
-export async function getOrdersByUserId(userId: string) {
+export async function getOrdersByUserId(userId: string, email?: string, phone?: string) {
+  const cleanEmail = email?.trim().toLowerCase();
+  const cleanPhone = phone?.replace(/[^0-9]/g, "");
+
+  // Link any unlinked orders with this email/phone to the user ID
+  if (cleanEmail || (cleanPhone && cleanPhone.length >= 10)) {
+    try {
+      await db.order.updateMany({
+        where: {
+          userId: null,
+          OR: [
+            ...(cleanEmail ? [{ customerEmail: { equals: cleanEmail, mode: "insensitive" as const } }] : []),
+            ...(cleanPhone && cleanPhone.length >= 10 ? [{ customerPhone: { contains: cleanPhone } }] : []),
+          ],
+        },
+        data: {
+          userId,
+        },
+      });
+    } catch {}
+  }
+
+  const conditions: any[] = [{ userId }];
+  if (cleanEmail) {
+    conditions.push({ customerEmail: { equals: cleanEmail, mode: "insensitive" as const } });
+  }
+  if (cleanPhone && cleanPhone.length >= 10) {
+    conditions.push({ customerPhone: { contains: cleanPhone } });
+  }
+
   return db.order.findMany({
-    where: { userId },
+    where: {
+      OR: conditions,
+    },
     include: {
       items: {
         include: {

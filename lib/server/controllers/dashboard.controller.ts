@@ -223,7 +223,7 @@ export async function getDashboardOverview(rangeParam: string = "last30") {
       id: order.id,
       status: order.status,
       total: order.total,
-      customerName: order.user.name,
+      customerName: order.user?.name || order.customerName || "Customer",
       itemCount: order.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
     })),
     topProducts: [...productSales.values()]

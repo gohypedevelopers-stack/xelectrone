@@ -58,9 +58,7 @@ type OrderData = {
 function OrdersContent() {
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(false);
-  const [guestLookupQuery, setGuestLookupQuery] = useState("");
-  const [isSearchingGuest, setIsSearchingGuest] = useState(false);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [copiedAwb, setCopiedAwb] = useState<string | null>(null);
 
   useEffect(() => {
@@ -73,28 +71,16 @@ function OrdersContent() {
 
         if (isMounted) {
           if (res.status === 401) {
-            setIsGuest(true);
-            // Try to load cached guest orders from localStorage
-            if (typeof window !== "undefined") {
-              const guestIds = JSON.parse(localStorage.getItem("xelectron_guest_orders") || "[]");
-              if (guestIds.length > 0) {
-                // Fetch the most recent guest order
-                const guestRes = await fetch(`/api/orders?orderId=${guestIds[0]}`);
-                const guestJson = await guestRes.json();
-                if (guestJson.success && Array.isArray(guestJson.data) && guestJson.data.length > 0) {
-                  setOrders(guestJson.data);
-                }
-              }
-            }
+            setIsUnauthorized(true);
           } else if (json.success && Array.isArray(json.data)) {
             setOrders(json.data);
-            setIsGuest(false);
+            setIsUnauthorized(false);
           }
           setLoading(false);
         }
       } catch {
         if (isMounted) {
-          setIsGuest(true);
+          setIsUnauthorized(true);
           setLoading(false);
         }
       }
@@ -105,45 +91,6 @@ function OrdersContent() {
       isMounted = false;
     };
   }, []);
-
-  const handleGuestSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!guestLookupQuery.trim()) return;
-
-    setIsSearchingGuest(true);
-    try {
-      const q = guestLookupQuery.trim();
-      let endpoint = `/api/orders?contact=${encodeURIComponent(q)}`;
-
-      // If it looks like an order ID
-      if (q.toUpperCase().startsWith("XE-") || q.length >= 8) {
-        const cleanId = q.replace(/^#?XE-/i, "");
-        endpoint = `/api/orders?orderId=${encodeURIComponent(cleanId)}`;
-      }
-
-      const res = await fetch(endpoint);
-      const json = await res.json();
-
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        setOrders(json.data);
-        toast.success(`Found ${json.data.length} order(s)!`);
-      } else {
-        // Fallback: try search by contact
-        const res2 = await fetch(`/api/orders?contact=${encodeURIComponent(q)}`);
-        const json2 = await res2.json();
-        if (json2.success && Array.isArray(json2.data) && json2.data.length > 0) {
-          setOrders(json2.data);
-          toast.success(`Found ${json2.data.length} order(s)!`);
-        } else {
-          toast.error("No orders found matching your search. Please check your Order ID or Email.");
-        }
-      }
-    } catch {
-      toast.error("Failed to look up order. Please check your connection.");
-    } finally {
-      setIsSearchingGuest(false);
-    }
-  };
 
   const handleCopyAwb = (awb: string) => {
     navigator.clipboard.writeText(awb);
@@ -207,6 +154,46 @@ function OrdersContent() {
     );
   }
 
+  if (isUnauthorized) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl sm:p-10">
+          <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full bg-blue-50 text-[#0a7ae6] ring-8 ring-blue-50/50">
+            <User className="size-9 stroke-[2]" />
+          </div>
+
+          <span className="inline-block rounded-full bg-blue-100/70 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-[#0a7ae6]">
+            Sign In Required
+          </span>
+
+          <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            Track Your Orders
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-600">
+            Please sign in to your XElectron account to view your purchase history, live fulfillment status, and courier tracking.
+          </p>
+
+          <div className="mt-8 space-y-3">
+            <Link
+              href="/login?redirectTo=/orders"
+              className="block w-full rounded-xl bg-[#0a7ae6] py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-[#0a7ae6]/20 transition-all hover:bg-[#086ac9]"
+            >
+              Sign In to Your Account
+            </Link>
+
+            <Link
+              href="/login?mode=signup&redirectTo=/orders"
+              className="block w-full rounded-xl border border-slate-200 bg-white py-3.5 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+            >
+              Create an Account
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50/50 pb-16 pt-6 sm:pt-10">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-6">
@@ -218,52 +205,13 @@ function OrdersContent() {
               Track live courier status, view delivery details, and manage your purchases.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            {isGuest ? (
-              <Link
-                href="/login?redirectTo=/orders"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-black transition-all"
-              >
-                <User className="size-3.5" /> Sign In
-              </Link>
-            ) : null}
-            <Link
-              href="/shop"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0a7ae6] hover:underline"
-            >
-              <ArrowLeft className="size-3.5" /> Continue Shopping
-            </Link>
-          </div>
+          <Link
+            href="/shop"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0a7ae6] hover:underline"
+          >
+            <ArrowLeft className="size-3.5" /> Continue Shopping
+          </Link>
         </div>
-
-        {/* Guest Order Lookup Bar */}
-        {isGuest && (
-          <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-2">
-              <Search className="size-4 text-[#0a7ae6]" />
-              <h3 className="text-sm font-bold text-slate-900">Track an Order as Guest</h3>
-            </div>
-            <p className="text-xs text-slate-500">
-              Enter your Order ID (e.g. #XE-489201), registered Email, or Phone number to view live shipment tracking.
-            </p>
-            <form onSubmit={handleGuestSearch} className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Enter Order ID, Email or Phone..."
-                value={guestLookupQuery}
-                onChange={(e) => setGuestLookupQuery(e.target.value)}
-                className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0a7ae6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a7ae6]/15"
-              />
-              <button
-                type="submit"
-                disabled={isSearchingGuest}
-                className="rounded-xl bg-[#0a7ae6] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#086ac9] transition-all disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer"
-              >
-                {isSearchingGuest ? "Searching..." : "Track Order"}
-              </button>
-            </form>
-          </div>
-        )}
 
         {/* Orders List or Empty State */}
         {orders.length === 0 ? (
@@ -271,26 +219,16 @@ function OrdersContent() {
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
               <ShoppingBag className="size-8 stroke-[1.5]" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900">No orders found</h3>
+            <h3 className="text-lg font-semibold text-slate-900">No orders placed yet</h3>
             <p className="mt-1 text-xs text-slate-500 sm:text-sm max-w-sm mx-auto">
-              {isGuest
-                ? "If you placed an order as a guest, search above with your Order ID or Email, or create an account for automatic tracking."
-                : "When you buy products, your orders and live tracking links will show up here."}
+              When you purchase products, your orders and live courier tracking links will show up here.
             </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              {isGuest && (
-                <Link
-                  href="/login?mode=signup&redirectTo=/orders"
-                  className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-black transition-all"
-                >
-                  Create an Account
-                </Link>
-              )}
+            <div className="mt-6 flex justify-center">
               <Link
                 href="/shop"
-                className="rounded-xl bg-[#0a7ae6] px-5 py-2.5 text-xs font-semibold text-white transition-all hover:bg-[#086ac9]"
+                className="rounded-xl bg-[#0a7ae6] px-6 py-2.5 text-xs font-semibold text-white transition-all hover:bg-[#086ac9]"
               >
-                Explore Products
+                Explore Catalog
               </Link>
             </div>
           </div>

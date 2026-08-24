@@ -127,7 +127,7 @@ export default async function OrdersPage() {
                             </Link>
                           </td>
                           <td className="border-b border-black/10 px-3 py-2.5"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{dateFormatter.format(order.createdAt)}</Link></td>
-                          <td className="border-b border-black/10 px-3 py-2.5 font-medium"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{order.user.name}</Link></td>
+                          <td className="border-b border-black/10 px-3 py-2.5 font-medium"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{order.user?.name || order.customerName || "Guest Customer"}</Link></td>
                           <td className="border-b border-black/10 px-3 py-2.5 text-right font-semibold tabular-nums"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{currencyFormatter.format(order.total)}</Link></td>
                           <td className="border-b border-black/10 px-3 py-2.5"><Link href={`/dashboard/orders/${order.id}`} className="block"><span className={`rounded-md px-2 py-1 font-semibold ${statusClass(order.status)}`}>{formatStatus(order.status)}</span></Link></td>
                           <td className="border-b border-black/10 px-3 py-2.5"><Link href={`/dashboard/orders/${order.id}`} className="block text-inherit">{itemCount} {itemCount === 1 ? "item" : "items"}</Link></td>
