@@ -1,8 +1,23 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-const blogPosts = [
+type BlogPost = {
+  id: string | number;
+  title: string;
+  excerpt?: string | null;
+  category: string;
+  publishedAt?: string;
+  date?: string;
+  readTime?: string | null;
+  image?: string | null;
+  accentColor?: string | null;
+  accent?: string;
+};
+
+const defaultBlogPosts: BlogPost[] = [
   {
     id: 1,
     title: "Why XElectron Speakers Are Dominating the Market in 2026",
@@ -12,7 +27,7 @@ const blogPosts = [
     date: "Jul 22, 2026",
     readTime: "4 min read",
     image: "/blog-1.png",
-    accent: "#0a7ae6",
+    accentColor: "#0a7ae6",
   },
   {
     id: 2,
@@ -23,7 +38,7 @@ const blogPosts = [
     date: "Jul 18, 2026",
     readTime: "6 min read",
     image: "/blog-2.png",
-    accent: "#025bb5",
+    accentColor: "#025bb5",
   },
   {
     id: 3,
@@ -34,11 +49,24 @@ const blogPosts = [
     date: "Jul 12, 2026",
     readTime: "5 min read",
     image: "/blog-3.png",
-    accent: "#0284c7",
+    accentColor: "#0284c7",
   },
 ];
 
 export default function BlogSection() {
+  const [posts, setPosts] = useState<BlogPost[]>(defaultBlogPosts);
+
+  useEffect(() => {
+    fetch("/api/blog")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setPosts(json.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <section className="relative w-full bg-white px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
       <div className="mx-auto max-w-[1400px]">
@@ -52,60 +80,70 @@ export default function BlogSection() {
               Latest Stories & Updates
             </h2>
           </div>
-          <a
-            href="#"
+          <Link
+            href="/dashboard/blog"
             className="group flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-bold text-[#0a7ae6] transition-colors hover:text-[#025bb5] shrink-0"
           >
             <span>View all</span>
             <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:translate-x-1" />
-          </a>
+          </Link>
         </div>
 
         {/* Blog Cards Grid */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {blogPosts.map((post) => (
-            <article
-              key={post.id}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-slate-200"
-            >
-              {/* Image */}
-              <div className="relative aspect-[16/10] overflow-hidden">
-                <img
-                  src={post.image}
-                  alt={post.title}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                {/* Category badge */}
-                <span
-                  className="absolute top-3 left-3 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-md"
-                  style={{ backgroundColor: post.accent }}
-                >
-                  {post.category}
-                </span>
-              </div>
+          {posts.map((post) => {
+            const formattedDate = post.publishedAt
+              ? new Intl.DateTimeFormat("en-IN", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                }).format(new Date(post.publishedAt))
+              : post.date || "Recent";
 
-              {/* Content */}
-              <div className="flex flex-1 flex-col p-5">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-[#0a7ae6] transition-colors duration-200">
-                  {post.title}
-                </h3>
-                <p className="mt-2 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-2">
-                  {post.excerpt}
-                </p>
-
-                {/* Meta */}
-                <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">
-                  <span className="text-xs text-slate-400">{post.date}</span>
-                  <span className="text-xs font-medium text-slate-500">
-                    {post.readTime}
+            return (
+              <article
+                key={post.id}
+                className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-slate-200"
+              >
+                {/* Image */}
+                <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+                  <img
+                    src={post.image || "/blog-1.png"}
+                    alt={post.title}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {/* Category badge */}
+                  <span
+                    className="absolute top-3 left-3 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-md"
+                    style={{ backgroundColor: post.accentColor || post.accent || "#0a7ae6" }}
+                  >
+                    {post.category}
                   </span>
                 </div>
-              </div>
 
-              {/* Full-card clickable overlay */}
-              <a href="#" className="absolute inset-0 z-10" aria-label={`Read: ${post.title}`} />
-            </article>
-          ))}
+                {/* Content */}
+                <div className="flex flex-1 flex-col p-5">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-[#0a7ae6] transition-colors duration-200">
+                    {post.title}
+                  </h3>
+                  <p className="mt-2 flex-1 text-sm text-slate-500 leading-relaxed line-clamp-2">
+                    {post.excerpt}
+                  </p>
+
+                  {/* Meta */}
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">
+                    <span className="text-xs text-slate-400">{formattedDate}</span>
+                    <span className="text-xs font-medium text-slate-500">
+                      {post.readTime || "4 min read"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Full-card clickable overlay */}
+                <a href="#" className="absolute inset-0 z-10" aria-label={`Read: ${post.title}`} />
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -5,13 +5,11 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "crossbeats.com",
-        pathname: "/cdn/shop/files/**",
+        hostname: "**",
       },
       {
-        protocol: "https",
-        hostname: "www.xelectron.com",
-        pathname: "/wp-content/uploads/**",
+        protocol: "http",
+        hostname: "**",
       },
     ],
   },

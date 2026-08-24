@@ -7,27 +7,27 @@ import ScrollReveal from "@/components/ScrollReveal";
 const items = [
   {
     id: 1,
-    title: "ANC for Mumbai Locals",
-    subtitle: "40ms gaming mode, 100-hour battery",
-    image: "/banner-earbuds.png",
+    title: "Smart Home Cinema",
+    subtitle: "Up to 300-inch 4K projection for movie nights",
+    image: "/banner-projector.png",
   },
   {
     id: 2,
-    title: "Crystal Clear Vision",
-    subtitle: "4K Dashcam with Night Vision",
-    image: "/banner-dashcam.png",
+    title: "Ultra HD Smart TVs",
+    subtitle: "Vivid color clarity and cinematic surround sound",
+    image: "/hero-banner-tv.png",
   },
   {
     id: 3,
-    title: "Health Monitor",
-    subtitle: "BT calling, 7-day battery, IP68",
-    image: "/banner-smartwatch.png",
+    title: "Portable Projection",
+    subtitle: "Rotatable angle, auto keystone & built-in apps",
+    image: "/hero-banner-techno-projector.png",
   },
   {
     id: 4,
-    title: "Cinematic Experience",
-    subtitle: "Up to 300 inch projection, 4K supported",
-    image: "/banner-projector.png",
+    title: "Android C9 Plus Cinema",
+    subtitle: "True 1080p FHD with high lumen optical brilliance",
+    image: "/hero-banner-projector-c9.png",
   },
 ];
 
@@ -35,11 +35,19 @@ export default function BrandSetupSection() {
   const [hoveredIndex, setHoveredIndex] = useState(0);
 
   return (
-    <section className="overflow-hidden bg-white py-14 sm:py-20 lg:py-24 text-slate-900">
+    <section className="overflow-hidden bg-white pt-12 sm:pt-16 lg:pt-20 pb-4 sm:pb-6 text-slate-900">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
-        <h2 className="mb-5 text-[2rem] font-normal leading-[0.96] tracking-tight md:mb-10 md:text-[clamp(2.5rem,4vw,3.5rem)]">
-          One brand for your whole setup
-        </h2>
+        <div className="mb-6 md:mb-10">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#0a7ae6]">
+            Fastest growing Consumer Electronics Brand in India
+          </p>
+          <h2 className="mt-2 text-[2rem] font-normal leading-[0.96] tracking-tight md:text-[clamp(2.5rem,4vw,3.5rem)] text-slate-900">
+            One brand for your whole setup
+          </h2>
+          <p className="mt-1 text-sm sm:text-base font-normal text-slate-500">
+            (Fastest growing Consumer Electronics Brand in India)
+          </p>
+        </div>
 
         <div className="md:hidden">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
@@ -133,11 +141,11 @@ export default function BrandSetupSection() {
             Trusted proof
           </p>
           <ScrollReveal
-            baseOpacity={0.14}
-            baseRotation={0.5}
-            blurStrength={5}
-            rotationEnd="bottom 82%"
-            wordAnimationEnd="bottom 82%"
+            baseOpacity={0.2}
+            baseRotation={0}
+            blurStrength={3}
+            rotationEnd="bottom 45%"
+            wordAnimationEnd="bottom 45%"
             containerClassName="w-full max-w-none"
             textClassName="w-full text-[clamp(2rem,4.8vw,4.2rem)] leading-[0.95] font-semibold tracking-[-0.08em] text-slate-900"
           >

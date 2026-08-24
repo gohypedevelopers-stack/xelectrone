@@ -5,6 +5,7 @@ import ProductDetail from "@/components/product/product-detail";
 import { getProductById, type SimilarProductCard } from "@/lib/products-data";
 import * as productsController from "@/lib/server/controllers/products.controller";
 import * as dealOfTheDayController from "@/lib/server/controllers/deal-of-the-day.controller";
+import * as reviewsController from "@/lib/server/controllers/reviews.controller";
 import { parsePriceNumber } from "@/lib/format-price";
 
 interface DynamicProductPageProps {
@@ -13,9 +14,10 @@ interface DynamicProductPageProps {
 
 export default async function DynamicProductPage({ params }: DynamicProductPageProps) {
   const { id } = await params;
-  const [dbProduct, activeDeal] = await Promise.all([
-    productsController.getProduct(id),
-    dealOfTheDayController.getActiveDealOfTheDay(),
+  const [dbProduct, activeDeal, dbReviews] = await Promise.all([
+    productsController.getProduct(id).catch(() => null),
+    dealOfTheDayController.getActiveDealOfTheDay().catch(() => null),
+    reviewsController.getProductReviews(id).catch(() => []),
   ]);
 
   const isDealActiveForProduct = activeDeal && dbProduct && (activeDeal.productId === dbProduct.id || activeDeal.product.slug === dbProduct.slug);
@@ -24,7 +26,7 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
     ? (activeDeal.compareAtPrice || (dbProduct && dbProduct.price !== effectivePrice ? dbProduct.price : dbProduct?.oldPrice))
     : dbProduct?.oldPrice;
 
-  const dashboardProducts = dbProduct ? await productsController.listProducts() : [];
+  const dashboardProducts = dbProduct ? await productsController.listProducts().catch(() => []) : [];
   const relatedProducts: SimilarProductCard[] = dbProduct
     ? [
         ...dashboardProducts.filter(
@@ -73,11 +75,41 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
         })),
         features: dbProduct.features.map((feature: any) => feature.featureText),
         specs: dbProduct.specs.map((spec: any) => ({ label: spec.label, value: spec.value })),
+        faqs: dbProduct.faqs?.map((faq: any) => ({ question: faq.question, answer: faq.answer })) || [],
+        banners: dbProduct.banners?.map((banner: any) => ({
+          id: banner.id,
+          imageUrl: banner.imageUrl,
+          mobileImageUrl: banner.mobileImageUrl,
+          title: banner.title,
+          sortOrder: banner.sortOrder,
+        })) || [],
         shippingNotice: dbProduct.shippingNotice,
         mainImage: dbProduct.mainImage,
         images: [...new Set([dbProduct.mainImage, ...dbProduct.media.map((media: any) => media.url)])],
+        creatorVideos: dbProduct.creatorVideos?.map((v: any) => ({
+          id: v.id,
+          title: v.title,
+          thumbnailUrl: v.thumbnailUrl,
+          videoUrl: v.videoUrl,
+          sortOrder: v.sortOrder,
+          isActive: v.isActive,
+          isProductVideo: v.isProductVideo ?? v.is_product_video ?? true,
+        })) || [],
       }
     : getProductById(id);
+
+  const formattedReviews = Array.isArray(dbReviews) && dbReviews.length > 0
+    ? dbReviews.map((r: any) => ({
+        id: r.id,
+        author: r.author,
+        verified: r.verified,
+        date: r.date || new Date(r.createdAt).toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" }),
+        rating: r.rating,
+        content: r.content,
+        image: r.image || undefined,
+        imageCount: r.imageCount || undefined,
+      }))
+    : undefined;
 
   return (
     <main className="min-h-dvh overflow-x-hidden bg-white">
@@ -87,6 +119,7 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
           initialProduct={product}
           initialRelatedProducts={relatedProducts}
           productId={dbProduct?.id}
+          initialReviews={formattedReviews}
         />
       </Suspense>
       <Footer />

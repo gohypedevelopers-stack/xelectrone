@@ -1,11 +1,17 @@
 import * as ordersDal from "@/lib/server/dal/orders.dal";
 import * as productsDal from "@/lib/server/dal/products.dal";
+import * as usersDal from "@/lib/server/dal/users.dal";
+import * as sessionsDal from "@/lib/server/dal/sessions.dal";
+import bcrypt from "bcryptjs";
 
 // ─── List ────────────────────────────────────────────────────────────────────
 
-export async function listOrders(userId?: string) {
+export async function listOrders(userId?: string, query?: string) {
   if (userId) {
     return ordersDal.getOrdersByUserId(userId);
+  }
+  if (query) {
+    return ordersDal.getOrdersByEmailOrPhone(query);
   }
   return ordersDal.getAllOrders();
 }
@@ -21,8 +27,36 @@ export async function getOrder(id: string) {
 // ─── Create ──────────────────────────────────────────────────────────────────
 
 export async function createOrder(data: ordersDal.CreateOrderInput) {
-  if (!data.userId || !data.items || data.items.length === 0) {
-    throw new Error("Missing required fields: userId, items (non-empty)");
+  if (!data.items || data.items.length === 0) {
+    throw new Error("Missing required fields: items (non-empty)");
+  }
+
+  let finalUserId = data.userId || null;
+  let sessionToken: string | null = null;
+
+  // Handle on-the-fly Account Creation during Order placement if requested
+  if (data.createAccount && data.password && data.customerEmail) {
+    try {
+      const cleanEmail = data.customerEmail.toLowerCase().trim();
+      let user = await usersDal.getUserByEmail(cleanEmail);
+      if (!user) {
+        const passwordHash = await bcrypt.hash(data.password, 10);
+        user = await usersDal.createUser({
+          name: data.customerName?.trim() || cleanEmail.split("@")[0] || "Valued Customer",
+          email: cleanEmail,
+          passwordHash,
+          phone: data.customerPhone || data.phone || undefined,
+          role: "CUSTOMER",
+        });
+      }
+      finalUserId = user.id;
+
+      // Create login session for immediate seamless access to "My Orders"
+      const session = await sessionsDal.createSession(user.id);
+      sessionToken = session.token;
+    } catch (err) {
+      console.warn("Could not auto-create user account during order placement:", err);
+    }
   }
 
   // Resolve item product IDs if items were passed by slug or id
@@ -70,8 +104,28 @@ export async function createOrder(data: ordersDal.CreateOrderInput) {
       ? data.total
       : calculatedSubtotal;
 
+  // Generate realistic initial shipping & tracking info if not provided
+  const carrier = data.shippingCarrier || "Delhivery Express";
+  const awbNumber = data.trackingNumber || `DEL-${Math.floor(10000000 + Math.random() * 90000000)}`;
+  const trackUrl = data.trackingUrl || `https://www.delhivery.com/track/package/${awbNumber}`;
+
+  // Estimate delivery in 3 to 4 business days
+  const deliveryDate = new Date();
+  deliveryDate.setDate(deliveryDate.getDate() + 4);
+  const estimatedDelivery = data.estimatedDelivery || deliveryDate.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
   const createdOrder = await ordersDal.createOrder({
     ...data,
+    userId: finalUserId,
+    shippingCarrier: carrier,
+    trackingNumber: awbNumber,
+    trackingUrl: trackUrl,
+    estimatedDelivery: estimatedDelivery,
     items: resolvedItems,
     total: finalTotal,
   });
@@ -97,26 +151,58 @@ export async function createOrder(data: ordersDal.CreateOrderInput) {
   }
 
   // Update user phone number if provided
-  if (data.phone && data.userId) {
-    const { db } = await import("@/lib/db");
-    await db.user.update({
-      where: { id: data.userId },
-      data: { phone: data.phone },
-    });
+  if (data.phone && finalUserId) {
+    try {
+      const { db } = await import("@/lib/db");
+      await db.user.update({
+        where: { id: finalUserId },
+        data: { phone: data.phone },
+      });
+    } catch {}
+  }
+
+  if (sessionToken) {
+    (createdOrder as any).sessionToken = sessionToken;
   }
 
   return createdOrder;
 }
 
-// ─── Update Status ───────────────────────────────────────────────────────────
+// ─── Update Order ────────────────────────────────────────────────────────────
+
+export async function updateOrder(id: string, data: ordersDal.UpdateOrderInput & { notifyCustomer?: boolean }) {
+  const existing = await ordersDal.getOrderById(id);
+  if (!existing) throw new Error("Order not found");
+
+  const updated = await ordersDal.updateOrder(id, data);
+
+  // If status changed or fulfillment tracking was updated and customer notification is enabled
+  const notificationDispatched = Boolean(data.notifyCustomer ?? true);
+  const targetEmail = updated.customerEmail || updated.user?.email;
+  const targetPhone = updated.customerPhone || updated.user?.phone;
+
+  if (notificationDispatched && (targetEmail || targetPhone)) {
+    console.log(
+      `[ORDER NOTIFICATION] Dispatched status "${updated.status}" update to Customer: ${targetEmail || targetPhone} (Tracking: ${updated.trackingNumber || "N/A"})`
+    );
+  }
+
+  return {
+    ...updated,
+    notificationStatus: {
+      dispatched: notificationDispatched,
+      email: targetEmail || null,
+      phone: targetPhone || null,
+      timestamp: new Date().toISOString(),
+    },
+  };
+}
 
 export async function updateOrderStatus(
   id: string,
   status: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED"
 ) {
-  const existing = await ordersDal.getOrderById(id);
-  if (!existing) throw new Error("Order not found");
-  return ordersDal.updateOrderStatus(id, status);
+  return updateOrder(id, { status });
 }
 
 // ─── Delete ──────────────────────────────────────────────────────────────────

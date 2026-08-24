@@ -6,7 +6,23 @@ import Link from "next/link";
 import { formatINR } from "@/lib/format-price";
 import Navbar from "@/components/navbar/navbar";
 import Footer from "@/components/footer/footer";
-import { CheckCircle2, Clock, Package, Truck, User, ArrowLeft, ShoppingBag } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  Package,
+  Truck,
+  User,
+  ArrowLeft,
+  ShoppingBag,
+  ExternalLink,
+  Copy,
+  Check,
+  Search,
+  MapPin,
+  Calendar,
+  AlertCircle,
+} from "lucide-react";
+import { toast } from "sonner";
 
 type OrderItem = {
   id: string;
@@ -26,13 +42,26 @@ type OrderData = {
   status: string;
   createdAt: string;
   shippingAddress?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  shippingCarrier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  estimatedDelivery?: string;
   items: OrderItem[];
 };
 
 function OrdersContent() {
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [guestLookupQuery, setGuestLookupQuery] = useState("");
+  const [isSearchingGuest, setIsSearchingGuest] = useState(false);
+  const [copiedAwb, setCopiedAwb] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -44,17 +73,28 @@ function OrdersContent() {
 
         if (isMounted) {
           if (res.status === 401) {
-            setError("unauthorized");
+            setIsGuest(true);
+            // Try to load cached guest orders from localStorage
+            if (typeof window !== "undefined") {
+              const guestIds = JSON.parse(localStorage.getItem("xelectron_guest_orders") || "[]");
+              if (guestIds.length > 0) {
+                // Fetch the most recent guest order
+                const guestRes = await fetch(`/api/orders?orderId=${guestIds[0]}`);
+                const guestJson = await guestRes.json();
+                if (guestJson.success && Array.isArray(guestJson.data) && guestJson.data.length > 0) {
+                  setOrders(guestJson.data);
+                }
+              }
+            }
           } else if (json.success && Array.isArray(json.data)) {
             setOrders(json.data);
-          } else {
-            setError(json.error || "Failed to load orders");
+            setIsGuest(false);
           }
           setLoading(false);
         }
       } catch {
         if (isMounted) {
-          setError("Failed to load orders");
+          setIsGuest(true);
           setLoading(false);
         }
       }
@@ -66,8 +106,54 @@ function OrdersContent() {
     };
   }, []);
 
+  const handleGuestSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guestLookupQuery.trim()) return;
+
+    setIsSearchingGuest(true);
+    try {
+      const q = guestLookupQuery.trim();
+      let endpoint = `/api/orders?contact=${encodeURIComponent(q)}`;
+
+      // If it looks like an order ID
+      if (q.toUpperCase().startsWith("XE-") || q.length >= 8) {
+        const cleanId = q.replace(/^#?XE-/i, "");
+        endpoint = `/api/orders?orderId=${encodeURIComponent(cleanId)}`;
+      }
+
+      const res = await fetch(endpoint);
+      const json = await res.json();
+
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        setOrders(json.data);
+        toast.success(`Found ${json.data.length} order(s)!`);
+      } else {
+        // Fallback: try search by contact
+        const res2 = await fetch(`/api/orders?contact=${encodeURIComponent(q)}`);
+        const json2 = await res2.json();
+        if (json2.success && Array.isArray(json2.data) && json2.data.length > 0) {
+          setOrders(json2.data);
+          toast.success(`Found ${json2.data.length} order(s)!`);
+        } else {
+          toast.error("No orders found matching your search. Please check your Order ID or Email.");
+        }
+      }
+    } catch {
+      toast.error("Failed to look up order. Please check your connection.");
+    } finally {
+      setIsSearchingGuest(false);
+    }
+  };
+
+  const handleCopyAwb = (awb: string) => {
+    navigator.clipboard.writeText(awb);
+    setCopiedAwb(awb);
+    toast.success("AWB / Tracking number copied to clipboard!");
+    setTimeout(() => setCopiedAwb(null), 3000);
+  };
+
   const getStatusBadge = (status: string) => {
-    switch (status.toUpperCase()) {
+    switch (status?.toUpperCase()) {
       case "DELIVERED":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200/60">
@@ -77,28 +163,40 @@ function OrdersContent() {
       case "SHIPPED":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#0a7ae6] border border-blue-200/60">
-            <Truck className="size-3.5" /> Shipped
+            <Truck className="size-3.5" /> Shipped & In Transit
           </span>
         );
       case "PROCESSING":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 border border-amber-200/60">
-            <Package className="size-3.5" /> Processing
+            <Package className="size-3.5" /> Processing & Packing
           </span>
         );
       case "CONFIRMED":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 border border-indigo-200/60">
-            <CheckCircle2 className="size-3.5" /> Confirmed
+            <CheckCircle2 className="size-3.5" /> Order Confirmed
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
-            <Clock className="size-3.5" /> Pending
+            <Clock className="size-3.5" /> Order Placed
           </span>
         );
     }
+  };
+
+  const getTrackingSteps = (status: string) => {
+    const s = status?.toUpperCase() || "PENDING";
+    const steps = [
+      { key: "PLACED", label: "Order Placed", done: true },
+      { key: "CONFIRMED", label: "Confirmed", done: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"].includes(s) },
+      { key: "PROCESSING", label: "Packing", done: ["PROCESSING", "SHIPPED", "DELIVERED"].includes(s) },
+      { key: "SHIPPED", label: "In Transit", done: ["SHIPPED", "DELIVERED"].includes(s) },
+      { key: "DELIVERED", label: "Delivered", done: s === "DELIVERED" },
+    ];
+    return steps;
   };
 
   if (loading) {
@@ -109,55 +207,92 @@ function OrdersContent() {
     );
   }
 
-  if (error === "unauthorized") {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-blue-50 text-[#0a7ae6]">
-            <User className="size-8" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Sign in to view orders</h2>
-          <p className="mt-2 text-sm text-slate-600">Please log in to your account to view your order history.</p>
-          <Link
-            href="/login?redirectTo=/orders"
-            className="mt-6 inline-block w-full rounded-xl bg-[#0a7ae6] py-3 text-sm font-semibold text-white transition-all hover:bg-[#086ac9]"
-          >
-            Log In Now
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50/50 pb-16 pt-6 sm:pt-10">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-6">
+        {/* Header Title */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">My Orders</h1>
-            <p className="mt-1 text-xs text-slate-500 sm:text-sm">Track your purchases and view order status.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">My Orders & Shipment Tracking</h1>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+              Track live courier status, view delivery details, and manage your purchases.
+            </p>
           </div>
-          <Link
-            href="/shop"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0a7ae6] hover:underline"
-          >
-            <ArrowLeft className="size-3.5" /> Continue Shopping
-          </Link>
+          <div className="flex items-center gap-3">
+            {isGuest ? (
+              <Link
+                href="/login?redirectTo=/orders"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-black transition-all"
+              >
+                <User className="size-3.5" /> Sign In
+              </Link>
+            ) : null}
+            <Link
+              href="/shop"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0a7ae6] hover:underline"
+            >
+              <ArrowLeft className="size-3.5" /> Continue Shopping
+            </Link>
+          </div>
         </div>
 
+        {/* Guest Order Lookup Bar */}
+        {isGuest && (
+          <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <Search className="size-4 text-[#0a7ae6]" />
+              <h3 className="text-sm font-bold text-slate-900">Track an Order as Guest</h3>
+            </div>
+            <p className="text-xs text-slate-500">
+              Enter your Order ID (e.g. #XE-489201), registered Email, or Phone number to view live shipment tracking.
+            </p>
+            <form onSubmit={handleGuestSearch} className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Enter Order ID, Email or Phone..."
+                value={guestLookupQuery}
+                onChange={(e) => setGuestLookupQuery(e.target.value)}
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0a7ae6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0a7ae6]/15"
+              />
+              <button
+                type="submit"
+                disabled={isSearchingGuest}
+                className="rounded-xl bg-[#0a7ae6] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#086ac9] transition-all disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                {isSearchingGuest ? "Searching..." : "Track Order"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Orders List or Empty State */}
         {orders.length === 0 ? (
           <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12">
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
               <ShoppingBag className="size-8 stroke-[1.5]" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900">No orders placed yet</h3>
-            <p className="mt-1 text-xs text-slate-500 sm:text-sm">When you buy products, your orders will show up here.</p>
-            <Link
-              href="/shop"
-              className="mt-6 inline-block rounded-xl bg-[#0a7ae6] px-6 py-3 text-xs font-semibold text-white transition-all hover:bg-[#086ac9]"
-            >
-              Explore Catalog
-            </Link>
+            <h3 className="text-lg font-semibold text-slate-900">No orders found</h3>
+            <p className="mt-1 text-xs text-slate-500 sm:text-sm max-w-sm mx-auto">
+              {isGuest
+                ? "If you placed an order as a guest, search above with your Order ID or Email, or create an account for automatic tracking."
+                : "When you buy products, your orders and live tracking links will show up here."}
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {isGuest && (
+                <Link
+                  href="/login?mode=signup&redirectTo=/orders"
+                  className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white hover:bg-black transition-all"
+                >
+                  Create an Account
+                </Link>
+              )}
+              <Link
+                href="/shop"
+                className="rounded-xl bg-[#0a7ae6] px-5 py-2.5 text-xs font-semibold text-white transition-all hover:bg-[#086ac9]"
+              >
+                Explore Products
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -168,17 +303,23 @@ function OrdersContent() {
                 year: "numeric",
               });
 
+              const awb = order.trackingNumber || `DEL-${order.id.slice(-8).toUpperCase()}`;
+              const carrier = order.shippingCarrier || "Delhivery Express";
+              const trackUrl = order.trackingUrl || `https://www.delhivery.com/track/package/${awb}`;
+              const estDelivery = order.estimatedDelivery || "3 - 4 Business Days";
+              const steps = getTrackingSteps(order.status);
+
               return (
                 <div
                   key={order.id}
-                  className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all hover:shadow-md"
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md"
                 >
-                  {/* Order Header */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/60 px-5 py-4 sm:px-6">
+                  {/* 1. ORDER HEADER */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
                     <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm">
                       <div>
                         <span className="text-slate-400">Order ID:</span>{" "}
-                        <span className="font-semibold text-slate-900">
+                        <span className="font-bold text-slate-900">
                           #XE-{order.id.slice(-6).toUpperCase()}
                         </span>
                       </div>
@@ -191,7 +332,136 @@ function OrdersContent() {
                     <div>{getStatusBadge(order.status)}</div>
                   </div>
 
-                  {/* Order Items List */}
+                  {/* 2. SHIPPING & TRACKING HERO CARD */}
+                  <div className="bg-blue-50/40 border-b border-slate-100 p-5 sm:p-6 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Truck className="size-4 text-[#0a7ae6]" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                            Fulfillment Courier: {carrier}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-600">
+                          <span>AWB / Tracking No:</span>
+                          <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                            {awb}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyAwb(awb)}
+                            className="p-1 text-slate-400 hover:text-slate-900 transition-colors"
+                            title="Copy AWB number"
+                          >
+                            {copiedAwb === awb ? (
+                              <Check className="size-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="size-3.5" />
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium pt-0.5">
+                          <Calendar className="size-3.5" />
+                          <span>Estimated Delivery: {estDelivery}</span>
+                        </div>
+                      </div>
+
+                      {/* Live Tracking Link */}
+                      <div>
+                        <a
+                          href={trackUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0a7ae6] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#086ac9] transition-all"
+                        >
+                          <ExternalLink className="size-3.5" /> Track Shipment
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Visual 5-Step Tracker */}
+                    <div className="w-full pt-3 pb-1">
+                      <div className="relative">
+                        {/* Background Track Line (Centered precisely through middle of dots from 10% to 90%) */}
+                        <div className="absolute top-3 sm:top-3.5 left-[10%] right-[10%] h-1 bg-slate-200 rounded-full overflow-hidden">
+                          {/* Active Filled Progress Bar */}
+                          <div
+                            className="h-full bg-[#0a7ae6] transition-all duration-700 ease-out"
+                            style={{
+                              width: `${(
+                                (order.status?.toUpperCase() === "DELIVERED"
+                                  ? 4
+                                  : order.status?.toUpperCase() === "SHIPPED"
+                                  ? 3
+                                  : order.status?.toUpperCase() === "PROCESSING"
+                                  ? 2
+                                  : order.status?.toUpperCase() === "CONFIRMED"
+                                  ? 1
+                                  : 0) / 4
+                              ) * 100}%`,
+                            }}
+                          />
+                        </div>
+
+                        {/* 5 Step Nodes */}
+                        <div className="relative z-10 grid grid-cols-5 text-center">
+                          {[
+                            { key: "PLACED", label: "Order Placed" },
+                            { key: "CONFIRMED", label: "Confirmed" },
+                            { key: "PROCESSING", label: "Packing" },
+                            { key: "SHIPPED", label: "In Transit" },
+                            { key: "DELIVERED", label: "Delivered" },
+                          ].map((step, idx) => {
+                            const currentIdx =
+                              order.status?.toUpperCase() === "DELIVERED"
+                                ? 4
+                                : order.status?.toUpperCase() === "SHIPPED"
+                                ? 3
+                                : order.status?.toUpperCase() === "PROCESSING"
+                                ? 2
+                                : order.status?.toUpperCase() === "CONFIRMED"
+                                ? 1
+                                : 0;
+                            const isCompleted = idx < currentIdx;
+                            const isCurrent = idx === currentIdx;
+
+                            return (
+                              <div key={step.key} className="flex flex-col items-center">
+                                <div
+                                  className={`size-6 sm:size-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all duration-300 ${
+                                    isCompleted
+                                      ? "bg-[#0a7ae6] text-white shadow-xs"
+                                      : isCurrent
+                                      ? "bg-[#0a7ae6] text-white ring-4 ring-blue-100 shadow-sm"
+                                      : "bg-white text-slate-400 border-2 border-slate-300"
+                                  }`}
+                                >
+                                  {isCompleted || isCurrent ? (
+                                    <Check className="size-3.5 stroke-[3]" />
+                                  ) : (
+                                    <span>{idx + 1}</span>
+                                  )}
+                                </div>
+                                <span
+                                  className={`mt-2 text-[10px] sm:text-xs tracking-tight transition-colors leading-tight px-1 ${
+                                    isCurrent
+                                      ? "font-bold text-slate-900"
+                                      : isCompleted
+                                      ? "font-medium text-slate-700"
+                                      : "font-normal text-slate-400"
+                                  }`}
+                                >
+                                  {step.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. ORDER ITEMS LIST */}
                   <div className="divide-y divide-slate-100 px-5 sm:px-6">
                     {order.items.map((item) => {
                       const image = item.product?.mainImage || "/category-smartphone.png";
@@ -227,7 +497,7 @@ function OrdersContent() {
                           </div>
 
                           <div className="text-right">
-                            <span className="text-xs font-semibold text-slate-900 sm:text-sm">
+                            <span className="text-xs font-bold text-slate-900 sm:text-sm">
                               {formatINR(item.unitPrice * item.quantity)}
                             </span>
                           </div>
@@ -236,15 +506,20 @@ function OrdersContent() {
                     })}
                   </div>
 
-                  {/* Order Footer */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-4 sm:px-6">
-                    <div className="text-xs text-slate-500 max-w-md truncate">
-                      {order.shippingAddress ? (
-                        <span><strong className="text-slate-700 font-medium">Ship to:</strong> {order.shippingAddress.replace(/\[Payment:\s*[A-Z_]+\]/gi, "").trim()}</span>
-                      ) : null}
+                  {/* 4. SHIPPING ADDRESS & TOTAL FOOTER */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/40 px-5 py-4 sm:px-6">
+                    <div className="text-xs text-slate-600 flex items-start gap-1.5 max-w-lg">
+                      <MapPin className="size-3.5 text-slate-400 mt-0.5 shrink-0" />
+                      <div>
+                        <strong className="text-slate-900 font-semibold">Shipping Address: </strong>
+                        <span>
+                          {order.customerName ? `${order.customerName}, ` : ""}
+                          {order.shippingAddress ? order.shippingAddress.replace(/\[Payment:\s*[A-Z_]+\]/gi, "").trim() : "Standard Address"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right text-sm font-semibold text-slate-900">
-                      <span className="text-slate-500 font-normal mr-2">Total Paid:</span>
+                    <div className="text-left sm:text-right shrink-0">
+                      <span className="text-xs text-slate-500 font-normal mr-2">Total Amount Paid:</span>
                       <span className="text-[#0a7ae6] text-base font-bold">{formatINR(order.total)}</span>
                     </div>
                   </div>

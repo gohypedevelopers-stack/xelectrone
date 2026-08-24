@@ -11,7 +11,12 @@ import { HomeShowcaseToggle } from "@/components/admin/products/home-showcase-to
 import { ProductMediaUploader } from "@/components/admin/products/product-media-uploader";
 import { uploadProductImage } from "@/lib/client/upload-product-image";
 import { parsePriceNumber } from "@/lib/format-price";
-import { ProductFeaturesSection } from "@/components/admin/products/product-features-section";
+import { ProductSpecsSection, type SpecItem } from "@/components/admin/products/product-specs-section";
+import { ProductFaqsSection, type FaqItem } from "@/components/admin/products/product-faqs-section";
+import { ProductBannersSection, type BannerItem } from "@/components/admin/products/product-banners-section";
+import { ProductCascadeBannersSection } from "@/components/admin/products/product-cascade-banners-section";
+import { ProductCreatorVideosSection, type ProductCreatorVideoItem } from "@/components/admin/products/product-creator-videos-section";
+import { ProductVariantsSection } from "@/components/admin/products/product-variants-section";
 
 type CategoryOption = {
   id: string;
@@ -26,12 +31,20 @@ type EditableProduct = {
   price: string;
   oldPrice: string | null;
   mainImage: string;
+  shippingNotice?: string | null;
   categoryId: string;
   quantity: number;
   showInBestSellers: boolean;
   category: { title: string } | null;
   media: { id: string; url: string; sortOrder: number }[];
   features?: { featureText: string }[];
+  specs?: { id?: string; label: string; value: string }[];
+  faqs?: { id?: string; question: string; answer: string }[];
+  banners?: { id?: string; imageUrl: string; mobileImageUrl?: string | null; title?: string | null; sortOrder?: number }[];
+  creatorVideos?: { id?: string; title?: string | null; thumbnailUrl: string; videoUrl?: string | null; sortOrder?: number; isActive?: boolean }[];
+  sku?: string | null;
+  colors?: { id?: string; name: string; bgHex: string; borderHex?: string | null }[];
+  variants?: any[];
 };
 
 type ExistingMediaItem = {
@@ -49,12 +62,15 @@ function formatPrice(value: string) {
   return `₹${Number(value).toFixed(2)}`;
 }
 
-function slugify(value: string) {
-  return value
+function slugify(value: string, maxWords = 5) {
+  const words = value
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+    .replace(/[^a-z0-9\s-]/g, "")
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .slice(0, maxWords);
+  return words.join("-");
 }
 
 function getExistingMedia(product: EditableProduct): ExistingMediaItem[] {
@@ -87,16 +103,57 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 export function EditProductForm({ product, categories }: { product: EditableProduct; categories: CategoryOption[] }) {
   const router = useRouter();
   const [title, setTitle] = useState(product.name);
+  const [sku, setSku] = useState((product as any).sku || "");
+  const [slug, setSlug] = useState(product.slug || slugify(product.name, 4));
+  const [shippingNotice, setShippingNotice] = useState(product.shippingNotice || "");
   const [categoryId, setCategoryId] = useState(product.categoryId);
   const [description, setDescription] = useState(product.description);
   const [price, setPrice] = useState(inputValueForPrice(product.price));
   const [compareAtPrice, setCompareAtPrice] = useState(inputValueForPrice(product.oldPrice));
   const [quantity, setQuantity] = useState(String(product.quantity));
   const [showInBestSellers, setShowInBestSellers] = useState(product.showInBestSellers);
+  const [variants, setVariants] = useState<any[]>(() => ((product as any).variants || []).map((v: any) => ({ ...v })));
+  const [colors, setColors] = useState<any[]>(() => (product.colors || []).map((c: any) => ({ ...c })));
   const [orderedMedia, setOrderedMedia] = useState<ExistingMediaItem[]>(() => getExistingMedia(product));
   const [draggedMediaIndex, setDraggedMediaIndex] = useState<number | null>(null);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [features, setFeatures] = useState<string[]>(() => product.features?.map(f => f.featureText) || []);
+  const [specs, setSpecs] = useState<SpecItem[]>(() => product.specs?.map(s => ({ label: s.label, value: s.value })) || []);
+  const [faqs, setFaqs] = useState<FaqItem[]>(() => product.faqs?.map(f => ({ question: f.question, answer: f.answer })) || []);
+  const [showcaseBanners, setShowcaseBanners] = useState<BannerItem[]>(() =>
+    product.banners
+      ?.filter((b) => !b.title?.includes("[slider]") && !(typeof b.sortOrder === "number" && b.sortOrder >= 1000))
+      .map((b) => ({ id: b.id, imageUrl: b.imageUrl, mobileImageUrl: b.mobileImageUrl, title: b.title, sortOrder: b.sortOrder })) || []
+  );
+  const [sliderBanners, setSliderBanners] = useState<BannerItem[]>(() =>
+    product.banners
+      ?.filter((b) => b.title?.includes("[slider]") || (typeof b.sortOrder === "number" && b.sortOrder >= 1000))
+      .map((b) => ({
+        id: b.id,
+        imageUrl: b.imageUrl,
+        mobileImageUrl: b.mobileImageUrl,
+        title: b.title?.replace(/\[slider(?::(?:pos:\w+|before|after))?\]\s*/gi, "").trim() || "",
+        sortOrder: b.sortOrder,
+      })) || []
+  );
+  const [sliderPosition, setSliderPosition] = useState<string>(() => {
+    const sliderBanner = product.banners?.find((b) => b.title?.includes("[slider"));
+    if (sliderBanner?.title) {
+      const match = sliderBanner.title.match(/\[slider(?::pos:(\w+|\d+)|:(before|after))?\]/i);
+      if (match) return match[1] || match[2] || "after";
+    }
+    return "after";
+  });
+  const [creatorVideos, setCreatorVideos] = useState<ProductCreatorVideoItem[]>(() => {
+    return (product.creatorVideos || []).filter((v: any) => v && ((v as any).isProductVideo === true || (v as any).is_product_video === true)).map((v) => ({
+      id: v.id,
+      title: v.title,
+      thumbnailUrl: v.thumbnailUrl,
+      videoUrl: v.videoUrl,
+      sortOrder: v.sortOrder,
+      isActive: v.isActive,
+    }));
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const isRestoringHistoryRef = useRef(false);
@@ -116,9 +173,50 @@ export function EditProductForm({ product, categories }: { product: EditableProd
     const featuresChanged = 
       features.length !== (product.features?.length || 0) ||
       features.some((f, i) => f !== product.features?.[i]?.featureText);
+    const specsChanged =
+      specs.length !== (product.specs?.length || 0) ||
+      specs.some((s, i) => s.label !== product.specs?.[i]?.label || s.value !== product.specs?.[i]?.value);
+    const faqsChanged =
+      faqs.length !== (product.faqs?.length || 0) ||
+      faqs.some((f, i) => f.question !== product.faqs?.[i]?.question || f.answer !== product.faqs?.[i]?.answer);
+    
+    const initialShowcase = product.banners?.filter((b) => !b.title?.includes("[slider]") && !(typeof b.sortOrder === "number" && b.sortOrder >= 1000)) || [];
+    const initialSlider = product.banners?.filter((b) => b.title?.includes("[slider]") || (typeof b.sortOrder === "number" && b.sortOrder >= 1000)) || [];
+    const showcaseChanged =
+      showcaseBanners.length !== initialShowcase.length ||
+      showcaseBanners.some((b, i) => b.imageUrl !== initialShowcase[i]?.imageUrl || b.mobileImageUrl !== initialShowcase[i]?.mobileImageUrl || b.title !== initialShowcase[i]?.title);
+    const sliderChanged =
+      sliderBanners.length !== initialSlider.length ||
+      sliderBanners.some((b, i) => b.imageUrl !== initialSlider[i]?.imageUrl || b.mobileImageUrl !== initialSlider[i]?.mobileImageUrl || (b.title || "") !== (initialSlider[i]?.title?.replace(/\[slider(?::(?:pos:\w+|before|after))?\]\s*/gi, "").trim() || ""));
+
+    const initialSliderSample = product.banners?.find((b) => b.title?.includes("[slider"));
+    let initialPos = "after";
+    if (initialSliderSample?.title) {
+      const match = initialSliderSample.title.match(/\[slider(?::pos:(\w+|\d+)|:(before|after))?\]/i);
+      if (match) initialPos = match[1] || match[2] || "after";
+    }
+    const positionChanged = sliderPosition !== initialPos;
+
+    const initialVideos = product.creatorVideos || [];
+    const videosChanged =
+      creatorVideos.length !== initialVideos.length ||
+      creatorVideos.some((v, i) => v.title !== initialVideos[i]?.title || v.thumbnailUrl !== initialVideos[i]?.thumbnailUrl || v.videoUrl !== initialVideos[i]?.videoUrl);
+
+    const initialColors = product.colors || [];
+    const colorsChanged =
+      colors.length !== initialColors.length ||
+      colors.some((c, i) => c.name !== initialColors[i]?.name || c.bgHex !== initialColors[i]?.bgHex);
+
+    const initialVariants = (product as any).variants || [];
+    const variantsChanged =
+      variants.length !== initialVariants.length ||
+      variants.some((v, i) => v.name !== initialVariants[i]?.name || v.sku !== initialVariants[i]?.sku || v.price !== initialVariants[i]?.price || v.stock !== initialVariants[i]?.stock);
 
     return (
       title !== product.name ||
+      sku !== ((product as any).sku || "") ||
+      slug !== product.slug ||
+      shippingNotice !== (product.shippingNotice || "") ||
       categoryId !== product.categoryId ||
       description !== product.description ||
       price !== inputValueForPrice(product.price) ||
@@ -127,9 +225,17 @@ export function EditProductForm({ product, categories }: { product: EditableProd
       showInBestSellers !== product.showInBestSellers ||
       mediaChanged ||
       featuresChanged ||
+      specsChanged ||
+      faqsChanged ||
+      showcaseChanged ||
+      sliderChanged ||
+      positionChanged ||
+      videosChanged ||
+      colorsChanged ||
+      variantsChanged ||
       mediaFiles.length > 0
     );
-  }, [categoryId, compareAtPrice, description, features, mediaFiles.length, orderedMedia, price, product, quantity, showInBestSellers, title]);
+  }, [categoryId, compareAtPrice, description, faqs, features, mediaFiles.length, orderedMedia, price, product, quantity, shippingNotice, showcaseBanners, showInBestSellers, sliderBanners, sliderPosition, slug, specs, title, creatorVideos, colors, variants, sku]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -216,9 +322,9 @@ export function EditProductForm({ product, categories }: { product: EditableProd
     const numericPrice = Number(price);
     const numericCompareAtPrice = compareAtPrice.trim() ? Number(compareAtPrice) : undefined;
     const numericQuantity = Number(quantity);
-    const slug = slugify(title);
+    const finalSlug = slug.trim() || slugify(title, 4);
 
-    if (!title.trim() || !description.trim() || !categoryId || !slug || !Number.isFinite(numericPrice) || numericPrice < 0 || !Number.isSafeInteger(numericQuantity) || numericQuantity < 0) {
+    if (!title.trim() || !description.trim() || !categoryId || !finalSlug || !Number.isFinite(numericPrice) || numericPrice < 0 || !Number.isSafeInteger(numericQuantity) || numericQuantity < 0) {
       setMessage("Add a title, category, description, valid price, and whole-number quantity before saving.");
       return;
     }
@@ -249,7 +355,9 @@ export function EditProductForm({ product, categories }: { product: EditableProd
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: title.trim(),
-          slug,
+          sku: sku.trim() || null,
+          slug: finalSlug,
+          shippingNotice: shippingNotice.trim(),
           categoryId,
           description: description.trim(),
           price: formatPrice(price),
@@ -262,7 +370,41 @@ export function EditProductForm({ product, categories }: { product: EditableProd
           mediaOrder: orderedMedia.flatMap((media, sortOrder) =>
             media.id ? [{ id: media.id, sortOrder }] : []
           ),
+          variants,
+          colors,
           features: features.map(f => f.trim()).filter(f => f !== ""),
+          specs: specs.filter(s => s.label.trim() || s.value.trim()),
+          faqs: faqs.filter(f => f.question.trim() || f.answer.trim()),
+          banners: [
+            ...showcaseBanners
+              .filter((b) => b.imageUrl?.trim())
+              .map((b, idx) => ({
+                id: b.id,
+                imageUrl: b.imageUrl.trim(),
+                mobileImageUrl: b.mobileImageUrl?.trim() || null,
+                title: b.title?.trim() || null,
+                sortOrder: idx,
+              })),
+            ...sliderBanners
+              .filter((b) => b.imageUrl?.trim())
+              .map((b, idx) => ({
+                id: b.id,
+                imageUrl: b.imageUrl.trim(),
+                mobileImageUrl: b.mobileImageUrl?.trim() || null,
+                title: b.title?.trim() ? `[slider:pos:${sliderPosition}] ${b.title.trim()}` : `[slider:pos:${sliderPosition}]`,
+                sortOrder: 1000 + idx,
+              })),
+          ],
+          creatorVideos: creatorVideos
+            .filter((v) => v.videoUrl?.trim())
+            .map((v, idx) => ({
+              id: v.id,
+              title: v.title?.trim() || null,
+              videoUrl: v.videoUrl?.trim() || null,
+              thumbnailUrl: v.thumbnailUrl?.trim() || "/creator-projector.png",
+              sortOrder: typeof v.sortOrder === "number" ? v.sortOrder : idx,
+              isActive: v.isActive ?? true,
+            })),
         }),
       });
       const result = await response.json();
@@ -299,12 +441,72 @@ export function EditProductForm({ product, categories }: { product: EditableProd
         <div className="space-y-4">
           <Card title="Product details">
             <div className="space-y-4">
-              <label className="grid gap-1.5 text-sm text-black/75"><span>Title</span><input value={title} onChange={(event) => setTitle(event.target.value)} className={inputClass} /></label>
-              <label className="grid gap-1.5 text-sm text-black/75"><span>Category</span><select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className={inputClass}>{categories.map((category) => <option key={category.id} value={category.id}>{category.title}</option>)}</select></label>
+              <label className="grid gap-1.5 text-sm text-black/75">
+                <span>Title</span>
+                <input value={title} onChange={(event) => setTitle(event.target.value)} className={inputClass} />
+              </label>
+
+              <label className="grid gap-1.5 text-sm text-black/75">
+                <span>SKU / Model Number</span>
+                <input
+                  value={sku}
+                  onChange={(event) => setSku(event.target.value)}
+                  placeholder="e.g. XE-TECHNO-01"
+                  className={`${inputClass} font-mono uppercase`}
+                />
+                <span className="text-xs text-black/50">Stock Keeping Unit for inventory identification.</span>
+              </label>
+
+              <label className="grid gap-1.5 text-sm text-black/75">
+                <span>Subtitle / Tagline</span>
+                <input
+                  value={shippingNotice}
+                  onChange={(event) => setShippingNotice(event.target.value)}
+                  className={inputClass}
+                  placeholder="e.g. Cinema-grade theater projection, vibrant 4K support..."
+                />
+                <span className="text-xs text-black/50">Displayed directly below the title on the product page.</span>
+              </label>
+
+              <label className="grid gap-1.5 text-sm text-black/75">
+                <span>URL Handle (Slug)</span>
+                <div className="flex items-center rounded-lg border border-black/25 bg-slate-50 px-3 text-sm focus-within:border-black/50">
+                  <span className="text-black/45 select-none shrink-0 font-mono text-xs">/product/</span>
+                  <input
+                    value={slug}
+                    onChange={(event) => setSlug(slugify(event.target.value, 8))}
+                    className="h-10 w-full bg-transparent px-1 font-mono text-xs text-black outline-none"
+                    placeholder="techno-projector"
+                  />
+                </div>
+                <span className="text-xs text-black/50">Short, readable URL path for this product.</span>
+              </label>
+
+              <label className="grid gap-1.5 text-sm text-black/75">
+                <span>Category</span>
+                <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className={inputClass}>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.title}</option>)}
+                </select>
+              </label>
             </div>
           </Card>
           <Card title="Description"><ProductDescriptionEditor value={description} onChange={setDescription} /></Card>
-          <ProductFeaturesSection features={features} onChange={setFeatures} />
+          <ProductSpecsSection specs={specs} onChange={setSpecs} />
+          <ProductBannersSection banners={showcaseBanners} onChange={setShowcaseBanners} />
+          <ProductCascadeBannersSection
+            banners={sliderBanners}
+            onChange={setSliderBanners}
+            position={sliderPosition}
+            onPositionChange={setSliderPosition}
+            showcaseCount={showcaseBanners.length}
+          />
+          <Card title="Creator & Hands-on Videos">
+            <ProductCreatorVideosSection
+              videos={creatorVideos}
+              onChange={setCreatorVideos}
+            />
+          </Card>
+          <ProductFaqsSection faqs={faqs} onChange={setFaqs} />
           <Card title="Media">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {orderedMedia.map((media, index) => (
@@ -366,6 +568,15 @@ export function EditProductForm({ product, categories }: { product: EditableProd
               {Number(quantity) <= 5 ? (Number(quantity) === 0 ? "Out of stock!" : "Low stock warning.") : "Number of units currently available for sale."}
             </p>
           </Card>
+
+          <ProductVariantsSection
+            initialColors={colors}
+            initialVariants={variants}
+            onChange={(data) => {
+              setColors(data.colors);
+              setVariants(data.variants);
+            }}
+          />
         </div>
 
         <aside className="space-y-4">

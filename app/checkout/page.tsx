@@ -143,6 +143,10 @@ function CheckoutContent() {
   const [postalCode, setPostalCode] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
 
+  // Account creation while placing order
+  const [createAccountOnCheckout, setCreateAccountOnCheckout] = useState(false);
+  const [accountPassword, setAccountPassword] = useState("");
+
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "cod">("card");
   const [cardName, setCardName] = useState("");
@@ -219,16 +223,43 @@ function CheckoutContent() {
       const res = await fetch("/api/discounts");
       const json = await res.json();
 
-      let matchedDiscount: { code: string; type: string; value: number; status?: string } | undefined;
+      let matchedDiscount: any | undefined;
 
       if (json.success && Array.isArray(json.data)) {
         matchedDiscount = json.data.find(
-          (d: { code?: string; status?: string }) =>
-            d.code && d.code.toUpperCase() === code && d.status !== "EXPIRED"
+          (d: any) => d.code && d.code.toUpperCase() === code
         );
       }
 
       if (matchedDiscount) {
+        // Check active status
+        if (matchedDiscount.isActive === false) {
+          setCouponError(`Coupon code "${code}" is currently disabled.`);
+          return;
+        }
+
+        // Check expiration date
+        if (matchedDiscount.endDate && new Date(matchedDiscount.endDate) < new Date()) {
+          setCouponError(`Coupon code "${code}" has expired.`);
+          return;
+        }
+
+        // Check start date
+        if (matchedDiscount.startDate && new Date(matchedDiscount.startDate) > new Date()) {
+          setCouponError(`Coupon code "${code}" is not active yet.`);
+          return;
+        }
+
+        // Check eligible product IDs
+        if (matchedDiscount.eligibleProductIds) {
+          const allowedIds = matchedDiscount.eligibleProductIds.split(",").map((id: string) => id.trim()).filter(Boolean);
+          const cartHasEligible = orderItems.some((item) => allowedIds.includes(item.id));
+          if (!cartHasEligible) {
+            setCouponError(`Coupon code "${code}" is only valid for selected products.`);
+            return;
+          }
+        }
+
         setAppliedCoupon(matchedDiscount.code);
         if (matchedDiscount.type === "PERCENTAGE") {
           setCouponDiscount(matchedDiscount.value);
@@ -295,6 +326,11 @@ function CheckoutContent() {
       return;
     }
 
+    if (createAccountOnCheckout && (!accountPassword || accountPassword.length < 6)) {
+      alert("Please enter a password with at least 6 characters to create your account.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -307,6 +343,14 @@ function CheckoutContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: currentUser?.id,
+          customerName: `${firstName} ${lastName}`.trim(),
+          customerEmail: email,
+          customerPhone: phone,
+          city,
+          state,
+          pincode: postalCode,
+          createAccount: !currentUser && createAccountOnCheckout,
+          password: accountPassword || undefined,
           items: orderItems.map((item) => ({
             productId: item.id,
             quantity: item.quantity,
@@ -321,11 +365,23 @@ function CheckoutContent() {
       });
 
       const orderData = await res.json();
-      const newOrderId = orderData?.data?.id
-        ? orderData.data.id.slice(-8).toUpperCase()
+      const rawId = orderData?.data?.id;
+      const newOrderId = rawId
+        ? `XE-${rawId.slice(-6).toUpperCase()}`
         : `XE-${Math.floor(100000 + Math.random() * 900000)}`;
       setOrderId(newOrderId);
       setPaidTotal(total);
+
+      // Save order id to localStorage so guests can track their orders without logging in
+      if (typeof window !== "undefined" && rawId) {
+        try {
+          const existing = JSON.parse(localStorage.getItem("xelectron_guest_orders") || "[]");
+          if (!existing.includes(rawId)) {
+            existing.unshift(rawId);
+            localStorage.setItem("xelectron_guest_orders", JSON.stringify(existing.slice(0, 20)));
+          }
+        } catch {}
+      }
 
       if (checkoutSessionToken) {
         await fetch("/api/abandoned-checkouts/complete", {
@@ -363,10 +419,10 @@ function CheckoutContent() {
           </h2>
 
           <p className="mt-2 text-sm text-slate-600">
-            Your order <strong className="text-slate-900 font-semibold">#{orderId}</strong> has been successfully placed and is now being processed.
+            Your order <strong className="text-slate-900 font-semibold">{orderId}</strong> has been successfully placed and is now being processed.
           </p>
 
-          <div className="mt-6 rounded-2xl bg-slate-50 p-5 text-left text-xs sm:text-sm">
+          <div className="mt-6 rounded-2xl bg-slate-50 p-5 text-left text-xs sm:text-sm space-y-2">
             <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500">Customer:</span>
               <span className="font-medium text-slate-900">{firstName} {lastName}</span>
@@ -376,10 +432,14 @@ function CheckoutContent() {
               <span className="font-medium text-slate-900 text-right">{[addressLine1, addressLine2, city, state, postalCode].filter(Boolean).join(", ")}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60">
+              <span className="text-slate-500">Estimated Delivery:</span>
+              <span className="font-semibold text-emerald-700">3 - 4 Business Days</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500">Payment:</span>
               <span className="font-medium text-slate-900 uppercase">{paymentMethod === 'card' ? 'Credit / Debit Card' : paymentMethod === 'upi' ? 'UPI' : 'Cash on Delivery'}</span>
             </div>
-            <div className="flex justify-between pt-2 text-sm font-semibold text-slate-900">
+            <div className="flex justify-between pt-1 text-sm font-semibold text-slate-900">
               <span>Total Paid:</span>
               <span className="text-[#0a7ae6]">₹{paidTotal.toLocaleString("en-IN")}</span>
             </div>
@@ -388,13 +448,13 @@ function CheckoutContent() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/orders"
-              className="flex-1 rounded-xl bg-[#0a7ae6] py-3 text-center text-sm font-semibold text-white shadow-md shadow-[#0a7ae6]/20 transition-all hover:bg-[#086ac9]"
+              className="flex-1 rounded-xl bg-[#0a7ae6] py-3.5 text-center text-sm font-semibold text-white shadow-md shadow-[#0a7ae6]/20 transition-all hover:bg-[#086ac9] flex items-center justify-center gap-2"
             >
-              View Orders
+              <Truck className="size-4" /> Track Shipment
             </Link>
             <Link
               href="/shop"
-              className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="flex-1 rounded-xl border border-slate-200 bg-white py-3.5 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center"
             >
               Explore Products
             </Link>
@@ -603,6 +663,55 @@ function CheckoutContent() {
                   <ChevronDown className="pointer-events-none absolute right-4 top-3.5 size-4 text-slate-400" />
                 </div>
               </div>
+
+              {/* Account Creation Option for Guests */}
+              {!currentUser && (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 sm:p-5 space-y-3">
+                  <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={createAccountOnCheckout}
+                      onChange={(e) => setCreateAccountOnCheckout(e.target.checked)}
+                      className="mt-0.5 size-4.5 rounded border-slate-300 text-[#0a7ae6] focus:ring-[#0a7ae6] accent-[#0a7ae6]"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs sm:text-sm font-bold text-slate-900">
+                          Create an account while placing this order
+                        </span>
+                        <span className="text-[10px] font-semibold text-[#0a7ae6] bg-blue-100/70 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                          Recommended
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-600">
+                        Track live delivery progress, access invoices, and enable instant product warranty.
+                      </p>
+                    </div>
+                  </label>
+
+                  {createAccountOnCheckout && (
+                    <div className="pt-3 border-t border-blue-200/60 space-y-2 animate-in fade-in duration-200">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        Set a Password for your account <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="password"
+                        required={createAccountOnCheckout}
+                        value={accountPassword}
+                        onChange={(e) => setAccountPassword(e.target.value)}
+                        placeholder="Choose password (6+ characters)"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0a7ae6] focus:outline-none focus:ring-2 focus:ring-[#0a7ae6]/15"
+                      />
+                      <p className="text-[11px] text-slate-500">
+                        Already have an account?{" "}
+                        <Link href="/login?redirectTo=/checkout" className="font-bold text-[#0a7ae6] hover:underline">
+                          Sign in here
+                        </Link>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <hr className="border-slate-200/80" />

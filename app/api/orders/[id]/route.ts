@@ -23,7 +23,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     await requireAdmin();
     const { id } = await params;
     const body = await request.json();
-    const order = await ordersController.updateOrderStatus(id, body.status);
+    const order = await ordersController.updateOrder(id, body);
     return NextResponse.json({ success: true, data: order });
   } catch (error) {
     if (error instanceof AuthError) {

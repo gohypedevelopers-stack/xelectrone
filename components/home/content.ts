@@ -96,19 +96,9 @@ export const banners: BannerItem[] = [
 
 export const categories: CategoryItem[] = [
   {
-    title: "Headphones",
-    src: "/category-headphones.png",
-    alt: "Headphones category",
-  },
-  {
-    title: "Speakers",
-    src: "/category-speaker.png",
-    alt: "Speaker category",
-  },
-  {
-    title: "Projectors",
+    title: "Smart Projectors",
     src: "/category-projector.png",
-    alt: "Projectors category",
+    alt: "Smart Projectors category",
   },
   {
     title: "Digital Photo Frames",
@@ -116,19 +106,14 @@ export const categories: CategoryItem[] = [
     alt: "Digital Photo Frames category",
   },
   {
-    title: "LED TVS",
+    title: "LED Televisions & Smart Displays",
     src: "/category-tv.png",
-    alt: "LED TVS category",
+    alt: "LED Televisions & Smart Displays category",
   },
   {
     title: "Portable Monitors",
     src: "/category-monitor.png",
     alt: "Portable Monitors category",
-  },
-  {
-    title: "Accessories",
-    src: "/category-accessories.png",
-    alt: "Accessories category",
   },
 ];
 

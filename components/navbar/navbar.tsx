@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   ChevronDown,
   ChevronRight,
@@ -29,6 +30,74 @@ import { dropdownItems } from "@/components/home/content";
 import { useCart } from "@/components/providers/cart-provider";
 import { formatINR } from "@/lib/format-price";
 
+function TopAnnouncementBar() {
+  const announcements = [
+    {
+      prefix: "Just ordered?",
+      action: "Track your order here →",
+      href: "/orders",
+    },
+    {
+      prefix: "Bought it?",
+      action: "Register your warranty →",
+      href: "/warranty",
+    },
+    {
+      prefix: "Need help?",
+      action: "Visit our Support Hub →",
+      href: "/contact",
+    },
+  ];
+
+  const [currentIdx, setCurrentIdx] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIdx((prev) => (prev + 1) % announcements.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [announcements.length]);
+
+  return (
+    <div className="w-full bg-[#0a7ae6] text-white text-[11px] sm:text-xs font-normal tracking-tight sm:tracking-normal">
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-1.5 sm:py-2">
+        {/* Desktop View: All items centered with vertical dividers */}
+        <div className="hidden md:flex items-center justify-center gap-4 lg:gap-7">
+          {announcements.map((item, idx) => (
+            <div key={item.href} className="flex items-center gap-4 lg:gap-7">
+              <Link
+                href={item.href}
+                className="inline-flex items-center gap-1 text-white hover:text-white/90 transition-opacity group"
+              >
+                <span className="opacity-95">{item.prefix}</span>
+                <strong className="font-bold underline decoration-white/50 underline-offset-2 group-hover:decoration-white">
+                  {item.action}
+                </strong>
+              </Link>
+              {idx < announcements.length - 1 && (
+                <span className="text-white/40 select-none text-[11px]">|</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile View: Rotating single line ticker */}
+        <div className="flex md:hidden items-center justify-center text-center">
+          <Link
+            href={announcements[currentIdx].href}
+            className="inline-flex items-center gap-1 text-white hover:underline transition-all duration-300"
+          >
+            <span className="opacity-95">{announcements[currentIdx].prefix}</span>
+            <strong className="font-bold underline decoration-white/50 underline-offset-2">
+              {announcements[currentIdx].action}
+            </strong>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BrandLogo() {
   return (
     <Image
@@ -36,7 +105,7 @@ function BrandLogo() {
       alt="XElectron"
       width={360}
       height={120}
-      className="h-12 sm:h-14 md:h-16 lg:h-18 w-auto object-contain object-left transition-transform duration-200"
+      className="h-8 sm:h-12 md:h-14 lg:h-16 w-auto max-w-[120px] sm:max-w-none object-contain object-left transition-transform duration-200"
       priority
     />
   );
@@ -47,18 +116,24 @@ function IconButton({
   label,
   badge,
   onClick,
+  isLight,
 }: {
   children: ReactNode;
   label: string;
   badge?: number;
   onClick?: () => void;
+  isLight?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="relative inline-flex size-9 items-center justify-center rounded-full text-slate-800 transition-all duration-200 hover:bg-slate-100 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6]"
+      className={`relative inline-flex size-9 items-center justify-center rounded-full transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6] ${
+        isLight
+          ? "text-white hover:bg-white/20 drop-shadow-xs"
+          : "text-slate-800 hover:bg-slate-100"
+      }`}
     >
       {children}
       {badge ? (
@@ -76,12 +151,14 @@ function FlatNavLink({
   icon: Icon,
   onClick,
   onMouseEnter,
+  isLight,
 }: {
   label: string;
   href: string;
   icon?: LucideIcon;
   onClick?: () => void;
   onMouseEnter?: () => void;
+  isLight?: boolean;
 }) {
   return (
     <div className="h-full flex items-center" onMouseEnter={onMouseEnter}>
@@ -89,10 +166,20 @@ function FlatNavLink({
         href={href}
         onClick={onClick}
         onMouseEnter={onMouseEnter}
-        className="group inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[13px] font-semibold uppercase tracking-wider text-slate-700 transition-colors duration-200 hover:text-[#0a7ae6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6]"
+        className={`group inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[13px] font-semibold uppercase tracking-wider transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6] ${
+          isLight
+            ? "text-white hover:text-sky-300 drop-shadow-xs"
+            : "text-slate-700 hover:text-[#0a7ae6]"
+        }`}
       >
         {Icon && (
-          <Icon className="size-4 text-slate-400 group-hover:text-[#0a7ae6]" />
+          <Icon
+            className={`size-4 transition-colors ${
+              isLight
+                ? "text-white/80 group-hover:text-sky-300"
+                : "text-slate-400 group-hover:text-[#0a7ae6]"
+            }`}
+          />
         )}
         <span className="uppercase">{label}</span>
       </Link>
@@ -105,6 +192,7 @@ function DropdownNavItem({
   open,
   onToggle,
   onOpen,
+  isLight,
 }: {
   label: string;
   items?: string[];
@@ -112,6 +200,7 @@ function DropdownNavItem({
   onToggle: () => void;
   onOpen: () => void;
   onClose?: () => void;
+  isLight?: boolean;
 }) {
   return (
     <div
@@ -122,13 +211,23 @@ function DropdownNavItem({
         type="button"
         aria-expanded={open}
         onClick={onToggle}
-        className={`inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[13px] font-semibold uppercase tracking-wider transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6] ${open ? "text-[#0a7ae6]" : "text-slate-700 hover:text-[#0a7ae6]"
-          }`}
+        className={`inline-flex h-full min-w-max items-center gap-1.5 px-3 text-[13px] font-semibold uppercase tracking-wider transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6] ${
+          open
+            ? "text-[#0a7ae6]"
+            : isLight
+              ? "text-white hover:text-sky-300 drop-shadow-xs"
+              : "text-slate-700 hover:text-[#0a7ae6]"
+        }`}
       >
         <span className="uppercase">{label}</span>
         <ChevronDown
-          className={`size-3.5 stroke-[2] transition-transform duration-200 ${open ? "rotate-180 text-[#0a7ae6]" : "text-slate-400"
-            }`}
+          className={`size-3.5 stroke-[2] transition-transform duration-200 ${
+            open
+              ? "rotate-180 text-[#0a7ae6]"
+              : isLight
+                ? "text-white/80"
+                : "text-slate-400"
+          }`}
           aria-hidden="true"
         />
       </button>
@@ -212,6 +311,10 @@ export default function Navbar() {
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string; role: string } | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+  const [isScrolled, setIsScrolled] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
     fetch("/api/auth/me")
@@ -252,9 +355,6 @@ export default function Navbar() {
   const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
   const [areStoreCategoriesLoaded, setAreStoreCategoriesLoaded] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const lastScrollY = useRef(0);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -382,45 +482,13 @@ export default function Navbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      if (currentScrollY <= 20) {
-        setIsHeaderVisible(true);
-        lastScrollY.current = currentScrollY;
-        return;
-      }
-
-      const diff = currentScrollY - lastScrollY.current;
-
-      if (diff > 4) {
-        setIsHeaderVisible(false);
-      } else if (diff < -4) {
-        setIsHeaderVisible(true);
-      }
-
-      lastScrollY.current = currentScrollY;
-
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-      scrollTimeoutRef.current = setTimeout(() => {
-        setIsHeaderVisible(true);
-      }, 90);
+      setIsScrolled(window.scrollY > 20);
     };
 
-    const handleScrollEnd = () => {
-      setIsHeaderVisible(true);
-    };
-
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("scrollend", handleScrollEnd, { passive: true });
-
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("scrollend", handleScrollEnd);
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
     };
   }, []);
 
@@ -481,16 +549,18 @@ export default function Navbar() {
     })
     .slice(0, 2);
 
+  const isTransparent = isHome && !isScrolled && !openMenu && !mobileOpen;
+
   return (
     <>
       <header
         ref={headerRef}
-        className={`sticky top-0 z-50 bg-white transition-transform duration-300 ease-out ${
-          isHeaderVisible || openMenu ? "translate-y-0" : "-translate-y-full"
-        }`}
+        className="sticky top-0 z-50 bg-white shadow-xs border-b border-slate-100 text-slate-800 transition-colors"
         onMouseLeave={() => handleOpenMenu(null)}
       >
-        <div className="mx-auto flex h-[72px] max-w-[1600px] items-center justify-between px-4 sm:grid sm:h-[76px] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-6 lg:px-8">
+        <TopAnnouncementBar />
+        <div className="w-full relative z-40 bg-white">
+          <div className="mx-auto flex h-[64px] sm:h-[76px] max-w-[1600px] items-center justify-between px-3 sm:px-6 lg:px-8 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
           {/* Brand Logo */}
           <Link
             href="/"
@@ -528,14 +598,14 @@ export default function Navbar() {
           {/* Desktop Actions */}
           <div className="hidden shrink-0 items-center justify-self-end gap-1.5 sm:flex">
             <IconButton label="Search" onClick={() => setIsSearchDrawerOpen(true)}>
-              <Search className="size-4 text-slate-700 stroke-[1.8]" />
+              <Search className="size-4 stroke-[1.8] text-slate-700" />
             </IconButton>
             <IconButton
               label="Wishlist"
               badge={wishlistCount}
               onClick={() => setIsWishlistOpen(true)}
             >
-              <Heart className="size-4 text-slate-700 stroke-[1.8]" />
+              <Heart className="size-4 stroke-[1.8] text-slate-700" />
             </IconButton>
 
             {currentUser ? (
@@ -548,7 +618,7 @@ export default function Navbar() {
                 </IconButton>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2.5 w-60 rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl z-50">
+                  <div className="absolute right-0 top-full mt-2.5 w-60 rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl z-50 text-slate-800">
                     <div className="border-b border-slate-100 px-3.5 py-2.5">
                       <p className="text-xs font-bold text-slate-900 truncate">{currentUser.name || "Customer"}</p>
                       <p className="text-[11px] text-slate-500 truncate">{currentUser.email}</p>
@@ -587,7 +657,7 @@ export default function Navbar() {
             ) : (
               <Link href="/login" aria-label="My Account" className="inline-flex items-center">
                 <IconButton label="My Account">
-                  <User className="size-4 text-slate-700 stroke-[1.8]" />
+                  <User className="size-4 stroke-[1.8] text-slate-700" />
                 </IconButton>
               </Link>
             )}
@@ -597,12 +667,12 @@ export default function Navbar() {
               badge={cartCount}
               onClick={() => setIsCartOpen(true)}
             >
-              <ShoppingBag className="size-4 text-slate-700 stroke-[1.8]" />
+              <ShoppingBag className="size-4 stroke-[1.8] text-slate-700" />
             </IconButton>
           </div>
 
           {/* Mobile Actions & Toggle */}
-          <div className="flex shrink-0 items-center gap-1 sm:hidden">
+          <div className="flex shrink-0 items-center gap-0.5 sm:hidden">
             <IconButton label="Search" onClick={() => setIsSearchDrawerOpen(true)}>
               <Search className="size-4 text-slate-800 stroke-[1.8]" />
             </IconButton>
@@ -624,20 +694,21 @@ export default function Navbar() {
               type="button"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               onClick={() => setMobileOpen((current) => !current)}
-              className="ml-1 inline-flex size-9 items-center justify-center rounded-full bg-slate-100 text-slate-900 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6]"
+              className="ml-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-900 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6]"
             >
               {mobileOpen ? (
-                <X className="size-5 stroke-[2]" />
+                <X className="size-4 stroke-[2.2]" />
               ) : (
-                <Menu className="size-5 stroke-[2]" />
+                <Menu className="size-4 stroke-[2.2]" />
               )}
             </button>
           </div>
         </div>
+      </div>
 
         {/* Darkened Smooth Backdrop Blur Overlay */}
         <div
-          className={`hidden lg:block fixed inset-0 top-[72px] sm:top-[76px] z-40 bg-slate-950/25 backdrop-blur-xs transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`hidden lg:block fixed inset-0 z-30 bg-slate-950/20 backdrop-blur-xs transition-opacity duration-300 ${
             openMenu ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none invisible"
           }`}
           onClick={() => handleOpenMenu(null)}
@@ -645,10 +716,10 @@ export default function Navbar() {
 
         {/* Full Width Mega Menu Dropdown */}
         <div
-          className={`hidden lg:block absolute top-full inset-x-0 z-50 grid bg-white/98 backdrop-blur-2xl shadow-[0_35px_80px_rgba(15,23,42,0.16)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`hidden lg:block absolute top-full inset-x-0 z-40 grid bg-white border-b border-slate-200 shadow-[0_30px_70px_rgba(15,23,42,0.14)] transition-all duration-300 ease-out ${
             openMenu
               ? "grid-rows-[1fr] opacity-100 translate-y-0 pointer-events-auto visible"
-              : "grid-rows-[0fr] opacity-0 -translate-y-3 pointer-events-none invisible"
+              : "grid-rows-[0fr] opacity-0 -translate-y-2 pointer-events-none invisible"
           }`}
           onMouseEnter={() => openMenu && handleOpenMenu(openMenu)}
           onMouseLeave={() => handleOpenMenu(null)}
@@ -964,13 +1035,13 @@ export default function Navbar() {
           <>
             {/* Backdrop Overlay */}
             <div
-              className="fixed inset-0 top-[68px] z-40 bg-slate-900/30 backdrop-blur-xs lg:hidden"
+              className="fixed inset-0 top-[96px] sm:top-[112px] z-40 bg-black/60 backdrop-blur-sm lg:hidden"
               onClick={() => setMobileOpen(false)}
             />
 
             {/* Slide-Down Drawer Container */}
-            <div className="fixed inset-x-0 top-[68px] z-50 max-h-[calc(100vh-68px)] overflow-y-auto border-t border-slate-200/80 bg-white/98 shadow-2xl backdrop-blur-2xl lg:hidden animate-in slide-in-from-top-2 duration-200">
-              <div className="mx-auto max-w-[1600px] px-4 py-4 space-y-4">
+            <div className="absolute top-full inset-x-0 z-50 max-h-[calc(100dvh-100px)] overflow-y-auto border-t border-slate-200 bg-white shadow-2xl lg:hidden animate-in slide-in-from-top-2 duration-200">
+              <div className="mx-auto max-w-[1600px] px-4 py-4 space-y-4 bg-white">
                 {/* Navigation Items List */}
                 <div className="space-y-1">
                   {/* Home */}
@@ -1003,7 +1074,7 @@ export default function Navbar() {
                     return (
                       <div
                         key={group.label}
-                        className="rounded-xl border border-slate-100 bg-slate-50/50 overflow-hidden"
+                        className="rounded-xl border border-slate-200/80 bg-slate-50 overflow-hidden"
                       >
                         <button
                           type="button"
@@ -1021,7 +1092,7 @@ export default function Navbar() {
                         </button>
 
                         {isExpanded && (
-                          <div className="border-t border-slate-100 bg-white px-3.5 py-2 space-y-1">
+                          <div className="border-t border-slate-200/80 bg-white px-3.5 py-2 space-y-1">
                             {mobileItems.map((item) => (
                                 <Link
                                   key={item.key}
@@ -1045,7 +1116,7 @@ export default function Navbar() {
 
                   {/* Flat Nav Items */}
                   <Link
-                    href="/"
+                    href="/about"
                     onClick={handleNavigate}
                     className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-[14px] font-semibold text-slate-800 hover:bg-slate-100 hover:text-[#0a7ae6]"
                   >
@@ -1054,7 +1125,7 @@ export default function Navbar() {
                   </Link>
 
                   <Link
-                    href="/"
+                    href="/contact"
                     onClick={handleNavigate}
                     className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-[14px] font-semibold text-slate-800 hover:bg-slate-100 hover:text-[#0a7ae6]"
                   >
@@ -1063,17 +1134,17 @@ export default function Navbar() {
                   </Link>
 
                   <Link
-                    href="/login"
+                    href={currentUser ? "/orders" : "/login"}
                     onClick={handleNavigate}
                     className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-[14px] font-semibold text-slate-800 hover:bg-slate-100 hover:text-[#0a7ae6]"
                   >
                     <User className="size-4 text-slate-500" />
-                    <span>My Account</span>
+                    <span>{currentUser ? "My Account" : "Log In"}</span>
                   </Link>
                 </div>
 
                 {/* Bottom Support Callout Box */}
-                <div className="rounded-xl border border-[#0a7ae6]/20 bg-[linear-gradient(135deg,rgba(10,122,230,0.05),rgba(10,122,230,0.1))] p-3.5 text-center">
+                <div className="rounded-xl border border-blue-100 bg-blue-50/80 p-3.5 text-center">
                   <p className="text-[12px] font-bold text-slate-900">
                     Need Help or Service?
                   </p>
@@ -1201,9 +1272,24 @@ export default function Navbar() {
                   ₹{cartSubtotal.toLocaleString("en-IN")}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 mb-5 font-normal">
-                Taxes and shipping calculated at checkout. Free shipping on all orders!
-              </p>
+              {!currentUser && (
+                <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50/70 p-3 text-[11px] text-slate-700">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-900">📦 Track your order easily</span>
+                    <Link
+                      href="/login"
+                      onClick={() => setIsCartOpen(false)}
+                      className="font-bold text-[#0a7ae6] hover:underline"
+                    >
+                      Sign In
+                    </Link>
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    You can create an account at checkout to track live shipments and access your orders anytime.
+                  </p>
+                </div>
+              )}
+
               <Link
                 href="/checkout"
                 onClick={() => setIsCartOpen(false)}

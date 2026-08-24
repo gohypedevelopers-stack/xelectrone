@@ -12,7 +12,13 @@ export type DraftOrderItem = {
 export type DraftOrder = {
   id: string;
   customerName: string;
+  customerPhone: string;
   customerEmail: string;
+  shippingAddress: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
   note: string;
   tags: string;
   items: DraftOrderItem[];

@@ -46,12 +46,44 @@ export async function getOrdersByUserId(userId: string) {
   });
 }
 
+export async function getOrdersByEmailOrPhone(contact: string) {
+  const clean = contact.trim().toLowerCase();
+  return db.order.findMany({
+    where: {
+      OR: [
+        { customerEmail: { equals: clean, mode: "insensitive" } },
+        { customerPhone: { contains: clean.replace(/[^0-9]/g, "") } },
+      ],
+    },
+    include: {
+      items: {
+        include: {
+          product: { select: { id: true, name: true, mainImage: true, slug: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 // ─── Mutations ───────────────────────────────────────────────────────────────
 
 export type CreateOrderInput = {
-  userId: string;
+  userId?: string | null;
   total: number;
   shippingAddress?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  shippingCarrier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  estimatedDelivery?: string;
+  internalNotes?: string;
   phone?: string;
   discountCode?: string;
   items: {
@@ -59,14 +91,28 @@ export type CreateOrderInput = {
     quantity: number;
     unitPrice: number;
   }[];
+  createAccount?: boolean;
+  password?: string;
 };
 
 export async function createOrder(data: CreateOrderInput) {
   return db.order.create({
     data: {
-      userId: data.userId,
+      userId: data.userId || null,
       total: data.total,
       shippingAddress: data.shippingAddress,
+      customerName: data.customerName,
+      customerEmail: data.customerEmail,
+      customerPhone: data.customerPhone || data.phone,
+      city: data.city,
+      state: data.state,
+      pincode: data.pincode,
+      country: data.country || "India",
+      shippingCarrier: data.shippingCarrier,
+      trackingNumber: data.trackingNumber,
+      trackingUrl: data.trackingUrl,
+      estimatedDelivery: data.estimatedDelivery,
+      internalNotes: data.internalNotes,
       items: {
         create: data.items.map((item) => ({
           productId: item.productId,
@@ -76,7 +122,11 @@ export async function createOrder(data: CreateOrderInput) {
       },
     },
     include: {
-      items: true,
+      items: {
+        include: {
+          product: { select: { id: true, name: true, mainImage: true, slug: true } },
+        },
+      },
     },
   });
 }
@@ -88,6 +138,51 @@ export async function updateOrderStatus(
   return db.order.update({
     where: { id },
     data: { status },
+  });
+}
+
+export type UpdateOrderInput = {
+  status?: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+  shippingAddress?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  shippingCarrier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  estimatedDelivery?: string;
+  internalNotes?: string;
+};
+
+export async function updateOrder(id: string, data: UpdateOrderInput) {
+  return db.order.update({
+    where: { id },
+    data: {
+      ...(data.status ? { status: data.status } : {}),
+      ...(data.shippingAddress !== undefined ? { shippingAddress: data.shippingAddress } : {}),
+      ...(data.customerName !== undefined ? { customerName: data.customerName } : {}),
+      ...(data.customerEmail !== undefined ? { customerEmail: data.customerEmail } : {}),
+      ...(data.customerPhone !== undefined ? { customerPhone: data.customerPhone } : {}),
+      ...(data.city !== undefined ? { city: data.city } : {}),
+      ...(data.state !== undefined ? { state: data.state } : {}),
+      ...(data.pincode !== undefined ? { pincode: data.pincode } : {}),
+      ...(data.shippingCarrier !== undefined ? { shippingCarrier: data.shippingCarrier } : {}),
+      ...(data.trackingNumber !== undefined ? { trackingNumber: data.trackingNumber } : {}),
+      ...(data.trackingUrl !== undefined ? { trackingUrl: data.trackingUrl } : {}),
+      ...(data.estimatedDelivery !== undefined ? { estimatedDelivery: data.estimatedDelivery } : {}),
+      ...(data.internalNotes !== undefined ? { internalNotes: data.internalNotes } : {}),
+    },
+    include: {
+      user: { select: { id: true, name: true, email: true, phone: true } },
+      items: {
+        include: {
+          product: { select: { id: true, name: true, mainImage: true, slug: true, price: true } },
+        },
+      },
+    },
   });
 }
 

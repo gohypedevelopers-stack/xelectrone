@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   PlusIcon,
   Trash2Icon,
@@ -20,6 +21,17 @@ import {
 import { toast } from "sonner"
 import type { CreatorVideoItem } from "@/lib/server/controllers/creator-videos.controller"
 import { uploadProductImage } from "@/lib/client/upload-product-image"
+
+export function extractYouTubeThumbnail(url: string): string {
+  if (!url) return url;
+  const trimmed = url.trim();
+  const regExp = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|watch\?.+&v=))([\w-]{11})/;
+  const match = trimmed.match(regExp);
+  if (match && match[1]) {
+    return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+  }
+  return trimmed;
+}
 
 type ProductOption = {
   id: string
@@ -204,7 +216,8 @@ export function CreatorVideoManager({
 }: {
   initialVideos: CreatorVideoItem[]
 }) {
-  const [videos, setVideos] = useState<CreatorVideoItem[]>(initialVideos)
+  const router = useRouter()
+  const [videos, setVideos] = useState<CreatorVideoItem[]>(initialVideos || [])
   const [products, setProducts] = useState<ProductOption[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingVideo, setEditingVideo] = useState<CreatorVideoItem | null>(null)
@@ -214,16 +227,7 @@ export function CreatorVideoManager({
 
   // Sync / fetch videos
   useEffect(() => {
-    if (initialVideos && initialVideos.length > 0) {
-      setVideos(initialVideos)
-    } else {
-      fetch("/api/admin/creator-videos")
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data) && data.length > 0) setVideos(data)
-        })
-        .catch(() => {})
-    }
+    setVideos(initialVideos || [])
   }, [initialVideos])
 
   // Fetch product options for dropdown
@@ -297,6 +301,7 @@ export function CreatorVideoManager({
       })
       if (!res.ok) throw new Error("Failed to update status")
       toast.success(newStatus ? "Video enabled" : "Video disabled")
+      router.refresh()
     } catch {
       toast.error("Failed to update video status")
       setVideos((prev) =>
@@ -314,6 +319,7 @@ export function CreatorVideoManager({
       if (!res.ok) throw new Error("Failed to delete video")
       setVideos((prev) => prev.filter((v) => v.id !== id))
       toast.success("Creator video deleted")
+      router.refresh()
     } catch {
       toast.error("Failed to delete creator video")
     } finally {
@@ -345,6 +351,11 @@ export function CreatorVideoManager({
       return
     }
 
+    const payload = {
+      ...formData,
+      thumbnailUrl: extractYouTubeThumbnail(formData.thumbnailUrl),
+    }
+
     setIsSubmitting(true)
     try {
       if (editingVideo) {
@@ -352,7 +363,7 @@ export function CreatorVideoManager({
         const res = await fetch(`/api/admin/creator-videos/${editingVideo.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         })
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}))
@@ -366,7 +377,7 @@ export function CreatorVideoManager({
         const res = await fetch("/api/admin/creator-videos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         })
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}))
@@ -377,6 +388,7 @@ export function CreatorVideoManager({
         toast.success("Creator video added successfully!")
       }
       setIsModalOpen(false)
+      router.refresh()
     } catch (err: any) {
       toast.error(err.message || "An error occurred")
     } finally {
@@ -384,142 +396,190 @@ export function CreatorVideoManager({
     }
   }
 
+  const activeCount = videos.filter((v) => v.isActive).length
+  const totalCount = videos.length
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/10 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-black flex items-center gap-2">
-            <VideoIcon className="w-6 h-6 text-black/70" />
-            Approved by Creators Videos
+          <h1 className="text-xl font-bold tracking-tight text-black flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center">
+              <VideoIcon className="w-4 h-4 text-white" />
+            </div>
+            Creator Videos
           </h1>
-          <p className="text-xs text-black/60 mt-1">
-            Manage creator video cards on homepage. Attach products so clicking a video opens the product page.
+          <p className="text-xs text-black/50 mt-1.5 ml-[42px]">
+            Videos shown on the homepage. Attach a product so clicking opens its page.
           </p>
         </div>
 
         <button
           onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-black/80 shadow-xs cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-black/80 shadow-xs cursor-pointer shrink-0"
         >
           <PlusIcon className="w-4 h-4" />
-          Add Creator Video
+          Add Video
         </button>
       </div>
 
-      {/* Grid */}
+      {/* Stats Bar */}
+      {totalCount > 0 && (
+        <div className="flex items-center gap-6 px-4 py-3 rounded-xl bg-black/[0.03] border border-black/[0.06]">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-black/30" />
+            <span className="text-[11px] font-medium text-black/60">
+              {totalCount} video{totalCount !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-[11px] font-medium text-black/60">
+              {activeCount} active
+            </span>
+          </div>
+          {totalCount - activeCount > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-[11px] font-medium text-black/60">
+                {totalCount - activeCount} hidden
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Grid / Empty State */}
       {videos.length === 0 ? (
-        <div className="text-center py-16 border-2 border-dashed border-black/10 rounded-2xl bg-black/[0.02]">
-          <VideoIcon className="w-12 h-12 text-black/20 mx-auto mb-3" />
-          <h3 className="text-sm font-semibold text-black/80">No Creator Videos Found</h3>
-          <p className="text-xs text-black/50 mt-1 max-w-sm mx-auto">
-            Add videos to showcase product demonstrations from creators on your store homepage.
+        <div className="text-center py-20 border border-dashed border-black/10 rounded-2xl bg-black/[0.015]">
+          <div className="w-14 h-14 rounded-2xl bg-black/[0.06] flex items-center justify-center mx-auto mb-4">
+            <VideoIcon className="w-6 h-6 text-black/25" />
+          </div>
+          <h3 className="text-sm font-semibold text-black/70">No creator videos yet</h3>
+          <p className="text-xs text-black/40 mt-1 max-w-xs mx-auto">
+            Add YouTube or MP4 links to feature creator reviews and demos on your homepage.
           </p>
           <button
             onClick={openAddModal}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-black/80 transition cursor-pointer"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-xs font-semibold text-white hover:bg-black/80 transition cursor-pointer"
           >
             <PlusIcon className="w-4 h-4" />
             Add First Video
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {videos.map((vid) => (
+        <div className="space-y-3">
+          {videos.map((vid, idx) => (
             <div
               key={vid.id}
-              className={`group relative bg-white border rounded-2xl overflow-hidden shadow-xs transition-all duration-200 hover:shadow-md ${
-                !vid.isActive ? "opacity-60 border-dashed border-black/20" : "border-black/10"
+              className={`group relative flex items-center gap-4 bg-white border rounded-xl p-3 transition-all duration-200 hover:shadow-md ${
+                !vid.isActive ? "opacity-60 border-dashed border-black/15" : "border-black/[0.08] hover:border-black/15"
               }`}
             >
-              {/* Card Image Container (9:16 aspect ratio) */}
-              <div className="relative aspect-[9/16] w-full bg-slate-900 overflow-hidden">
+              {/* Thumbnail */}
+              <div className="relative w-20 h-28 rounded-lg overflow-hidden bg-slate-900 shrink-0">
                 <Image
-                  src={vid.thumbnailUrl}
+                  src={extractYouTubeThumbnail(vid.thumbnailUrl)}
                   alt={vid.title || "Creator Video"}
                   fill
+                  unoptimized
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
-
-                {/* Play Icon Badge */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full border border-white/40 bg-white/25 text-white backdrop-blur-md flex items-center justify-center">
-                    <VideoIcon className="w-5 h-5 ml-0.5" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                    <VideoIcon className="w-3.5 h-3.5 text-white" />
                   </div>
                 </div>
-
-                {/* Badges */}
-                <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                  <span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-medium px-2.5 py-1 rounded-full">
-                    Order: {vid.sortOrder}
+                {/* Sort order badge */}
+                <div className="absolute top-1.5 left-1.5">
+                  <span className="bg-black/60 backdrop-blur text-white text-[9px] font-bold w-5 h-5 rounded-md flex items-center justify-center">
+                    {idx + 1}
                   </span>
+                </div>
+              </div>
 
-                  <button
-                    onClick={() => handleToggleActive(vid)}
-                    title={vid.isActive ? "Click to disable" : "Click to enable"}
-                    className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-md transition cursor-pointer ${
+              {/* Info */}
+              <div className="flex-1 min-w-0 py-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="text-sm font-semibold text-black truncate">
+                    {vid.title || "Untitled Video"}
+                  </h4>
+                  <span
+                    className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                       vid.isActive
-                        ? "bg-emerald-500/90 text-white"
-                        : "bg-amber-500/90 text-white"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
                     }`}
                   >
-                    {vid.isActive ? <EyeIcon className="w-3 h-3" /> : <EyeOffIcon className="w-3 h-3" />}
+                    <span className={`w-1.5 h-1.5 rounded-full ${vid.isActive ? "bg-emerald-500" : "bg-amber-500"}`} />
                     {vid.isActive ? "Active" : "Hidden"}
-                  </button>
+                  </span>
                 </div>
 
-                {/* Product Badge at Bottom */}
-                {vid.product && (
-                  <div className="absolute bottom-3 left-3 right-3 bg-white/95 text-black p-2.5 rounded-xl shadow-lg flex items-center gap-2.5">
-                    <div className="relative w-9 h-9 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                {/* Video URL preview */}
+                {vid.videoUrl && (
+                  <p className="text-[11px] text-black/40 truncate max-w-md mb-2">
+                    {vid.videoUrl}
+                  </p>
+                )}
+
+                {/* Linked Product */}
+                {vid.product ? (
+                  <div className="inline-flex items-center gap-2 bg-black/[0.04] rounded-lg px-2.5 py-1.5">
+                    <div className="relative w-6 h-6 rounded overflow-hidden bg-white shrink-0 border border-black/10">
                       <Image
                         src={vid.product.mainImage}
                         alt={vid.product.name}
                         fill
+                        unoptimized
                         className="object-cover"
                       />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-semibold text-black/50 uppercase tracking-wider">Linked Product</p>
-                      <p className="text-xs font-semibold text-black truncate">{vid.product.name}</p>
-                    </div>
+                    <span className="text-[11px] font-medium text-black/70 truncate max-w-[200px]">
+                      {vid.product.name}
+                    </span>
                     <Link
                       href={`/product/${vid.product.slug}`}
                       target="_blank"
-                      className="text-black/60 hover:text-black shrink-0"
+                      className="text-black/40 hover:text-black transition shrink-0"
                     >
-                      <ExternalLinkIcon className="w-4 h-4" />
+                      <ExternalLinkIcon className="w-3 h-3" />
                     </Link>
                   </div>
+                ) : (
+                  <span className="text-[10px] text-black/30 italic">No product linked</span>
                 )}
               </div>
 
-              {/* Card Footer Info & Controls */}
-              <div className="p-4 bg-white border-t border-black/5 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <h4 className="text-xs font-semibold text-black truncate">
-                    {vid.title || "Untitled Video"}
-                  </h4>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => openEditModal(vid)}
-                    className="p-1.5 rounded-lg text-black/60 hover:text-black hover:bg-black/5 transition cursor-pointer"
-                    title="Edit video"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setDeleteTargetId(vid.id)}
-                    className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                    title="Delete video"
-                  >
-                    <Trash2Icon className="w-4 h-4" />
-                  </button>
-                </div>
+              {/* Actions */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => handleToggleActive(vid)}
+                  className={`p-2 rounded-lg transition cursor-pointer ${
+                    vid.isActive
+                      ? "text-black/40 hover:text-amber-600 hover:bg-amber-50"
+                      : "text-black/40 hover:text-emerald-600 hover:bg-emerald-50"
+                  }`}
+                  title={vid.isActive ? "Hide from homepage" : "Show on homepage"}
+                >
+                  {vid.isActive ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => openEditModal(vid)}
+                  className="p-2 rounded-lg text-black/40 hover:text-black hover:bg-black/5 transition cursor-pointer"
+                  title="Edit video"
+                >
+                  <PencilIcon className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setDeleteTargetId(vid.id)}
+                  className="p-2 rounded-lg text-black/40 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                  title="Delete video"
+                >
+                  <Trash2Icon className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))}
@@ -530,14 +590,16 @@ export function CreatorVideoManager({
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-black/10 pb-3">
-              <h3 className="text-base font-bold text-black flex items-center gap-2">
-                <VideoIcon className="w-5 h-5" />
-                {editingVideo ? "Edit Creator Video" : "Add New Creator Video"}
+            <div className="flex items-center justify-between pb-3">
+              <h3 className="text-base font-bold text-black flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
+                  <VideoIcon className="w-3.5 h-3.5 text-white" />
+                </div>
+                {editingVideo ? "Edit Video" : "Add Video"}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-black/40 hover:text-black p-1 rounded-lg transition cursor-pointer"
+                className="text-black/40 hover:text-black p-1.5 rounded-lg hover:bg-black/5 transition cursor-pointer"
               >
                 <XIcon className="w-5 h-5" />
               </button>
@@ -546,31 +608,56 @@ export function CreatorVideoManager({
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               {/* Title */}
               <div>
-                <label className="block font-semibold text-black/80 mb-1">Video Title / Caption</label>
+                <label className="block font-semibold text-black/70 mb-1.5">Title</label>
                 <input
                   type="text"
-                  placeholder="e.g. Earbuds Unboxing & Real Review"
+                  placeholder="e.g. Earbuds Unboxing & Review"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full rounded-lg border border-black/20 px-3 py-2 text-xs outline-none focus:border-black"
+                  className="w-full rounded-lg border border-black/15 bg-black/[0.02] px-3 py-2.5 text-xs outline-none focus:border-black/40 focus:bg-white transition"
                 />
+              </div>
+
+              {/* Video URL */}
+              <div>
+                <label className="block font-semibold text-black/70 mb-1.5">
+                  Video URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://www.youtube.com/watch?v=... or .mp4 link"
+                  value={formData.videoUrl}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const autoThumb = !formData.thumbnailUrl ? extractYouTubeThumbnail(val) : formData.thumbnailUrl;
+                    setFormData({
+                      ...formData,
+                      videoUrl: val,
+                      thumbnailUrl: autoThumb,
+                    });
+                  }}
+                  className="w-full rounded-lg border border-black/15 bg-black/[0.02] px-3 py-2.5 text-xs outline-none focus:border-black/40 focus:bg-white transition"
+                />
+                <p className="mt-1.5 text-[10px] text-black/40">
+                  YouTube links auto-generate the thumbnail.
+                </p>
               </div>
 
               {/* Thumbnail Image URL / Upload */}
               <div>
-                <label className="block font-semibold text-black/80 mb-1">
-                  Thumbnail Image (URL or Upload) *
+                <label className="block font-semibold text-black/70 mb-1.5">
+                  Thumbnail <span className="text-rose-500">*</span>
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     required
-                    placeholder="/creator-earbuds.png or https://..."
+                    placeholder="Image URL or upload →"
                     value={formData.thumbnailUrl}
                     onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
-                    className="flex-1 rounded-lg border border-black/20 px-3 py-2 text-xs outline-none focus:border-black"
+                    className="flex-1 rounded-lg border border-black/15 bg-black/[0.02] px-3 py-2.5 text-xs outline-none focus:border-black/40 focus:bg-white transition"
                   />
-                  <label className="inline-flex items-center gap-1.5 rounded-lg border border-black/20 bg-slate-50 px-3 py-2 font-semibold text-black hover:bg-slate-100 transition cursor-pointer">
+                  <label className="inline-flex items-center gap-1.5 rounded-lg border border-black/15 bg-black/[0.03] px-3 py-2.5 font-semibold text-black/70 hover:bg-black/[0.06] transition cursor-pointer">
                     {isUploading ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <UploadIcon className="w-4 h-4" />}
                     Upload
                     <input
@@ -583,42 +670,46 @@ export function CreatorVideoManager({
                   </label>
                 </div>
                 {formData.thumbnailUrl && (
-                  <div className="mt-2 relative h-36 w-24 rounded-lg overflow-hidden border border-black/10 bg-slate-900">
+                  <div className="mt-2.5 relative h-32 w-20 rounded-lg overflow-hidden border border-black/10 bg-slate-900">
                     <Image
-                      src={formData.thumbnailUrl}
+                      src={extractYouTubeThumbnail(formData.thumbnailUrl)}
                       alt="Preview"
                       fill
+                      unoptimized
                       className="object-cover"
                     />
                   </div>
                 )}
               </div>
 
-              {/* Custom Sleek Inline Product Select Picker with Thumbnail Images */}
+              {/* Product Select */}
               <div>
-                <label className="block font-semibold text-black/80 mb-1">
-                  Link Product (Opens product page when user clicks video)
+                <label className="block font-semibold text-black/70 mb-1.5">
+                  Link Product
                 </label>
                 <ProductSelectPicker
                   products={products}
                   selectedId={formData.productId}
                   onSelect={(id) => setFormData({ ...formData, productId: id })}
                 />
+                <p className="mt-1.5 text-[10px] text-black/40">
+                  Clicking the video on homepage will open this product page.
+                </p>
               </div>
 
               {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-black/10">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/[0.06]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-lg border border-black/20 px-4 py-2 text-xs font-semibold text-black hover:bg-black/5 transition cursor-pointer"
+                  className="rounded-lg border border-black/15 px-4 py-2.5 text-xs font-semibold text-black/70 hover:bg-black/5 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-black/80 transition cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-black px-5 py-2.5 text-xs font-semibold text-white hover:bg-black/80 transition cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting && <Loader2Icon className="w-4 h-4 animate-spin" />}
                   {editingVideo ? "Save Changes" : "Create Video"}
@@ -633,24 +724,27 @@ export function CreatorVideoManager({
       {deleteTargetId && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-black">Delete Creator Video</h3>
-            <p className="text-xs text-black/60">
-              Are you sure you want to delete this creator video card? This action cannot be undone.
+            <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center mb-1">
+              <Trash2Icon className="w-5 h-5 text-rose-600" />
+            </div>
+            <h3 className="text-base font-bold text-black">Delete this video?</h3>
+            <p className="text-xs text-black/50">
+              This video will be permanently removed from your homepage. This cannot be undone.
             </p>
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setDeleteTargetId(null)}
-                className="rounded-lg border border-black/20 px-4 py-2 text-xs font-semibold text-black hover:bg-black/5 transition cursor-pointer"
+                className="rounded-lg border border-black/15 px-4 py-2.5 text-xs font-semibold text-black/70 hover:bg-black/5 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteTargetId)}
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 transition cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-rose-700 transition cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting && <Loader2Icon className="w-4 h-4 animate-spin" />}
-                Delete
+                Delete Video
               </button>
             </div>
           </div>

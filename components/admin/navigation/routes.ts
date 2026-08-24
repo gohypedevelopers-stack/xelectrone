@@ -28,6 +28,8 @@ export const adminRoutes: AdminRoute[] = [
   },
   { label: "Customers", href: "/dashboard/customers" },
   { label: "Deal of the day", href: "/dashboard/deal-of-the-day" },
+  { label: "Reviews", href: "/dashboard/reviews" },
+  { label: "Blog", href: "/dashboard/blog" },
   { label: "Discounts", href: "/dashboard/discounts" },
   {
     label: "Analytics",

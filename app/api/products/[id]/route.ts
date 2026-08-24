@@ -28,6 +28,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const product = await productsController.updateProduct(id, body);
     revalidatePath("/");
+    revalidatePath("/product");
+    revalidatePath(`/product/${product.id}`);
+    if (product.slug) revalidatePath(`/product/${product.slug}`);
+    revalidatePath("/dashboard/products");
     return NextResponse.json({ success: true, data: product });
   } catch (error) {
     if (error instanceof AuthError) {

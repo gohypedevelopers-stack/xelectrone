@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
     const { token, redirectTo } = await registerUser(
       parsed.data.name,
       parsed.data.email,
-      parsed.data.password
+      parsed.data.password,
+      parsed.data.phone,
+      parsed.data.otp
     );
 
     // 3. Set HttpOnly session cookie

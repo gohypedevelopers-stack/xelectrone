@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { categories as defaultCategories } from "@/components/home/content";
 
 export type StorefrontCategory = {
   id: string;
@@ -8,8 +9,18 @@ export type StorefrontCategory = {
   image: string;
 };
 
-export default function CategorySection({ categories }: { categories: StorefrontCategory[] }) {
-  if (categories.length === 0) return null;
+export default function CategorySection({ categories }: { categories?: StorefrontCategory[] }) {
+  const displayCategories =
+    categories && categories.length > 0
+      ? categories
+      : defaultCategories.map((cat) => ({
+          id: cat.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          title: cat.title,
+          slug: cat.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          image: cat.src,
+        }));
+
+  if (!displayCategories || displayCategories.length === 0) return null;
 
   return (
     <section className="bg-white px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
@@ -29,17 +40,17 @@ export default function CategorySection({ categories }: { categories: Storefront
 
         {/* SINGLE ROW CATEGORIES STRIP WITH NO BACKGROUND ARTIFACTS & CACHE BUSTING */}
         <div className="no-scrollbar flex w-full items-center justify-start gap-3.5 overflow-x-auto pt-4 pb-6 sm:gap-4 lg:justify-between">
-          {categories.map((category) => {
+          {displayCategories.map((category) => {
             const cacheBustSrc = `${category.image}${category.image.includes("?") ? "&" : "?"}v=category`;
 
             return (
               <Link
                 key={category.id}
                 href={`/shop?filter=${encodeURIComponent(category.slug)}`}
-                className="group flex min-w-[130px] shrink-0 sm:min-w-[150px] lg:min-w-0 lg:flex-1 flex-col items-center justify-center rounded-2xl border border-slate-200/90 bg-white p-2 sm:p-3 h-[145px] sm:h-[170px] lg:h-[190px] text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#0a7ae6] hover:shadow-md"
+                className="group flex min-w-[130px] shrink-0 sm:min-w-[150px] lg:min-w-0 lg:flex-1 flex-col items-center justify-between rounded-2xl border border-slate-200/90 bg-white p-2.5 sm:p-3.5 h-[160px] sm:h-[185px] lg:h-[205px] text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#0a7ae6] hover:shadow-md"
               >
-                {/* CLEAN PRODUCT HERO IMAGE (FILLING CARD FULLY) */}
-                <div className="relative flex h-full w-full items-center justify-center p-1 sm:p-1.5">
+                {/* CLEAN PRODUCT HERO IMAGE */}
+                <div className="relative h-[105px] sm:h-[125px] lg:h-[140px] w-full flex items-center justify-center p-1">
                   <div className="relative h-full w-full transition-transform duration-300 ease-out group-hover:scale-105">
                     <Image
                       src={cacheBustSrc}
@@ -51,6 +62,11 @@ export default function CategorySection({ categories }: { categories: Storefront
                     />
                   </div>
                 </div>
+
+                {/* CATEGORY TITLE */}
+                <h3 className="mt-1 text-xs sm:text-sm font-semibold text-slate-800 transition-colors duration-200 group-hover:text-[#0a7ae6] line-clamp-1 leading-tight w-full px-1">
+                  {category.title}
+                </h3>
               </Link>
             );
           })}

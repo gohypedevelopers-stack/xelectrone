@@ -76,7 +76,83 @@ export function DraftOrdersManager() {
       {ready && sortedDrafts.length > 0 ? (
         <section className="mt-4 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-black/10 px-4 py-3"><h2 className="text-sm font-semibold">Draft orders</h2><span className="text-xs text-black/55">{sortedDrafts.length} saved</span></div>
-          <div className="overflow-x-auto"><table className="w-full min-w-[740px] border-collapse text-left text-sm"><thead className="bg-black/[0.025] text-xs text-black/60"><tr><th className="border-b border-black/10 px-4 py-2.5 font-medium">Draft</th><th className="border-b border-black/10 px-4 py-2.5 font-medium">Customer</th><th className="border-b border-black/10 px-4 py-2.5 font-medium">Items</th><th className="border-b border-black/10 px-4 py-2.5 text-right font-medium">Total</th><th className="border-b border-black/10 px-4 py-2.5 font-medium">Last updated</th><th className="border-b border-black/10 px-4 py-2.5 text-right font-medium">Actions</th></tr></thead><tbody>{sortedDrafts.map((draft) => <tr key={draft.id} className="hover:bg-black/[0.02]"><td className="border-b border-black/10 px-4 py-3"><span className="font-medium">#{draft.id.slice(-6).toUpperCase()}</span><span className="mt-1 block text-xs text-black/50">Draft</span></td><td className="border-b border-black/10 px-4 py-3">{draft.customerName || "No customer"}<span className="mt-1 block text-xs text-black/50">{draft.customerEmail || "—"}</span></td><td className="border-b border-black/10 px-4 py-3">{draft.items.reduce((sum, item) => sum + item.quantity, 0)} {draft.items.length === 1 ? "item" : "items"}</td><td className="border-b border-black/10 px-4 py-3 text-right font-medium">{formatINR(draftTotal(draft))}</td><td className="border-b border-black/10 px-4 py-3 text-black/65">{new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(draft.updatedAt))}</td><td className="border-b border-black/10 px-4 py-3"><div className="flex justify-end gap-2"><Link href={`/dashboard/orders/create-order?draft=${encodeURIComponent(draft.id)}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/15 px-3 text-xs font-medium hover:bg-black/[0.03]"><FilePenLine className="size-3.5" />Edit</Link><button type="button" onClick={() => removeDraft(draft.id)} aria-label={`Delete draft ${draft.id}`} className="inline-flex size-8 items-center justify-center rounded-lg border border-red-200 text-red-600 hover:bg-red-50"><Trash2 className="size-3.5" /></button></div></td></tr>)}</tbody></table></div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] border-collapse text-left text-sm">
+              <thead className="bg-black/[0.025] text-xs text-black/60">
+                <tr>
+                  <th className="border-b border-black/10 px-4 py-2.5 font-medium">Draft</th>
+                  <th className="border-b border-black/10 px-4 py-2.5 font-medium">Customer & Contact</th>
+                  <th className="border-b border-black/10 px-4 py-2.5 font-medium">Shipping Address</th>
+                  <th className="border-b border-black/10 px-4 py-2.5 font-medium">Items</th>
+                  <th className="border-b border-black/10 px-4 py-2.5 text-right font-medium">Total</th>
+                  <th className="border-b border-black/10 px-4 py-2.5 font-medium">Last updated</th>
+                  <th className="border-b border-black/10 px-4 py-2.5 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedDrafts.map((draft) => (
+                  <tr key={draft.id} className="hover:bg-black/[0.02]">
+                    <td className="border-b border-black/10 px-4 py-3">
+                      <span className="font-medium">#{draft.id.slice(-6).toUpperCase()}</span>
+                      <span className="mt-1 block text-xs text-black/50">Draft</span>
+                    </td>
+                    <td className="border-b border-black/10 px-4 py-3">
+                      <p className="font-medium text-slate-900">{draft.customerName || "No customer name"}</p>
+                      {draft.customerPhone && (
+                        <p className="text-xs text-slate-600 mt-0.5">{draft.customerPhone}</p>
+                      )}
+                      {draft.customerEmail && (
+                        <p className="text-xs text-slate-500">{draft.customerEmail}</p>
+                      )}
+                    </td>
+                    <td className="border-b border-black/10 px-4 py-3 max-w-[200px]">
+                      {draft.shippingAddress ? (
+                        <p className="text-xs text-slate-700 line-clamp-2" title={draft.shippingAddress}>
+                          {[draft.shippingAddress, draft.city, draft.state, draft.pincode].filter(Boolean).join(", ")}
+                        </p>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="border-b border-black/10 px-4 py-3">
+                      {draft.items.reduce((sum, item) => sum + item.quantity, 0)} {draft.items.length === 1 ? "item" : "items"}
+                    </td>
+                    <td className="border-b border-black/10 px-4 py-3 text-right font-medium">
+                      {formatINR(draftTotal(draft))}
+                    </td>
+                    <td className="border-b border-black/10 px-4 py-3 text-black/65 text-xs">
+                      {new Intl.DateTimeFormat("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      }).format(new Date(draft.updatedAt))}
+                    </td>
+                    <td className="border-b border-black/10 px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        <Link
+                          href={`/dashboard/orders/create-order?draft=${encodeURIComponent(draft.id)}`}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/15 px-3 text-xs font-medium hover:bg-black/[0.03]"
+                        >
+                          <FilePenLine className="size-3.5" />
+                          Edit
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => removeDraft(draft.id)}
+                          aria-label={`Delete draft ${draft.id}`}
+                          className="inline-flex size-8 items-center justify-center rounded-lg border border-red-200 text-red-600 hover:bg-red-50 cursor-pointer"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : null}
     </main>

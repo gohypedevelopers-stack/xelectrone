@@ -7,6 +7,11 @@ export type CreateDiscountInput = {
   type: DiscountType;
   value: number;
   appliesTo?: string;
+  eligibleProductIds?: string | null;
+  eligibleCategoryIds?: string | null;
+  startDate?: Date | string | null;
+  endDate?: Date | string | null;
+  isActive?: boolean;
 };
 
 export function getAllDiscounts() {
@@ -20,10 +25,15 @@ export function getDiscountByCode(code: string) {
 export function createDiscount(data: CreateDiscountInput) {
   return db.discount.create({
     data: {
-      code: data.code || null,
+      code: data.code ? data.code.trim().toUpperCase() : null,
       type: data.type,
       value: data.value,
       appliesTo: data.appliesTo || "ALL_PRODUCTS",
+      eligibleProductIds: data.eligibleProductIds || null,
+      eligibleCategoryIds: data.eligibleCategoryIds || null,
+      startDate: data.startDate ? new Date(data.startDate) : new Date(),
+      endDate: data.endDate ? new Date(data.endDate) : null,
+      isActive: data.isActive ?? true,
     },
   });
 }

@@ -5,7 +5,6 @@ import ProductShowcaseSection from "@/components/home/product-showcase-section";
 import BestSellersSection from "@/components/home/best-sellers-section";
 import DealOfTheDaySection from "@/components/home/deal-of-the-day-section";
 import BrandSetupSection from "@/components/home/brand-setup-section";
-import NewProductCardsSection from "@/components/home/new-product-cards-section";
 import FaqSection from "@/components/home/faq-section";
 import CreatorVideosSection from "@/components/home/creator-videos-section";
 import VerifiedReviewsSection from "@/components/home/verified-reviews-section";
@@ -140,7 +139,7 @@ export default async function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-white text-[#1d1d1f]">
+    <main className="min-h-screen w-full overflow-x-hidden bg-white text-[#1d1d1f]">
       <Navbar />
       <HeroShowcase />
       <CategorySection categories={storefrontCategories} />
@@ -148,7 +147,6 @@ export default async function Home() {
       <BestSellersSection additionalItems={selectedBestSellers} />
       {dealOfTheDay ? <DealOfTheDaySection deal={dealOfTheDay} /> : null}
       <BrandSetupSection />
-      <NewProductCardsSection products={featuredProducts.slice(4)} />
       <CreatorVideosSection />
       <BrandMarqueeSection />
       <VerifiedReviewsSection />

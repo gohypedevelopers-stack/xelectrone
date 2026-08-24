@@ -22,6 +22,8 @@ import {
   FlameIcon,
   ImageIcon,
   VideoIcon,
+  StarIcon,
+  BookOpen,
 } from "lucide-react"
 
 const routeIcons: Record<string, React.ReactNode> = {
@@ -32,6 +34,8 @@ const routeIcons: Record<string, React.ReactNode> = {
   Products: <PackageIcon className="size-4 shrink-0" />,
   Customers: <UsersRoundIcon className="size-4 shrink-0" />,
   "Deal of the day": <FlameIcon className="size-4 shrink-0" />,
+  Reviews: <StarIcon className="size-4 shrink-0" />,
+  Blog: <BookOpen className="size-4 shrink-0" />,
   Discounts: <BadgePercentIcon className="size-4 shrink-0" />,
   Analytics: <ChartNoAxesCombinedIcon className="size-4 shrink-0" />,
 }

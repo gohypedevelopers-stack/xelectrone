@@ -86,7 +86,7 @@ export function ProductDescriptionContent({ description }: ProductDescriptionCon
   const { specifications, introduction, features } = splitDescription(description);
 
   return (
-    <section className="mt-6 border-t border-slate-100 pt-6" aria-label="Product description">
+    <div className="space-y-4 text-xs sm:text-sm" aria-label="Product description">
       {specifications.length > 0 ? (
         <dl className="max-w-3xl divide-y divide-slate-100 border-y border-slate-100">
           {specifications.map((specification) => (
@@ -119,6 +119,6 @@ export function ProductDescriptionContent({ description }: ProductDescriptionCon
           </ul>
         </div>
       ) : null}
-    </section>
+    </div>
   );
 }

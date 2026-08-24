@@ -47,6 +47,8 @@ export async function loginUser(email: string, password: string) {
 
 // ─── Register ────────────────────────────────────────────────────────────────
 
+import { isPhoneVerified, verifyOtp, normalizePhone } from "@/lib/server/auth/otp-service";
+
 /**
  * Create a new CUSTOMER user, create a DB session, return token + redirect.
  * Role is always CUSTOMER — never trust client-provided role.
@@ -54,19 +56,38 @@ export async function loginUser(email: string, password: string) {
 export async function registerUser(
   name: string,
   email: string,
-  password: string
+  password: string,
+  phone?: string,
+  otp?: string
 ) {
   const cleanEmail = email.toLowerCase().trim();
   const existing = await usersDal.getUserByEmail(cleanEmail);
   if (existing) {
-    throw new Error("User with this email already exists");
+    throw new Error("An account with this email address already exists");
+  }
+
+  const cleanPhone = phone ? normalizePhone(phone) : undefined;
+  if (cleanPhone) {
+    // If an OTP was submitted with the registration form, verify it now
+    if (otp) {
+      const verification = verifyOtp(cleanPhone, otp);
+      if (!verification.success) {
+        throw new Error(verification.message);
+      }
+    } else if (!isPhoneVerified(cleanPhone)) {
+      // If no OTP code was sent in the signup payload, verify if the phone was pre-verified
+      // For development/demo convenience, allow signup if OTP verification was performed
+      // If not, ask user to verify phone
+      throw new Error("Please verify your phone number with the OTP before creating your account");
+    }
   }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   const newUser = await usersDal.createUser({
-    name,
+    name: name.trim(),
     email: cleanEmail,
     passwordHash,
+    phone: cleanPhone || null as any,
     role: "CUSTOMER", // Always CUSTOMER — admin is provisioned separately
   });
 
@@ -80,6 +101,7 @@ export async function registerUser(
       id: newUser.id,
       name: newUser.name,
       email: newUser.email,
+      phone: newUser.phone,
     },
   };
 }

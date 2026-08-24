@@ -80,6 +80,7 @@ model Product {
   mainImage      String  @map("main_image")
   shippingNotice String  @map("shipping_notice")
   quantity       Int     @default(0)
+  sku            String?
   showInBestSellers Boolean @default(false) @map("show_in_best_sellers")
 
   categoryId String   @map("category_id")
@@ -89,15 +90,42 @@ model Product {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   colors   ProductColor[]
+  variants ProductVariant[]
   features ProductFeature[]
   specs    ProductSpec[]
+  faqs     ProductFaq[]
   media    ProductMedia[]
+  banners  ProductBanner[]
 
   orderItems OrderItem[]
   dealOfTheDay DealOfTheDay?
   creatorVideos CreatorVideo[]
+  reviews ProductReview[]
 
   @@map("products")
+}
+
+model ProductReview {
+  id           String   @id @default(cuid())
+  author       String
+  rating       Int      @default(5)
+  date         String?
+  title        String?
+  content      String
+  image        String?
+  imageCount   Int?     @default(0) @map("image_count")
+  verified     Boolean  @default(true)
+  helpfulCount Int      @default(0) @map("helpful_count")
+  isApproved   Boolean  @default(true) @map("is_approved")
+
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([productId, createdAt])
+  @@map("product_reviews")
 }
 
 model DealOfTheDay {
@@ -158,6 +186,26 @@ model ProductColor {
   @@map("product_colors")
 }
 
+model ProductVariant {
+  id         String   @id @default(cuid())
+  name       String
+  sku        String?
+  price      String?
+  stock      Int      @default(0)
+  colorHex   String?  @map("color_hex")
+  image      String?
+  sortOrder  Int      @default(0) @map("sort_order")
+  isActive   Boolean  @default(true) @map("is_active")
+
+  productId  String   @map("product_id")
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("product_variants")
+}
+
 model ProductFeature {
   id          String @id @default(cuid())
   featureText String @map("feature_text")
@@ -179,6 +227,17 @@ model ProductSpec {
   @@map("product_specs")
 }
 
+model ProductFaq {
+  id       String @id @default(cuid())
+  question String
+  answer   String
+
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_faqs")
+}
+
 model ProductMedia {
   id        String   @id @default(cuid())
   key       String   @unique
@@ -192,6 +251,21 @@ model ProductMedia {
 
   @@index([productId, sortOrder])
   @@map("product_media")
+}
+
+model ProductBanner {
+  id             String   @id @default(cuid())
+  imageUrl       String   @map("image_url")
+  mobileImageUrl String?  @map("mobile_image_url")
+  title          String?
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  productId      String   @map("product_id")
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+  @@map("product_banners")
 }
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
@@ -213,34 +287,71 @@ enum DiscountType {
 }
 
 model Discount {
-  id        String       @id @default(cuid())
-  code      String?      @unique
-  type      DiscountType
-  value     Float
-  appliesTo String       @default("ALL_PRODUCTS") @map("applies_to")
-  isActive  Boolean      @default(true) @map("is_active")
-  usageCount Int         @default(0) @map("usage_count")
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  id                 String       @id @default(cuid())
+  code               String?      @unique
+  type               DiscountType
+  value              Float
+  appliesTo          String       @default("ALL_PRODUCTS") @map("applies_to")
+  eligibleProductIds String?      @map("eligible_product_ids")
+  eligibleCategoryIds String?     @map("eligible_category_ids")
+  startDate          DateTime?    @map("start_date")
+  endDate            DateTime?    @map("end_date")
+  isActive           Boolean      @default(true) @map("is_active")
+  usageCount         Int          @default(0) @map("usage_count")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
 
   @@map("discounts")
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  status          OrderStatus @default(PENDING)
-  total           Float
-  shippingAddress String?     @map("shipping_address")
+  id                String      @id @default(cuid())
+  status            OrderStatus @default(PENDING)
+  total             Float
+  shippingAddress   String?     @map("shipping_address")
+  customerName      String?     @map("customer_name")
+  customerEmail     String?     @map("customer_email")
+  customerPhone     String?     @map("customer_phone")
+  city              String?
+  state             String?
+  pincode           String?
+  country           String?     @default("India")
+  shippingCarrier   String?     @map("shipping_carrier")
+  trackingNumber    String?     @map("tracking_number")
+  trackingUrl       String?     @map("tracking_url")
+  estimatedDelivery String?     @map("estimated_delivery")
+  internalNotes     String?     @map("internal_notes")
 
-  userId String @map("user_id")
-  user   User   @relation(fields: [userId], references: [id])
+  userId            String?     @map("user_id")
+  user              User?       @relation(fields: [userId], references: [id])
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
 
-  items OrderItem[]
+  items             OrderItem[]
 
   @@map("orders")
+}
+
+model DraftOrder {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique @map("order_number")
+  customerName    String?  @map("customer_name")
+  customerEmail   String?  @map("customer_email")
+  customerPhone   String?  @map("customer_phone")
+  shippingAddress String?  @map("shipping_address")
+  city            String?
+  state           String?
+  pincode         String?
+  country         String?  @default("India")
+  total           Float    @default(0)
+  items           Json     @default("[]")
+  internalNotes   String?  @map("internal_notes")
+  status          String   @default("DRAFT")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("draft_orders")
 }
 
 model OrderItem {
@@ -280,18 +391,40 @@ model HeroBanner {
 // ─── Creator Videos ─────────────────────────────────────────────────────────
 
 model CreatorVideo {
-  id           String   @id @default(cuid())
-  title        String?
-  thumbnailUrl String   @map("thumbnail_url")
-  videoUrl     String?  @map("video_url")
-  productId    String?  @map("product_id")
-  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  sortOrder    Int      @default(0) @map("sort_order")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(cuid())
+  title          String?
+  thumbnailUrl   String   @map("thumbnail_url")
+  videoUrl       String?  @map("video_url")
+  productId      String?  @map("product_id")
+  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  isProductVideo Boolean  @default(false) @map("is_product_video")
+  sortOrder      Int      @default(0) @map("sort_order")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@map("creator_videos")
+}
+
+// ─── Blog Posts ──────────────────────────────────────────────────────────────
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String?
+  content     String
+  category    String   @default("Insights")
+  image       String   @default("/blog-1.png")
+  readTime    String   @default("4 min read") @map("read_time")
+  accentColor String   @default("#0a7ae6") @map("accent_color")
+  publishedAt DateTime @default(now()) @map("published_at")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("blog_posts")
 }
 
 

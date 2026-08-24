@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Lenis from "lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -10,7 +11,12 @@ interface SmoothScrollProviderProps {
 }
 
 export default function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
+  const pathname = usePathname();
+  const isDashboard = pathname?.startsWith("/dashboard");
+
   useEffect(() => {
+    if (isDashboard) return;
+
     gsap.registerPlugin(ScrollTrigger);
 
     const lenis = new Lenis({
@@ -39,7 +45,7 @@ export default function SmoothScrollProvider({ children }: SmoothScrollProviderP
       gsap.ticker.remove(updateTicker);
       lenis.destroy();
     };
-  }, []);
+  }, [isDashboard]);
 
   return <>{children}</>;
 }

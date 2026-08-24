@@ -9,6 +9,19 @@ export type ProductSpec = {
   value: string;
 };
 
+export type ProductFaq = {
+  question: string;
+  answer: string;
+};
+
+export type ProductBanner = {
+  id?: string;
+  imageUrl: string;
+  mobileImageUrl?: string | null;
+  title?: string | null;
+  sortOrder?: number;
+};
+
 export type ProductDetailItem = {
   id: string;
   slug: string;
@@ -24,11 +37,22 @@ export type ProductDetailItem = {
   colors: ProductColor[];
   features: string[];
   specs: ProductSpec[];
+  faqs?: ProductFaq[];
+  banners?: ProductBanner[];
+  creatorVideos?: {
+    id?: string;
+    title?: string | null;
+    thumbnailUrl: string;
+    videoUrl?: string | null;
+    sortOrder?: number;
+    isActive?: boolean;
+  }[];
   shippingNotice: string;
   mainImage: string;
   images?: string[];
+  sku?: string | null;
+  variants?: any[];
 };
-
 export const productsCatalog: Record<string, ProductDetailItem> = {
   "yuqos-neosound-flex": {
     id: "yuqos-neosound-flex",

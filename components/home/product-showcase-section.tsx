@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart } from "lucide-react";
+import { Heart, ArrowRight } from "lucide-react";
 import { priceToNumber, useCart } from "@/components/providers/cart-provider";
 import { formatINR } from "@/lib/format-price";
 
@@ -48,9 +48,17 @@ export default function ProductShowcaseSection({ products }: { products: Storefr
               Featured Products
             </p>
             <h2 className="mt-1 text-[22px] font-normal tracking-[-0.03em] text-slate-900 sm:text-[28px]">
-              Products you can buy now
+              Latest Launch
             </h2>
           </div>
+
+          <Link
+            href="/shop"
+            className="group inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-semibold text-slate-800 shadow-xs transition-all duration-200 hover:border-[#0a7ae6] hover:bg-slate-50 hover:text-[#0a7ae6] active:scale-95 shrink-0"
+          >
+            <span>View All</span>
+            <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+          </Link>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">

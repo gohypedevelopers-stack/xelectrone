@@ -18,6 +18,24 @@ type BannerType = {
 
 const SLIDE_DURATION = 6000;
 const PROGRESS_STEP = 50;
+function isVideoUrl(url?: string | null): boolean {
+  if (!url) return false;
+  const clean = url.split("?")[0].toLowerCase();
+  return (
+    clean.endsWith(".mp4") ||
+    clean.endsWith(".webm") ||
+    clean.endsWith(".ogg") ||
+    clean.endsWith(".mov") ||
+    clean.endsWith(".m4v") ||
+    clean.endsWith(".mkv") ||
+    clean.startsWith("data:video") ||
+    clean.startsWith("blob:") ||
+    clean.includes("video") ||
+    clean.includes(".mp4") ||
+    clean.includes(".webm") ||
+    clean.includes(".mov")
+  );
+}
 
 export default function HeroShowcase() {
   const [bannerList, setBannerList] = useState<BannerType[]>(defaultBanners);
@@ -144,10 +162,10 @@ export default function HeroShowcase() {
       : currentIndex - 1;
 
   return (
-    <section className="w-full bg-white overflow-hidden rounded-none">
+    <section className="w-full bg-white overflow-hidden rounded-none pt-0">
       {/* FULL WIDTH SHARP CAROUSEL TRACK */}
       <div
-        className="relative w-full h-[400px] sm:h-[calc(100vh-72px)] md:h-[calc(100vh-76px)] min-h-[500px] md:min-h-[640px] overflow-hidden touch-pan-y rounded-none"
+        className="relative w-full aspect-[9/16] sm:aspect-[1672/941] overflow-hidden touch-pan-y rounded-none bg-white"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -168,32 +186,56 @@ export default function HeroShowcase() {
             return (
               <div
                 key={`${banner.src}-${index}`}
-                className="relative h-full shrink-0 overflow-hidden rounded-none bg-slate-950"
+                className="relative h-full shrink-0 overflow-hidden rounded-none bg-white"
                 style={{ width: `${100 / extendedBanners.length}%` }}
               >
                 <Link href={linkHref} className="block relative h-full w-full">
                   {/* DESKTOP BANNER */}
                   <div className="hidden sm:block relative h-full w-full">
-                    <Image
-                      src={banner.src}
-                      alt={banner.alt || banner.title}
-                      fill
-                      priority={index === 1}
-                      className="object-cover object-center"
-                      sizes="100vw"
-                    />
+                    {isVideoUrl(banner.src) ? (
+                      <video
+                        src={banner.src}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="h-full w-full object-cover object-center"
+                      />
+                    ) : (
+                      <Image
+                        src={banner.src}
+                        alt={banner.alt || banner.title}
+                        fill
+                        priority={index === 1}
+                        className="object-cover object-center"
+                        sizes="100vw"
+                      />
+                    )}
                   </div>
 
                   {/* MOBILE BANNER */}
                   <div className="sm:hidden relative h-full w-full">
-                    <Image
-                      src={banner.mobileSrc || banner.src}
-                      alt={banner.alt || banner.title}
-                      fill
-                      priority={index === 1}
-                      className="object-cover object-center"
-                      sizes="100vw"
-                    />
+                    {isVideoUrl(banner.mobileSrc || banner.src) ? (
+                      <video
+                        key={banner.mobileSrc || banner.src}
+                        src={banner.mobileSrc || banner.src}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        preload="auto"
+                        className="h-full w-full object-cover object-center"
+                      />
+                    ) : (
+                      <Image
+                        src={banner.mobileSrc || banner.src}
+                        alt={banner.alt || banner.title}
+                        fill
+                        priority={index === 1}
+                        className="object-cover object-center"
+                        sizes="100vw"
+                      />
+                    )}
                   </div>
                 </Link>
               </div>

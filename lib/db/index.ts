@@ -6,18 +6,19 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function getDatabaseUrl() {
-  const databaseUrl = process.env.DATABASE_URL;
+  let databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is not configured");
   }
-
-  const url = new URL(databaseUrl);
-  const sslMode = url.searchParams.get("sslmode");
-  if (sslMode === "prefer" || sslMode === "require" || sslMode === "verify-ca") {
-    url.searchParams.set("sslmode", "verify-full");
+  // Replace legacy/aliased sslmode with explicit sslmode=verify-full to suppress pg-connection-string warnings
+  if (databaseUrl.includes("sslmode=require")) {
+    databaseUrl = databaseUrl.replace("sslmode=require", "sslmode=verify-full");
+  } else if (databaseUrl.includes("sslmode=prefer")) {
+    databaseUrl = databaseUrl.replace("sslmode=prefer", "sslmode=verify-full");
+  } else if (databaseUrl.includes("sslmode=verify-ca")) {
+    databaseUrl = databaseUrl.replace("sslmode=verify-ca", "sslmode=verify-full");
   }
-
-  return url.toString();
+  return databaseUrl;
 }
 
 export function createPrismaClient(): PrismaClient {
@@ -35,7 +36,13 @@ function getDbInstance(): PrismaClient {
   if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma) {
     if (
       typeof (globalForPrisma.prisma as any).heroBanner === "undefined" ||
-      typeof (globalForPrisma.prisma as any).creatorVideo === "undefined"
+      typeof (globalForPrisma.prisma as any).creatorVideo === "undefined" ||
+      typeof (globalForPrisma.prisma as any).productFaq === "undefined" ||
+      typeof (globalForPrisma.prisma as any).productBanner === "undefined" ||
+      typeof (globalForPrisma.prisma as any).productReview === "undefined" ||
+      typeof (globalForPrisma.prisma as any).productVariant === "undefined" ||
+      typeof (globalForPrisma.prisma as any).blogPost === "undefined" ||
+      typeof (globalForPrisma.prisma as any).draftOrder === "undefined"
     ) {
       globalForPrisma.prisma = undefined;
     }

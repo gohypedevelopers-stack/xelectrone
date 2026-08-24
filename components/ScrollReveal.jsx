@@ -43,13 +43,13 @@ const ScrollReveal = ({
   children,
   scrollContainerRef = null,
   enableBlur = true,
-  baseOpacity = 0.1,
-  baseRotation = 3,
+  baseOpacity = 0.15,
+  baseRotation = 0,
   blurStrength = 4,
   containerClassName = '',
   textClassName = '',
-  rotationEnd = 'bottom bottom',
-  wordAnimationEnd = 'bottom bottom'
+  rotationEnd = 'bottom 40%',
+  wordAnimationEnd = 'bottom 40%'
 }) => {
   const containerRef = useRef(null);
 
@@ -61,62 +61,73 @@ const ScrollReveal = ({
 
     const scroller = scrollContainerRef && scrollContainerRef.current ? scrollContainerRef.current : window;
 
-    gsap.fromTo(
-      el,
-      { transformOrigin: '0% 50%', rotate: baseRotation },
-      {
-        ease: 'none',
-        rotate: 0,
-        scrollTrigger: {
-          trigger: el,
-          scroller,
-          start: 'top bottom',
-          end: rotationEnd,
-          scrub: true
-        }
-      }
-    );
+    const ctx = gsap.context(() => {
+      const wordElements = el.querySelectorAll('.word');
 
-    const wordElements = el.querySelectorAll('.word');
-
-    gsap.fromTo(
-      wordElements,
-      { opacity: baseOpacity, willChange: 'opacity' },
-      {
-        ease: 'none',
-        opacity: 1,
-        stagger: 0.05,
-        scrollTrigger: {
-          trigger: el,
-          scroller,
-          start: 'top bottom-=20%',
-          end: wordAnimationEnd,
-          scrub: true
-        }
-      }
-    );
-
-    if (enableBlur) {
-      gsap.fromTo(
-        wordElements,
-        { filter: `blur(${blurStrength}px)` },
-        {
-          ease: 'none',
-          filter: 'blur(0px)',
-          stagger: 0.05,
-          scrollTrigger: {
-            trigger: el,
-            scroller,
-            start: 'top bottom-=20%',
-            end: wordAnimationEnd,
-            scrub: true
+      if (baseRotation !== 0) {
+        gsap.fromTo(
+          el,
+          { transformOrigin: '0% 50%', rotate: baseRotation },
+          {
+            ease: 'none',
+            rotate: 0,
+            scrollTrigger: {
+              trigger: el,
+              scroller,
+              start: 'top 85%',
+              end: rotationEnd,
+              scrub: 0.8
+            }
           }
+        );
+      }
+
+      if (wordElements.length > 0) {
+        gsap.fromTo(
+          wordElements,
+          { opacity: baseOpacity, willChange: 'opacity, filter' },
+          {
+            ease: 'power1.out',
+            opacity: 1,
+            stagger: 0.04,
+            scrollTrigger: {
+              trigger: el,
+              scroller,
+              start: 'top 85%',
+              end: wordAnimationEnd,
+              scrub: 0.8
+            }
+          }
+        );
+
+        if (enableBlur) {
+          gsap.fromTo(
+            wordElements,
+            { filter: `blur(${blurStrength}px)` },
+            {
+              ease: 'power1.out',
+              filter: 'blur(0px)',
+              stagger: 0.04,
+              scrollTrigger: {
+                trigger: el,
+                scroller,
+                start: 'top 85%',
+                end: wordAnimationEnd,
+                scrub: 0.8
+              }
+            }
+          );
         }
-      );
-    }
+      }
+    }, containerRef);
+
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 200);
 
     return () => {
-      ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+      clearTimeout(timer);
+      ctx.revert();
     };
   }, [scrollContainerRef, enableBlur, baseRotation, baseOpacity, rotationEnd, wordAnimationEnd, blurStrength]);
 

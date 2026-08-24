@@ -6,6 +6,12 @@ type CreateDiscountInput = {
   code?: string | null;
   type?: DiscountType;
   value?: number;
+  appliesTo?: string;
+  eligibleProductIds?: string | string[] | null;
+  eligibleCategoryIds?: string | string[] | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  isActive?: boolean;
 };
 
 export function listDiscounts() {
@@ -27,7 +33,25 @@ export async function createDiscount(input: CreateDiscountInput) {
     if (existing) throw new Error("This discount code already exists");
   }
 
-  return discountsDal.createDiscount({ code, type: input.type, value });
+  const eligibleProductIds = Array.isArray(input.eligibleProductIds)
+    ? input.eligibleProductIds.join(",")
+    : input.eligibleProductIds || null;
+
+  const eligibleCategoryIds = Array.isArray(input.eligibleCategoryIds)
+    ? input.eligibleCategoryIds.join(",")
+    : input.eligibleCategoryIds || null;
+
+  return discountsDal.createDiscount({
+    code,
+    type: input.type,
+    value,
+    appliesTo: input.appliesTo || (eligibleProductIds ? "SPECIFIC_PRODUCTS" : "ALL_PRODUCTS"),
+    eligibleProductIds,
+    eligibleCategoryIds,
+    startDate: input.startDate ? new Date(input.startDate) : new Date(),
+    endDate: input.endDate ? new Date(input.endDate) : null,
+    isActive: input.isActive ?? true,
+  });
 }
 
 export function deleteDiscount(id: string) {

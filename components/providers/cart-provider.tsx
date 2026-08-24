@@ -45,7 +45,23 @@ type CartContextValue = {
   clearWishlist: () => void;
 };
 
-const CartContext = createContext<CartContextValue | null>(null);
+const defaultCartContext: CartContextValue = {
+  items: [],
+  cartCount: 0,
+  subtotal: 0,
+  addItem: () => {},
+  addItems: () => {},
+  updateQuantity: () => {},
+  removeItem: () => {},
+  clearCart: () => {},
+  wishlistItems: [],
+  wishlistCount: 0,
+  toggleWishlistItem: () => {},
+  removeWishlistItem: () => {},
+  clearWishlist: () => {},
+};
+
+const CartContext = createContext<CartContextValue>(defaultCartContext);
 
 function readStoredCart(): CartItem[] {
   try {
@@ -229,10 +245,5 @@ export default function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const cart = useContext(CartContext);
-
-  if (!cart) {
-    throw new Error("useCart must be used inside CartProvider");
-  }
-
-  return cart;
+  return cart || defaultCartContext;
 }
