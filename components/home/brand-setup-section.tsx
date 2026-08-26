@@ -1,99 +1,126 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import ScrollReveal from "@/components/ScrollReveal";
 
-const items = [
+export type BrandShowcaseItem = {
+  id: string | number;
+  title: string;
+  subtitle: string;
+  image: string;
+  linkUrl?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
+};
+
+export const defaultBrandShowcaseItems: BrandShowcaseItem[] = [
   {
-    id: 1,
+    id: "1",
     title: "Smart Home Cinema",
     subtitle: "Up to 300-inch 4K projection for movie nights",
     image: "/banner-projector.png",
+    linkUrl: "/shop?filter=projectors",
   },
   {
-    id: 2,
+    id: "2",
     title: "Ultra HD Smart TVs",
     subtitle: "Vivid color clarity and cinematic surround sound",
     image: "/hero-banner-tv.png",
+    linkUrl: "/shop?filter=tv",
   },
   {
-    id: 3,
+    id: "3",
     title: "Portable Projection",
     subtitle: "Rotatable angle, auto keystone & built-in apps",
     image: "/hero-banner-techno-projector.png",
+    linkUrl: "/shop?filter=projectors",
   },
   {
-    id: 4,
+    id: "4",
     title: "Android C9 Plus Cinema",
     subtitle: "True 1080p FHD with high lumen optical brilliance",
     image: "/hero-banner-projector-c9.png",
+    linkUrl: "/shop?filter=projectors",
   },
 ];
 
-export default function BrandSetupSection() {
+export default function BrandSetupSection({
+  items: propItems,
+}: {
+  items?: BrandShowcaseItem[];
+}) {
   const [hoveredIndex, setHoveredIndex] = useState(0);
+
+  const displayItems =
+    propItems && propItems.length > 0 ? propItems : defaultBrandShowcaseItems;
 
   return (
     <section className="overflow-hidden bg-white pt-12 sm:pt-16 lg:pt-20 pb-4 sm:pb-6 text-slate-900">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         <div className="mb-6 md:mb-10">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#0a7ae6]">
-            Fastest growing Consumer Electronics Brand in India
-          </p>
           <h2 className="mt-2 text-[2rem] font-normal leading-[0.96] tracking-tight md:text-[clamp(2.5rem,4vw,3.5rem)] text-slate-900">
-            One brand for your whole setup
+            Fastest growing Consumer Electronics Brand in India
           </h2>
-          <p className="mt-1 text-sm sm:text-base font-normal text-slate-500">
-            (Fastest growing Consumer Electronics Brand in India)
-          </p>
         </div>
 
+        {/* MOBILE VIEW (SWIPER) */}
         <div className="md:hidden">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
             Swipe to explore
           </p>
           <div className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 pr-2">
-            {items.map((item, index) => (
-              <article
-                key={item.id}
-                className="relative min-w-[76vw] snap-start overflow-hidden rounded-[10px] bg-slate-950"
-              >
-                <div className="relative h-[370px] w-full">
-                  <Image
-                    src={item.image}
-                    alt={item.title}
-                    fill
-                    className="object-cover"
-                    sizes="78vw"
-                    priority={index === 0}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 p-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">
-                      XElectron
-                    </p>
-                    <h3 className="mt-2 text-[1.4rem] font-bold leading-[1.1] text-white">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-[0.9rem] leading-5 text-white/70">
-                      {item.subtitle}
-                    </p>
+            {displayItems.map((item, index) => {
+              const cardContent = (
+                <article className="relative min-w-[76vw] snap-start overflow-hidden rounded-[10px] bg-slate-950">
+                  <div className="relative h-[370px] w-full">
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      unoptimized
+                      className="object-cover"
+                      sizes="78vw"
+                      priority={index === 0}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-5">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">
+                        XElectron
+                      </p>
+                      <h3 className="mt-2 text-[1.4rem] font-bold leading-[1.1] text-white">
+                        {item.title}
+                      </h3>
+                      <p className="mt-2 text-[0.9rem] leading-5 text-white/70">
+                        {item.subtitle}
+                      </p>
+                    </div>
                   </div>
+                </article>
+              );
+
+              return item.linkUrl ? (
+                <Link key={item.id} href={item.linkUrl} className="block shrink-0">
+                  {cardContent}
+                </Link>
+              ) : (
+                <div key={item.id} className="block shrink-0">
+                  {cardContent}
                 </div>
-              </article>
-            ))}
+              );
+            })}
           </div>
         </div>
 
+        {/* DESKTOP ACCORDION VIEW */}
         <div className="hidden h-[320px] w-full gap-[0.5px] transition-all duration-500 md:flex md:h-[400px] lg:h-[460px] lg:gap-2">
-          {items.map((item, index) => {
+          {displayItems.map((item, index) => {
             const isActive = hoveredIndex === index;
-            return (
+            const cardElement = (
               <div
-                key={item.id}
                 onMouseEnter={() => setHoveredIndex(index)}
-                className={`group relative cursor-pointer overflow-hidden rounded-[10px] transition-all duration-500 ease-in-out ${
+                className={`group relative h-full cursor-pointer overflow-hidden rounded-[10px] transition-all duration-500 ease-in-out ${
                   isActive ? "flex-[12] lg:flex-[16]" : "flex-[1]"
                 }`}
               >
@@ -113,6 +140,7 @@ export default function BrandSetupSection() {
                   src={item.image}
                   alt={item.title}
                   fill
+                  unoptimized
                   className={`object-cover transition-transform duration-700 ease-in-out ${
                     isActive ? "scale-105" : "scale-100"
                   }`}
@@ -133,9 +161,31 @@ export default function BrandSetupSection() {
                 </div>
               </div>
             );
+
+            return item.linkUrl ? (
+              <Link
+                key={item.id}
+                href={item.linkUrl}
+                className={`h-full transition-all duration-500 ease-in-out ${
+                  isActive ? "flex-[12] lg:flex-[16]" : "flex-[1]"
+                }`}
+              >
+                {cardElement}
+              </Link>
+            ) : (
+              <div
+                key={item.id}
+                className={`h-full transition-all duration-500 ease-in-out ${
+                  isActive ? "flex-[12] lg:flex-[16]" : "flex-[1]"
+                }`}
+              >
+                {cardElement}
+              </div>
+            );
           })}
         </div>
 
+        {/* TRUSTED PROOF SCROLL REVEAL */}
         <div className="mt-4 w-full px-5 py-2 sm:mt-6 sm:px-6 sm:py-3 md:mt-8">
           <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0a7ae6]">
             Trusted proof
@@ -150,7 +200,7 @@ export default function BrandSetupSection() {
             textClassName="w-full text-[clamp(2rem,4.8vw,4.2rem)] leading-[0.95] font-semibold tracking-[-0.08em] text-slate-900"
           >
             <span className="block">
-              Trusted by <span className="text-[#0a7ae6]">1 Crore+</span> Indians since 2015.
+              Trusted by <span className="text-[#0a7ae6]">1 Crore+</span> Indians since 2013.
             </span>
             <span className="block">Built for India.</span>
             <span className="block">
@@ -165,11 +215,3 @@ export default function BrandSetupSection() {
     </section>
   );
 }
-
-
-
-
-
-
-
-

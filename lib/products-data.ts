@@ -311,7 +311,7 @@ export const productsCatalog: Record<string, ProductDetailItem> = {
       { label: "Ports", value: "HDMI + USB" },
     ],
     shippingNotice: "Free delivery with standard installation support",
-    mainImage: "https://www.xelectron.com/wp-content/uploads/2023/04/Untitled-1-600x600.jpg",
+    mainImage: "/category-tv.png",
   },
   "15-dpf": {
     id: "15-dpf",
@@ -341,7 +341,7 @@ export const productsCatalog: Record<string, ProductDetailItem> = {
       { label: "Orientation", value: "Portrait / Landscape" },
     ],
     shippingNotice: "Free shipping with power adapter included",
-    mainImage: "https://www.xelectron.com/wp-content/uploads/2025/06/15.6-inch-DPF-600x600.jpg",
+    mainImage: "/category-frame.png",
   },
   "32-tv": {
     id: "32-tv",
@@ -368,7 +368,7 @@ export const productsCatalog: Record<string, ProductDetailItem> = {
       { label: "Speaker", value: "Stereo Sound" },
     ],
     shippingNotice: "Free home delivery and basic installation support",
-    mainImage: "https://www.xelectron.com/wp-content/uploads/2023/04/XElectron-32-inch-TVWDa-79IuL._SL1500_-600x600.jpg",
+    mainImage: "/product-tv-card.png",
   },
   "8-dpf": {
     id: "8-dpf",
@@ -398,7 +398,7 @@ export const productsCatalog: Record<string, ProductDetailItem> = {
       { label: "Use Case", value: "Photo Display" },
     ],
     shippingNotice: "Free delivery with desktop stand included",
-    mainImage: "https://www.xelectron.com/wp-content/uploads/2023/01/8-inch-DPF-W-600x600.jpg",
+    mainImage: "/category-frame.png",
   },
   "blaze-b2000": {
     id: "blaze-b2000",

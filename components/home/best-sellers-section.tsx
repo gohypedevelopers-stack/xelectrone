@@ -287,10 +287,10 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
     >
       <div
         ref={viewportRef}
-        className="mx-auto flex h-full max-w-[1600px] flex-col justify-between px-4 py-4 sm:px-6 sm:py-5 lg:px-10 lg:py-5 xl:px-12 xl:py-8"
+        className="mx-auto flex h-full max-w-[1600px] flex-col justify-between px-4 pb-4 pt-20 sm:px-6 sm:pb-5 sm:pt-24 lg:px-10 lg:pb-6 lg:pt-24 xl:px-12 xl:pb-8 xl:pt-28"
       >
         {/* TOP HEADER BLOCK: Badge + Giant Title Rail */}
-        <div className="relative z-20 shrink-0 flex flex-col items-center mb-1 sm:mb-2 lg:mb-3 xl:mb-4">
+        <div className="relative z-20 shrink-0 flex flex-col items-center mb-2 sm:mb-3 lg:mb-4 xl:mb-5">
           <p className="text-center text-[11px] sm:text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0a7ae6]">
             Best sellers
           </p>

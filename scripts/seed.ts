@@ -11,13 +11,13 @@ const prisma = new PrismaClient({ adapter });
 // ─── Category Mappings ───────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { title: "Home Speaker", slug: "speakers", description: "Premium Wireless Speakers" },
-  { title: "Audio", slug: "headphones", description: "Wireless Earbuds, Soundbars & Headphones" },
-  { title: "Cameras", slug: "cameras", description: "Smart 4K Dash Cameras & Action Cams" },
-  { title: "Smartphones", slug: "smartphones", description: "Flagship Smartphones" },
-  { title: "Smart TVs", slug: "tv", description: "High definition 4K and Smart LED Televisions" },
-  { title: "Projectors", slug: "projectors", description: "Portable Android & HD Cinema Projectors" },
-  { title: "Digital Photo Frames", slug: "digital-photo-frames", description: "WiFi & IPS Digital Photo Frames" },
+  { title: "Home Speaker", slug: "speakers", description: "Premium Wireless Speakers", image: "/category-speaker.png" },
+  { title: "Audio", slug: "headphones", description: "Wireless Earbuds, Soundbars & Headphones", image: "/category-headphones.png" },
+  { title: "Cameras", slug: "cameras", description: "Smart 4K Dash Cameras & Action Cams", image: "/category-camera.png" },
+  { title: "Smartphones", slug: "smartphones", description: "Flagship Smartphones", image: "/category-smartphone.png" },
+  { title: "Smart TVs", slug: "tv", description: "High definition 4K and Smart LED Televisions", image: "/category-tv.png" },
+  { title: "Projectors", slug: "projectors", description: "Portable Android & HD Cinema Projectors", image: "/category-projector.png" },
+  { title: "Digital Photo Frames", slug: "digital-photo-frames", description: "WiFi & IPS Digital Photo Frames", image: "/category-frame.png" },
 ];
 
 // ─── Product Data (from existing products-data.ts) ───────────────────────────
@@ -241,7 +241,7 @@ const PRODUCTS = [
     rating: 4.2,
     reviewsCount: "94 Reviews",
     description: "A compact HD ready LED TV for bedrooms, study rooms, and small living spaces.",
-    mainImage: "https://www.xelectron.com/wp-content/uploads/2023/04/Untitled-1-600x600.jpg",
+    mainImage: "/category-tv.png",
     shippingNotice: "Free delivery with standard installation support",
     colors: [{ name: "Matte Black", bgHex: "#111111" }],
     features: ["HD Ready Display", "Energy Efficient Panel", "Simple Plug-and-Play Setup"],
@@ -261,7 +261,7 @@ const PRODUCTS = [
     rating: 4.4,
     reviewsCount: "76 Reviews",
     description: "A bright WiFi-enabled digital photo frame for showcasing memories, artwork, and slideshows.",
-    mainImage: "https://www.xelectron.com/wp-content/uploads/2025/06/15.6-inch-DPF-600x600.jpg",
+    mainImage: "/category-frame.png",
     shippingNotice: "Free shipping with power adapter included",
     colors: [
       { name: "Classic Black", bgHex: "#1a1a1a" },
@@ -284,7 +284,7 @@ const PRODUCTS = [
     rating: 4.3,
     reviewsCount: "157 Reviews",
     description: "A smart LED TV that balances size and clarity for everyday streaming, TV shows, and casual gaming.",
-    mainImage: "https://www.xelectron.com/wp-content/uploads/2023/04/XElectron-32-inch-TVWDa-79IuL._SL1500_-600x600.jpg",
+    mainImage: "/product-tv-card.png",
     shippingNotice: "Free home delivery and basic installation support",
     colors: [{ name: "Black", bgHex: "#101010" }],
     features: ["Smart TV Interface", "HD Ready Panel", "Multiple HDMI and USB Ports"],
@@ -304,7 +304,7 @@ const PRODUCTS = [
     rating: 4.0,
     reviewsCount: "203 Reviews",
     description: "A compact white digital photo frame for desks, shelves, and bedside tables with crisp image playback.",
-    mainImage: "https://www.xelectron.com/wp-content/uploads/2023/01/8-inch-DPF-W-600x600.jpg",
+    mainImage: "/category-frame.png",
     shippingNotice: "Free delivery with desktop stand included",
     colors: [
       { name: "White", bgHex: "#f4f4f4" },
@@ -331,8 +331,8 @@ async function main() {
   for (const cat of CATEGORIES) {
     const created = await prisma.category.upsert({
       where: { slug: cat.slug },
-      update: { title: cat.title, description: cat.description },
-      create: { title: cat.title, slug: cat.slug, description: cat.description, visible: true },
+      update: { title: cat.title, description: cat.description, image: cat.image },
+      create: { title: cat.title, slug: cat.slug, description: cat.description, image: cat.image, visible: true },
     });
     categoryMap.set(cat.slug, created.id);
     console.log(`  ✅ ${cat.title} (${cat.slug})`);

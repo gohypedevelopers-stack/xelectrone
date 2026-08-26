@@ -101,11 +101,11 @@ function TopAnnouncementBar() {
 function BrandLogo() {
   return (
     <Image
-      src="/xelectron-logo.png"
+      src="/xelectron-logo.svg"
       alt="XElectron"
-      width={360}
-      height={120}
-      className="h-8 sm:h-12 md:h-14 lg:h-16 w-auto max-w-[120px] sm:max-w-none object-contain object-left transition-transform duration-200"
+      width={512}
+      height={320}
+      className="h-11 sm:h-14 md:h-16 lg:h-[70px] w-auto object-contain object-left transition-transform duration-200"
       priority
     />
   );
@@ -553,19 +553,19 @@ export default function Navbar() {
 
   return (
     <>
+      <TopAnnouncementBar />
       <header
         ref={headerRef}
         className="sticky top-0 z-50 bg-white shadow-xs border-b border-slate-100 text-slate-800 transition-colors"
         onMouseLeave={() => handleOpenMenu(null)}
       >
-        <TopAnnouncementBar />
         <div className="w-full relative z-40 bg-white">
-          <div className="mx-auto flex h-[64px] sm:h-[76px] max-w-[1600px] items-center justify-between px-3 sm:px-6 lg:px-8 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+          <div className="mx-auto flex h-[64px] sm:h-[80px] max-w-[1600px] items-center justify-between px-3 sm:px-6 lg:px-8 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
           {/* Brand Logo */}
           <Link
             href="/"
             aria-label="XElectron home"
-            className="inline-flex shrink-0 items-center rounded-full text-slate-900 transition-opacity duration-200 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6] sm:justify-self-start"
+            className="inline-flex shrink-0 items-center rounded-lg text-slate-900 transition-opacity duration-200 hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a7ae6] sm:justify-self-start py-1"
             onClick={handleNavigate}
             onMouseEnter={() => handleOpenMenu(null)}
           >

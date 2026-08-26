@@ -277,7 +277,7 @@ export default function ProductDetail({
   const [recentDisplayedIds, setRecentDisplayedIds] = useState<string[]>([]);
 
   return (
-    <div className="w-full bg-white pt-2 sm:pt-4 pb-0 text-slate-900 overflow-x-hidden">
+    <div className="w-full bg-white pt-2 sm:pt-4 pb-0 text-slate-900 overflow-x-clip">
       <div className="mx-auto max-w-[1440px] px-3 sm:px-6 lg:px-8 mb-8 sm:mb-12">
         {/* TOP PRODUCT SECTION */}
         <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10 xl:gap-14">

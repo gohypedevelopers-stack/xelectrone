@@ -116,7 +116,7 @@ export default function CreatorVideosSection() {
               <Sparkles className="size-3.5" /> Real Creator Reviews
             </p>
             <h2 className="mt-1 text-2xl font-normal tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-              Approved by Creators
+              Influencers Voice
             </h2>
             <p className="mt-1 text-xs sm:text-sm text-black/50">
               Click any video card to flip and discover the featured product

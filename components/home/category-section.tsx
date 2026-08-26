@@ -1,6 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { categories as defaultCategories } from "@/components/home/content";
+import { resolveCategoryImage, getCategoryFallbackImage } from "@/lib/shared/category-utils";
 
 export type StorefrontCategory = {
   id: string;
@@ -8,6 +12,28 @@ export type StorefrontCategory = {
   slug: string;
   image: string;
 };
+
+function CategoryCardImage({ category }: { category: StorefrontCategory }) {
+  const fallback = getCategoryFallbackImage(category.slug, category.title);
+  const resolved = resolveCategoryImage(category.image, category.slug, category.title);
+  const [imgSrc, setImgSrc] = useState(resolved);
+
+  return (
+    <Image
+      src={imgSrc}
+      alt={category.title}
+      fill
+      unoptimized
+      onError={() => {
+        if (imgSrc !== fallback) {
+          setImgSrc(fallback);
+        }
+      }}
+      className="mix-blend-multiply object-contain filter drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)]"
+      sizes="200px"
+    />
+  );
+}
 
 export default function CategorySection({ categories }: { categories?: StorefrontCategory[] }) {
   const displayCategories =
@@ -17,7 +43,7 @@ export default function CategorySection({ categories }: { categories?: Storefron
           id: cat.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
           title: cat.title,
           slug: cat.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-          image: cat.src,
+          image: resolveCategoryImage(cat.src, cat.title, cat.title),
         }));
 
   if (!displayCategories || displayCategories.length === 0) return null;
@@ -38,11 +64,9 @@ export default function CategorySection({ categories }: { categories?: Storefron
           </div>
         </div>
 
-        {/* SINGLE ROW CATEGORIES STRIP WITH NO BACKGROUND ARTIFACTS & CACHE BUSTING */}
+        {/* SINGLE ROW CATEGORIES STRIP WITH NO BACKGROUND ARTIFACTS */}
         <div className="no-scrollbar flex w-full items-center justify-start gap-3.5 overflow-x-auto pt-4 pb-6 sm:gap-4 lg:justify-between">
           {displayCategories.map((category) => {
-            const cacheBustSrc = `${category.image}${category.image.includes("?") ? "&" : "?"}v=category`;
-
             return (
               <Link
                 key={category.id}
@@ -52,14 +76,7 @@ export default function CategorySection({ categories }: { categories?: Storefron
                 {/* CLEAN PRODUCT HERO IMAGE */}
                 <div className="relative h-[105px] sm:h-[125px] lg:h-[140px] w-full flex items-center justify-center p-1">
                   <div className="relative h-full w-full transition-transform duration-300 ease-out group-hover:scale-105">
-                    <Image
-                      src={cacheBustSrc}
-                      alt={category.title}
-                      fill
-                      unoptimized
-                      className="mix-blend-multiply object-contain filter drop-shadow-[0_4px_10px_rgba(15,23,42,0.08)]"
-                      sizes="200px"
-                    />
+                    <CategoryCardImage category={category} />
                   </div>
                 </div>
 

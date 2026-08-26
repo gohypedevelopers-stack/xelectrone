@@ -427,4 +427,20 @@ model BlogPost {
   @@map("blog_posts")
 }
 
+// ─── Brand Showcase / Brand Setup ───────────────────────────────────────────
+
+model BrandShowcaseItem {
+  id        String   @id @default(cuid())
+  title     String
+  subtitle  String
+  image     String
+  linkUrl   String?  @map("link_url")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("brand_showcase_items")
+}
+
 

@@ -7,6 +7,7 @@ export type AdminRoute = {
 export const adminRoutes: AdminRoute[] = [
   { label: "Home", href: "/dashboard" },
   { label: "Banners", href: "/dashboard/banners" },
+  { label: "Brand Showcase", href: "/dashboard/brand-showcase" },
   { label: "Creator Videos", href: "/dashboard/creator-videos" },
   {
     label: "Orders",
