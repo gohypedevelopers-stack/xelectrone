@@ -43,7 +43,8 @@ function getDbInstance(): PrismaClient {
       typeof (globalForPrisma.prisma as any).productVariant === "undefined" ||
       typeof (globalForPrisma.prisma as any).blogPost === "undefined" ||
       typeof (globalForPrisma.prisma as any).draftOrder === "undefined" ||
-      typeof (globalForPrisma.prisma as any).brandShowcaseItem === "undefined"
+      typeof (globalForPrisma.prisma as any).brandShowcaseItem === "undefined" ||
+      typeof (globalForPrisma.prisma as any).brandMarqueeItem === "undefined"
     ) {
       globalForPrisma.prisma = undefined;
     }

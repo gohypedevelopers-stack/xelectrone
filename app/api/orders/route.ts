@@ -56,6 +56,21 @@ export async function POST(request: NextRequest) {
       await setSessionCookie((order as any).sessionToken);
     }
 
+    // Trigger order confirmation email in background
+    if (order && (order.customerEmail || body.email)) {
+      import("@/lib/server/mail").then(({ sendOrderConfirmationEmail }) => {
+        sendOrderConfirmationEmail({
+          id: order.id,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail || body.email,
+          total: order.total,
+          trackingNumber: order.trackingNumber,
+          trackingUrl: order.trackingUrl,
+          estimatedDelivery: order.estimatedDelivery,
+        }).catch((err) => console.warn("Failed to send order email:", err));
+      });
+    }
+
     return NextResponse.json({ success: true, data: order }, { status: 201 });
   } catch (error) {
     if (error instanceof AuthError) {

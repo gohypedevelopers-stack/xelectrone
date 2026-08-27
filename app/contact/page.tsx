@@ -9,7 +9,6 @@ import {
   MapPin,
   Clock,
   Send,
-  MessageSquare,
   ChevronDown,
   Building2,
   Store,
@@ -18,7 +17,6 @@ import {
   User,
   MessageCircle,
   ExternalLink,
-  Sparkles,
   ShieldCheck,
   Headphones,
 } from "lucide-react";
@@ -45,7 +43,7 @@ const QUICK_CONTACTS = [
     icon: User,
     badge: "Corporate & Bulk Orders",
     title: "Sales Department",
-    hours: "Mon – Sat: 09:30 AM – 06:30 PM",
+    hours: "Mon – Sat: 10:00 AM – 06:00 PM",
     phones: [
       { label: "Direct", value: "+91 9870293008", href: "tel:9870293008" },
       { label: "Landline", value: "0120-4550655", href: "tel:01204550655" },
@@ -65,19 +63,21 @@ const LOCATIONS = [
     address: "2417, Tower A, The Corenthum, Sector – 62, Noida – 201301, UP.",
     landmark: "The Corenthum IT Hub, Sec-62",
     phones: ["+91 0120-4550655", "+91 8527312304"],
-    timing: "Mon – Sat: 9:30 AM – 6:30 PM",
+    timing: "Mon – Sat: 10:00 AM – 6:00 PM",
+    email: "info@xelectron.com",
     mapUrl: "https://www.google.com/maps/place/XElectron+Technologies+Pvt+Ltd/@28.6270372,77.3689222,17z/data=!3m2!4b1!5s0x390ce55763f582bf:0x16d32f448de111e8!4m6!3m5!1s0x390cfad7e2c0b2b7:0xa963d077ab3281b6!8m2!3d28.6270373!4d77.3737931!16s%2Fg%2F11bxg5y7ws?entry=ttu&g_ep=EgoyMDI2MDgxMS4wIKXMDSoASAFQAw%3D%3D",
     badgeStyle: "bg-blue-50 text-[#0a7ae6] border-blue-200/80",
     iconBg: "bg-blue-50 text-[#0a7ae6]",
   },
   {
     icon: Store,
-    badge: "Retail Experience Hub",
-    name: "XElectron Flagship Showroom",
+    badge: "Retail Store",
+    name: "XElectron Experience Center",
     address: "LGF-22, Spectrum Metro Mall, Sector-75, Noida, UP – 201307.",
     landmark: "Lower Ground Floor, Spectrum Metro",
     phones: ["+91 9870293008"],
-    timing: "Mon – Sat: 10:00 AM – 06:00 PM",
+    timing: "Open daily: 01:00 PM – 09:00 PM",
+    email: "sales@xelectron.com",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=Spectrum%20Metro%20Mall%20Sector%2075%20Noida",
     badgeStyle: "bg-purple-50 text-purple-700 border-purple-200/80",
     iconBg: "bg-purple-50 text-purple-600",
@@ -85,14 +85,48 @@ const LOCATIONS = [
   {
     icon: Wrench,
     badge: "Authorized Service Center",
-    name: "XElectron Technical Service",
+    name: "XElectron Service Center",
     address: "Plot No.626, Ground Floor, Sector - 5, Vaishali, Ghaziabad, UP – 201010.",
     landmark: "Opp. Ram Prashtha Green Colony",
     phones: ["0120-4213337", "+91 9650836754"],
     timing: "Mon – Sat: 10:00 AM – 06:00 PM",
+    email: "kapil@xelectron.com",
     mapUrl: "https://www.google.com/maps/place/@28.6466486,77.3479808,17z/data=!3m1!4b1!4m3!3m2!1s0x390cfacf66414da5:0xc2a2a28ae60610c8!12e1?entry=ttu&g_ep=EgoyMDI2MDgxMS4wIKXMDSoASAFQAw%3D%3D",
     badgeStyle: "bg-amber-50 text-amber-800 border-amber-200/80",
     iconBg: "bg-amber-50 text-amber-700",
+  },
+];
+
+const DEPARTMENTS = [
+  {
+    label: "Sales Department",
+    value: "Sales Department",
+    email: "sales@xelectron.com",
+    desc: "For sales inquiries, corporate & bulk orders",
+  },
+  {
+    label: "Customer Help Desk",
+    value: "Customer Help Desk",
+    email: "customercare@xelectron.com",
+    desc: "For general customer support & warranty claims",
+  },
+  {
+    label: "Service Center (Vaishali, Ghaziabad)",
+    value: "Service Center (Vaishali, Ghaziabad)",
+    email: "kapil@xelectron.com",
+    desc: "For technical service, repairs & hardware replacements",
+  },
+  {
+    label: "Spectrum Metro Store",
+    value: "Spectrum Metro Store",
+    email: "sales@xelectron.com",
+    desc: "For showroom demos & retail store purchases",
+  },
+  {
+    label: "Corporate Office",
+    value: "Corporate Office",
+    email: "info@xelectron.com",
+    desc: "For administrative & corporate office correspondence",
   },
 ];
 
@@ -105,12 +139,12 @@ const FAQS = [
   {
     question: "Where can I get technical service for my XElectron Projector or TV?",
     answer:
-      "Visit our authorized Service Center at Sector-5, Vaishali, Ghaziabad (Opp. Ram Prashtha Green Colony, Near Mohan Dhaba). Call 0120-4213337 or 9650836754 for repair assistance.",
+      "Visit our authorized Service Center at Sector-5, Vaishali, Ghaziabad (Opp. Ram Prashtha Green Colony, Near Mohan Dhaba). Call 0120-4213337 or 9650836754, or email kapil@xelectron.com for repair assistance.",
   },
   {
     question: "Can I test Projectors & Smart TVs live before buying?",
     answer:
-      "Yes! Visit our Experience Center at LGF-22, Spectrum Metro Mall, Sector-75, Noida (10:00 AM - 6:00 PM). Experience live 4K projection demos in person. Call 9870293008 for store queries.",
+      "Yes! Visit our Retail Store (XElectron Experience Center) at LGF-22, Spectrum Metro Mall, Sector-75, Noida (Open daily: 01:00 PM – 09:00 PM). Experience live 4K projection demos in person. Call 9870293008 for store queries.",
   },
   {
     question: "Who should I contact for corporate or bulk purchases?",
@@ -131,7 +165,10 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [activeFaqIndex, setActiveFaqIndex] = useState<number | null>(0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const selectedDepartmentInfo =
+    DEPARTMENTS.find((d) => d.value === formData.department) || DEPARTMENTS[0];
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) {
       toast.error("Please fill in all required fields.");
@@ -139,18 +176,32 @@ export default function ContactPage() {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setSubmitted(true);
+        toast.success(`Thank you! Your message has been sent to ${selectedDepartmentInfo.email}.`);
+      } else {
+        toast.error(json.error || "Failed to send message. Please try again.");
+      }
+    } catch {
+      toast.error("Network error while sending message. Please try again.");
+    } finally {
       setIsSubmitting(false);
-      setSubmitted(true);
-      toast.success("Thank you! Your message has been sent to XElectron.");
-    }, 900);
+    }
   };
 
   return (
     <main className="min-h-screen bg-[#fafafa] text-slate-900 selection:bg-[#0a7ae6] selection:text-white">
       <Navbar />
 
-      {/* HERO & PRIMARY CONTACT CHANNELS SECTION WITH GRID BACKGROUND */}
+      {/* HERO & PRIMARY CONTACT CHANNELS SECTION */}
       <section className="relative overflow-hidden bg-white border-b border-slate-200/80 pt-16 pb-16 sm:pt-24 sm:pb-24">
         {/* Technical Grid Background Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_15%,#000_60%,transparent_100%)] pointer-events-none opacity-80" />
@@ -270,7 +321,7 @@ export default function ContactPage() {
               Visit an XElectron Hub
             </h2>
             <p className="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed">
-              Explore our corporate headquarters, experience live 4K projector demos at our retail showroom, or visit our authorized service facility.
+              Explore our corporate headquarters, experience live 4K projector demos at our retail store, or visit our authorized service center.
             </p>
           </div>
 
@@ -280,7 +331,7 @@ export default function ContactPage() {
               const Icon = loc.icon;
               return (
                 <div
-                  key={loc.badge}
+                  key={loc.name}
                   className="group flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-xs hover:shadow-lg hover:border-slate-300 transition-all duration-300"
                 >
                   <div className="space-y-4">
@@ -309,8 +360,8 @@ export default function ContactPage() {
                       )}
                     </div>
 
-                    {/* Phones & Timings */}
-                    <div className="pt-4 border-t border-slate-100 space-y-2 text-xs">
+                    {/* Contact, Timings & Email */}
+                    <div className="pt-4 border-t border-slate-100 space-y-2.5 text-xs">
                       <div className="flex items-center justify-between text-slate-800 font-medium">
                         <span className="text-slate-400 flex items-center gap-1.5 text-[11px]">
                           <Phone className="size-3.5 text-slate-400" /> Contact
@@ -321,7 +372,15 @@ export default function ContactPage() {
                         <span className="text-slate-400 flex items-center gap-1.5 text-[11px]">
                           <Clock className="size-3.5 text-slate-400" /> Hours
                         </span>
-                        <span>{loc.timing}</span>
+                        <span className="font-medium text-slate-700">{loc.timing}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-500">
+                        <span className="text-slate-400 flex items-center gap-1.5 text-[11px]">
+                          <Mail className="size-3.5 text-slate-400" /> Email
+                        </span>
+                        <a href={`mailto:${loc.email}`} className="font-semibold text-[#0a7ae6] hover:underline">
+                          {loc.email}
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -358,7 +417,7 @@ export default function ContactPage() {
                 Send an Inquiry
               </h2>
               <p className="mt-1 text-xs sm:text-sm text-slate-500">
-                Have a question for our Sales or Customer Support team? Fill out the form below.
+                Choose the relevant department to route your inquiry directly to the right team.
               </p>
 
               {submitted ? (
@@ -366,7 +425,8 @@ export default function ContactPage() {
                   <CheckCircle2 className="mx-auto size-12 text-emerald-600" />
                   <h3 className="text-base font-bold">Inquiry Sent Successfully</h3>
                   <p className="text-xs text-emerald-700 max-w-md mx-auto leading-relaxed">
-                    Thank you, <span className="font-bold">{formData.name}</span>. Our team will review your message and reach out within 24 hours.
+                    Thank you, <span className="font-bold">{formData.name}</span>. Your inquiry has been routed to{" "}
+                    <span className="font-semibold text-emerald-900 underline">{selectedDepartmentInfo.email}</span>. Our team will reach out within 24 hours.
                   </p>
                   <button
                     type="button"
@@ -436,15 +496,26 @@ export default function ContactPage() {
                         id="department"
                         value={formData.department}
                         onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs outline-none focus:border-[#0a7ae6] focus:bg-white focus:ring-2 focus:ring-[#0a7ae6]/10 transition"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-[#0a7ae6] focus:bg-white focus:ring-2 focus:ring-[#0a7ae6]/10 transition"
                       >
-                        <option value="Sales Department">Sales Department</option>
-                        <option value="Customer Care">Customer Care (Helpdesk)</option>
-                        <option value="Service Center (Vaishali)">Service Center (Vaishali, Ghaziabad)</option>
-                        <option value="Spectrum Metro Experience Center">Spectrum Metro Showroom (Noida Sec-75)</option>
-                        <option value="Corporate Office (Sec-62 Noida)">Corporate Office (Sector 62 Noida)</option>
+                        {DEPARTMENTS.map((dept) => (
+                          <option key={dept.value} value={dept.value}>
+                            {dept.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
+                  </div>
+
+                  {/* Destination Email Indicator Badge */}
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Mail className="size-3.5 text-[#0a7ae6]" />
+                      <span className="text-[11px]">Direct recipient email:</span>
+                    </div>
+                    <span className="font-mono font-bold text-[#0a7ae6] text-[11px]">
+                      {selectedDepartmentInfo.email}
+                    </span>
                   </div>
 
                   <div>

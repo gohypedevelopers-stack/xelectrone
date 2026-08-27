@@ -241,9 +241,12 @@ function OrdersContent() {
                 year: "numeric",
               });
 
-              const awb = order.trackingNumber || `DEL-${order.id.slice(-8).toUpperCase()}`;
+              const cleanAwb = (order.trackingNumber || "").replace(/[^0-9]/g, "");
+              const awb = order.trackingNumber || "";
               const carrier = order.shippingCarrier || "Delhivery Express";
-              const trackUrl = order.trackingUrl || `https://www.delhivery.com/track/package/${awb}`;
+              const trackUrl = cleanAwb
+                ? `https://track.delhivery.com/p/${cleanAwb}`
+                : "https://www.delhivery.com/tracking";
               const estDelivery = order.estimatedDelivery || "3 - 4 Business Days";
               const steps = getTrackingSteps(order.status);
 

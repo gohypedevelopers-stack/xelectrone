@@ -31,7 +31,7 @@ const STORES = [
     type: "Corporate Office & Admin",
     address: "2417, Tower A, The Corenthum, Sector – 62, Noida – 201301.",
     phones: ["+91-0120-4550655", "+91-9891332304"],
-    timing: "09:30 AM to 06:30 PM (Mon - Sat)",
+    timing: "10:00 AM to 06:00 PM (Mon - Sat)",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=The+Corenthum+Sector+62+Noida",
     features: ["Corporate Sales Desk", "Partner & Dealer Support", "Executive Offices"],
   },

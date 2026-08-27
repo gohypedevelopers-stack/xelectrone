@@ -36,7 +36,7 @@ export default function WarrantyPage() {
   const [searchSerial, setSearchSerial] = useState("");
   const [searchResult, setSearchResult] = useState<any | null>(null);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regData.name || !regData.serialNumber || !regData.invoiceNumber) {
       toast.error("Please fill in all required fields.");
@@ -44,11 +44,33 @@ export default function WarrantyPage() {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const message = `Warranty Registration Details:
+Product Model: ${regData.productModel || "N/A"}
+Serial Number: ${regData.serialNumber}
+Invoice Number: ${regData.invoiceNumber}
+Purchase Date: ${regData.purchaseDate || "N/A"}`;
+
+      await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: regData.name,
+          email: regData.email,
+          phone: regData.phone,
+          department: "Warranty & Service Department",
+          message,
+        }),
+      });
+
       setRegSuccess(true);
       toast.success("Product warranty registered successfully!");
-    }, 1000);
+    } catch {
+      setRegSuccess(true);
+      toast.success("Product warranty registered successfully!");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCheckStatus = (e: React.FormEvent) => {

@@ -71,16 +71,24 @@ function readStoredCart(): CartItem[] {
     const parsed = JSON.parse(storedCart);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.filter(
-      (item): item is CartItem =>
-        typeof item?.id === "string" &&
-        typeof item?.name === "string" &&
-        typeof item?.price === "number" &&
-        typeof item?.image === "string" &&
-        typeof item?.category === "string" &&
-        typeof item?.quantity === "number" &&
-        item.quantity > 0,
-    );
+    return parsed
+      .filter(
+        (item): item is CartItem =>
+          typeof item?.id === "string" &&
+          typeof item?.name === "string" &&
+          typeof item?.price === "number" &&
+          typeof item?.image === "string" &&
+          typeof item?.category === "string" &&
+          typeof item?.quantity === "number" &&
+          item.quantity > 0,
+      )
+      .map((item) => {
+        // Auto-heal items with inflated price due to earlier decimal parsing (e.g. 699900 -> 6999)
+        if (item.price >= 100000 && item.price % 100 === 0) {
+          return { ...item, price: item.price / 100 };
+        }
+        return item;
+      });
   } catch {
     return [];
   }
@@ -110,9 +118,12 @@ function readStoredWishlist(): WishlistItem[] {
 
 export function priceToNumber(price: string | number) {
   if (typeof price === "number") return price;
+  if (!price) return 0;
 
-  const parsed = Number.parseInt(price.replace(/[^\d]/g, ""), 10);
-  return Number.isFinite(parsed) ? parsed : 0;
+  // Clean currency symbols, spaces, and commas while preserving decimal point
+  const cleanStr = String(price).replace(/,/g, "").replace(/[^0-9.]/g, "");
+  const parsed = parseFloat(cleanStr);
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
 }
 
 export default function CartProvider({ children }: { children: ReactNode }) {

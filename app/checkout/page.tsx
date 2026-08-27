@@ -15,10 +15,26 @@ import {
   ShieldCheck,
   Truck,
   X,
+  Zap,
+  Sparkles,
+  CheckCircle2,
+  Smartphone,
+  RefreshCw,
 } from "lucide-react";
 import Navbar from "@/components/navbar/navbar";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/components/providers/cart-provider";
+import {
+  UpiLogo,
+  GPayLogo,
+  PhonePeLogo,
+  PaytmLogo,
+  VisaLogo,
+  MastercardLogo,
+  RuPayLogo,
+  RazorpayLogo,
+  VelocityLogo,
+} from "@/components/checkout/payment-logos";
 
 const CHECKOUT_SESSION_KEY = "xelectron-active-checkout";
 
@@ -51,15 +67,6 @@ function CheckoutContent() {
       return;
     }
 
-    // Skip if the product is already in the cart (Buy button already added it)
-    const alreadyInCart = orderItems.some(
-      (item) => item.id === productParam || item.slug === productParam
-    );
-    if (alreadyInCart) {
-      setProductParamLoading(false);
-      return;
-    }
-
     let isSubscribed = true;
     setProductParamLoading(true);
 
@@ -74,13 +81,29 @@ function CheckoutContent() {
         );
 
         if (matched) {
-          const stillMissing = !orderItems.some((item) => item.id === matched.id);
-          if (stillMissing) {
-            const itemPrice =
-              typeof matched.price === "number"
-                ? matched.price
-                : parseFloat(String(matched.price).replace(/[^0-9.]/g, "")) || 0;
+          const itemPrice =
+            typeof matched.price === "number"
+              ? matched.price
+              : parseFloat(String(matched.price).replace(/,/g, "").replace(/[^0-9.]/g, "")) || 0;
 
+          const existingItem = orderItems.find(
+            (item) => item.id === matched.id || item.slug === matched.slug || item.slug === productParam
+          );
+
+          if (existingItem) {
+            // If item is already in cart but has wrong or 100x inflated price, replace with correct price
+            if (existingItem.price !== itemPrice && itemPrice > 0) {
+              clearCart();
+              addItem({
+                id: matched.id,
+                name: matched.name,
+                price: itemPrice,
+                image: matched.mainImage || "/category-smartphone.png",
+                category: matched.category?.title || "Electronics",
+                slug: matched.slug,
+              });
+            }
+          } else {
             addItem({
               id: matched.id,
               name: matched.name,
@@ -148,13 +171,8 @@ function CheckoutContent() {
   const [accountPassword, setAccountPassword] = useState("");
 
   // Payment State
-  const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "cod">("card");
-  const [cardName, setCardName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
-  const [cardZip, setCardZip] = useState("");
-  const [upiId, setUpiId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "velocity" | "cod">("razorpay");
+  const [selectedEmiTenure, setSelectedEmiTenure] = useState<3 | 6 | 9 | 12>(3);
 
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,6 +180,37 @@ function CheckoutContent() {
   const [orderId, setOrderId] = useState("");
   const [paidTotal, setPaidTotal] = useState(0);
   const [checkoutSessionToken, setCheckoutSessionToken] = useState("");
+
+  // COD Mobile Verification (OTP) State
+  const [isCodOtpModalOpen, setIsCodOtpModalOpen] = useState(false);
+  const [codOtp, setCodOtp] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [otpError, setOtpError] = useState("");
+  const [demoOtpHint, setDemoOtpHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (otpCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCountdown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCountdown]);
+
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window === "undefined") return resolve(false);
+      if ((window as any).Razorpay) return resolve(true);
+
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -316,16 +365,6 @@ function CheckoutContent() {
       return;
     }
 
-    if (paymentMethod === "card" && (!cardName || !cardNumber || !cardExpiry || !cardCvv)) {
-      alert("Please enter all card details to proceed with payment.");
-      return;
-    }
-
-    if (paymentMethod === "upi" && !upiId) {
-      alert("Please enter a valid UPI ID (e.g., name@okhdfcbank).");
-      return;
-    }
-
     if (createAccountOnCheckout && (!accountPassword || accountPassword.length < 6)) {
       alert("Please enter a password with at least 6 characters to create your account.");
       return;
@@ -337,6 +376,242 @@ function CheckoutContent() {
       await trackCheckout();
 
       const fullAddress = [addressLine1, addressLine2, city, state, postalCode].filter(Boolean).join(", ") + ` [Payment: ${paymentMethod.toUpperCase()}]`;
+
+      // ─── RAZORPAY PAYMENT FLOW ─────────────────────────────────────────────
+      if (paymentMethod === "razorpay") {
+        const createOrderRes = await fetch("/api/payment/razorpay/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: total,
+            receipt: `rcpt_${Date.now()}`,
+            notes: {
+              customerName: `${firstName} ${lastName}`.trim(),
+              customerEmail: email,
+              customerPhone: phone,
+            },
+          }),
+        });
+
+        const rzpOrderData = await createOrderRes.json();
+        if (!rzpOrderData.success || !rzpOrderData.orderId) {
+          throw new Error(rzpOrderData.error || "Failed to initialize Razorpay checkout");
+        }
+
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+          throw new Error("Unable to load Razorpay SDK. Please check your internet connection.");
+        }
+
+        const options = {
+          key: rzpOrderData.keyId,
+          amount: rzpOrderData.amount,
+          currency: rzpOrderData.currency || "INR",
+          name: "XElectron Technologies",
+          description: `Order Payment (${orderItems.length} item${orderItems.length > 1 ? "s" : ""})`,
+          order_id: rzpOrderData.orderId,
+          prefill: {
+            name: `${firstName} ${lastName}`.trim(),
+            email: email,
+            contact: phone,
+          },
+          theme: {
+            color: "#0a7ae6",
+          },
+          modal: {
+            ondismiss: () => {
+              setIsSubmitting(false);
+            },
+          },
+          handler: async (response: {
+            razorpay_payment_id: string;
+            razorpay_order_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              const verifyRes = await fetch("/api/payment/razorpay/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderDetails: {
+                    userId: currentUser?.id,
+                    customerName: `${firstName} ${lastName}`.trim(),
+                    customerEmail: email,
+                    customerPhone: phone,
+                    city,
+                    state,
+                    pincode: postalCode,
+                    createAccount: !currentUser && createAccountOnCheckout,
+                    password: accountPassword || undefined,
+                    items: orderItems.map((item) => ({
+                      productId: item.id,
+                      quantity: item.quantity,
+                      unitPrice: item.price,
+                      price: item.price,
+                    })),
+                    total,
+                    shippingAddress: fullAddress,
+                    phone,
+                    discountCode: appliedCoupon || undefined,
+                  },
+                }),
+              });
+
+              const verifyData = await verifyRes.json();
+              if (!verifyData.success) {
+                throw new Error(verifyData.error || "Payment verification failed");
+              }
+
+              const rawId = verifyData?.data?.id;
+              const newOrderId = rawId
+                ? `XE-${rawId.slice(-6).toUpperCase()}`
+                : `XE-${Math.floor(100000 + Math.random() * 900000)}`;
+              setOrderId(newOrderId);
+              setPaidTotal(total);
+
+              if (typeof window !== "undefined" && rawId) {
+                try {
+                  const existing = JSON.parse(localStorage.getItem("xelectron_guest_orders") || "[]");
+                  if (!existing.includes(rawId)) {
+                    existing.unshift(rawId);
+                    localStorage.setItem("xelectron_guest_orders", JSON.stringify(existing.slice(0, 20)));
+                  }
+                } catch {}
+              }
+
+              if (checkoutSessionToken) {
+                await fetch("/api/abandoned-checkouts/complete", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ sessionToken: checkoutSessionToken }),
+                });
+                window.sessionStorage.removeItem(CHECKOUT_SESSION_KEY);
+              }
+
+              clearCart();
+              setOrderComplete(true);
+            } catch (err) {
+              alert((err as Error).message || "Verification failed after payment.");
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on("payment.failed", (response: any) => {
+          alert(`Payment failed: ${response.error?.description || "Transaction declined"}`);
+          setIsSubmitting(false);
+        });
+        rzp.open();
+        return;
+      }
+
+      // ─── VELOCITY BNPL / NO-COST EMI FLOW ──────────────────────────────────
+      if (paymentMethod === "velocity") {
+        const createVelRes = await fetch("/api/payment/velocity/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUser?.id,
+            customerName: `${firstName} ${lastName}`.trim(),
+            customerEmail: email,
+            customerPhone: phone,
+            city,
+            state,
+            pincode: postalCode,
+            addressLine1,
+            addressLine2,
+            createAccount: !currentUser && createAccountOnCheckout,
+            password: accountPassword || undefined,
+            items: orderItems.map((item) => ({
+              productId: item.id,
+              name: item.name,
+              quantity: item.quantity,
+              unitPrice: item.price,
+              price: item.price,
+            })),
+            total,
+            discountAmount,
+            discountCode: appliedCoupon || undefined,
+            shippingAddress: fullAddress,
+          }),
+        });
+
+        const velData = await createVelRes.json();
+        if (!velData.success || !velData.redirectUrl) {
+          throw new Error(velData.error || "Failed to initialize Velocity EMI checkout");
+        }
+
+        if (checkoutSessionToken) {
+          await fetch("/api/abandoned-checkouts/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionToken: checkoutSessionToken }),
+          });
+          window.sessionStorage.removeItem(CHECKOUT_SESSION_KEY);
+        }
+
+        window.location.href = velData.redirectUrl;
+        return;
+      }
+
+      // ─── CASH ON DELIVERY (COD) OTP VERIFICATION FLOW ──────────────────────
+      if (paymentMethod === "cod") {
+        setIsSubmitting(false);
+        setIsCodOtpModalOpen(true);
+        setCodOtp("");
+        setOtpError("");
+        await handleSendCodOtp();
+        return;
+      }
+    } catch (error) {
+      alert((error as Error).message || "Something went wrong while placing your order. Please try again.");
+      setIsSubmitting(false);
+    }
+  };
+
+  // Sends OTP to the customer's phone for COD confirmation
+  const handleSendCodOtp = async () => {
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
+      alert("Please enter a valid 10-digit mobile number in Billing details.");
+      return;
+    }
+
+    setIsSendingOtp(true);
+    setOtpError("");
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleanPhone }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setOtpError(data.error || "Failed to send verification OTP.");
+        return;
+      }
+      setOtpCountdown(30);
+      if (data.otp) {
+        setDemoOtpHint(data.otp);
+      }
+    } catch {
+      setOtpError("Network error while sending OTP. Please try again.");
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  // Executes the COD order persistence after OTP is verified
+  const executeCodOrderPlacement = async () => {
+    setIsSubmitting(true);
+    try {
+      await trackCheckout();
+      const fullAddress = [addressLine1, addressLine2, city, state, postalCode].filter(Boolean).join(", ") + ` [Payment: COD Verified]`;
 
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -354,17 +629,22 @@ function CheckoutContent() {
           items: orderItems.map((item) => ({
             productId: item.id,
             quantity: item.quantity,
+            unitPrice: item.price,
             price: item.price,
           })),
           total,
           shippingAddress: fullAddress,
-          paymentMethod: paymentMethod.toUpperCase(),
+          paymentMethod: "COD",
           phone,
           discountCode: appliedCoupon || undefined,
         }),
       });
 
       const orderData = await res.json();
+      if (!orderData.success) {
+        throw new Error(orderData.error || "Failed to place COD order");
+      }
+
       const rawId = orderData?.data?.id;
       const newOrderId = rawId
         ? `XE-${rawId.slice(-6).toUpperCase()}`
@@ -394,10 +674,43 @@ function CheckoutContent() {
 
       clearCart();
       setOrderComplete(true);
-    } catch {
-      alert("Something went wrong while placing your order. Please try again.");
+    } catch (error) {
+      alert((error as Error).message || "Something went wrong while placing your order. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Handles COD OTP verification submit
+  const handleVerifyAndConfirmCodOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!codOtp || codOtp.trim().length < 6) {
+      setOtpError("Please enter the complete 6-digit OTP code.");
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    setOtpError("");
+    try {
+      const cleanPhone = phone.replace(/[^0-9]/g, "");
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleanPhone, otp: codOtp.trim() }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setOtpError(data.error || "Incorrect OTP code. Please check and try again.");
+        setIsVerifyingOtp(false);
+        return;
+      }
+
+      setIsCodOtpModalOpen(false);
+      await executeCodOrderPlacement();
+    } catch (err) {
+      setOtpError((err as Error).message || "Verification failed. Please try again.");
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -437,7 +750,9 @@ function CheckoutContent() {
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500">Payment:</span>
-              <span className="font-medium text-slate-900 uppercase">{paymentMethod === 'card' ? 'Credit / Debit Card' : paymentMethod === 'upi' ? 'UPI' : 'Cash on Delivery'}</span>
+              <span className="font-medium text-slate-900 uppercase">
+                {paymentMethod === "razorpay" ? "Online (Razorpay Paid)" : "Cash on Delivery"}
+              </span>
             </div>
             <div className="flex justify-between pt-1 text-sm font-semibold text-slate-900">
               <span>Total Paid:</span>
@@ -464,8 +779,17 @@ function CheckoutContent() {
     );
   }
 
-  // Empty cart guard
-  if (!productParamLoading && orderItems.length === 0) {
+  // Loading state (Must be evaluated first for SSR hydration parity)
+  if (!isMounted || productParamLoading || isAuthLoading) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#0a7ae6]" />
+      </div>
+    );
+  }
+
+  // Empty cart guard (evaluated only once client is mounted)
+  if (orderItems.length === 0) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
         <div className="text-center max-w-md">
@@ -481,15 +805,6 @@ function CheckoutContent() {
             Explore Products
           </Link>
         </div>
-      </div>
-    );
-  }
-
-  // Loading state
-  if (!isMounted || productParamLoading || isAuthLoading) {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#0a7ae6]" />
       </div>
     );
   }
@@ -883,178 +1198,177 @@ function CheckoutContent() {
                 </div>
               </div>
 
-              {/* Payment Method Section (Reference UI) */}
-              <div className="mt-8 border-t border-slate-200/80 pt-6">
-                <h3 className="text-lg font-bold tracking-tight text-slate-900 mb-4">
-                  Payment method
-                </h3>
+              {/* Payment Method Section (Compact & Sleek) */}
+              <div className="mt-6 border-t border-slate-200/80 pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm sm:text-base font-bold tracking-tight text-slate-900">
+                    Payment Method
+                  </h3>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                    <ShieldCheck className="size-3 text-emerald-600" /> 100% Encrypted
+                  </span>
+                </div>
 
-                {/* Radio Selector - 3 on one line */}
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-5">
+                <div className="space-y-2.5">
+                  {/* Option 1: Razorpay Online (Instant UPI & Cards) */}
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod("card")}
-                    className={`flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer rounded-full border px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-semibold transition-all ${
-                      paymentMethod === "card"
-                        ? "border-[#0a7ae6] bg-blue-50/50 text-[#0a7ae6] shadow-xs ring-1 ring-[#0a7ae6]/20"
+                    onClick={() => setPaymentMethod("razorpay")}
+                    className={`w-full relative flex flex-col gap-2 rounded-xl border p-3 sm:p-3.5 text-left transition-all cursor-pointer ${
+                      paymentMethod === "razorpay"
+                        ? "border-[#0a7ae6] bg-blue-50/40 text-slate-900 shadow-xs ring-1 ring-[#0a7ae6]/30"
                         : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                     }`}
                   >
-                    <span className={`size-3 sm:size-3.5 shrink-0 rounded-full border flex items-center justify-center ${
-                      paymentMethod === "card" ? "border-[#0a7ae6] bg-[#0a7ae6]" : "border-slate-300"
-                    }`}>
-                      {paymentMethod === "card" && <span className="size-1 sm:size-1.5 rounded-full bg-white" />}
-                    </span>
-                    <CreditCard className="size-3 sm:size-3.5 shrink-0" />
-                    <span className="truncate">Credit card</span>
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`size-3.5 shrink-0 rounded-full border flex items-center justify-center ${
+                          paymentMethod === "razorpay" ? "border-[#0a7ae6] bg-[#0a7ae6]" : "border-slate-300"
+                        }`}>
+                          {paymentMethod === "razorpay" && <span className="size-1.5 rounded-full bg-white" />}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900">
+                            Instant Online Payment
+                          </span>
+                          <span className="rounded-full bg-blue-100 text-[#0a7ae6] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                            Fast & Safe
+                          </span>
+                        </div>
+                      </div>
+                      <RazorpayLogo className="h-4 w-auto shrink-0" />
+                    </div>
+
+                    {/* Compact Single-Row Logo Badges */}
+                    <div className="flex items-center justify-start gap-1 sm:gap-1.5 pl-6 overflow-x-auto no-scrollbar">
+                      <div className="flex h-5 items-center justify-center rounded border border-slate-200 bg-white px-1.5 shadow-2xs shrink-0">
+                        <UpiLogo className="h-2.5 w-auto" />
+                      </div>
+                      <div className="flex h-5 items-center justify-center rounded border border-slate-200 bg-white px-1.5 shadow-2xs shrink-0">
+                        <GPayLogo className="h-2.5 w-auto" />
+                      </div>
+                      <div className="flex h-5 items-center gap-1 rounded border border-slate-200 bg-white px-1.5 shadow-2xs shrink-0">
+                        <PhonePeLogo className="h-2.5 w-2.5" />
+                        <span className="text-[8.5px] font-bold text-[#5F259F]">PhonePe</span>
+                      </div>
+                      <div className="flex h-5 items-center justify-center rounded border border-slate-200 bg-white px-1.5 shadow-2xs shrink-0">
+                        <PaytmLogo className="h-2 w-auto" />
+                      </div>
+                      <div className="flex h-5 items-center justify-center rounded border border-slate-200 bg-white px-1.5 shadow-2xs shrink-0">
+                        <VisaLogo className="h-2 w-auto" />
+                      </div>
+                      <div className="flex h-5 items-center justify-center rounded border border-slate-200 bg-white px-1.5 shadow-2xs shrink-0">
+                        <MastercardLogo className="h-2.5 w-auto" />
+                      </div>
+                      <div className="flex h-5 items-center justify-center rounded border border-slate-200 bg-white px-1.5 shadow-2xs shrink-0">
+                        <RuPayLogo className="h-2 w-auto" />
+                      </div>
+                    </div>
                   </button>
 
+                  {/* Option 2: Velocity No-Cost EMI / Pay Later (Simple & Clean) */}
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod("upi")}
-                    className={`flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer rounded-full border px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-semibold transition-all ${
-                      paymentMethod === "upi"
-                        ? "border-[#0a7ae6] bg-blue-50/50 text-[#0a7ae6] shadow-xs ring-1 ring-[#0a7ae6]/20"
+                    onClick={() => setPaymentMethod("velocity")}
+                    className={`w-full relative flex flex-col gap-1.5 rounded-xl border p-3 sm:p-3.5 text-left transition-all cursor-pointer ${
+                      paymentMethod === "velocity"
+                        ? "border-[#0a7ae6] bg-blue-50/40 text-slate-900 shadow-xs ring-1 ring-[#0a7ae6]/30"
                         : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                     }`}
                   >
-                    <span className={`size-3 sm:size-3.5 shrink-0 rounded-full border flex items-center justify-center ${
-                      paymentMethod === "upi" ? "border-[#0a7ae6] bg-[#0a7ae6]" : "border-slate-300"
-                    }`}>
-                      {paymentMethod === "upi" && <span className="size-1 sm:size-1.5 rounded-full bg-white" />}
-                    </span>
-                    <QrCode className="size-3 sm:size-3.5 shrink-0" />
-                    <span className="truncate">UPI / QR</span>
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`size-3.5 shrink-0 rounded-full border flex items-center justify-center ${
+                          paymentMethod === "velocity" ? "border-[#0a7ae6] bg-[#0a7ae6]" : "border-slate-300"
+                        }`}>
+                          {paymentMethod === "velocity" && <span className="size-1.5 rounded-full bg-white" />}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900">
+                            No-Cost EMI / Pay Later
+                          </span>
+                          <span className="rounded-full bg-emerald-100 text-emerald-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                            0% Interest
+                          </span>
+                        </div>
+                      </div>
+                      <VelocityLogo className="h-4 w-auto shrink-0" />
+                    </div>
+
+                    <div className="flex items-center justify-between pl-6 text-[11px] text-slate-500">
+                      <span>Pay in 3, 6, 9 or 12 monthly installments</span>
+                      <span className="font-bold text-[#0a7ae6]">
+                        From ₹{Math.round(total / 12).toLocaleString("en-IN")}/mo
+                      </span>
+                    </div>
                   </button>
 
+                  {/* Option 3: Cash on Delivery (Compact) */}
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("cod")}
-                    className={`flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer rounded-full border px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-semibold transition-all ${
+                    className={`w-full relative flex flex-col gap-2 rounded-xl border p-3 sm:p-3.5 text-left transition-all cursor-pointer ${
                       paymentMethod === "cod"
-                        ? "border-[#0a7ae6] bg-blue-50/50 text-[#0a7ae6] shadow-xs ring-1 ring-[#0a7ae6]/20"
+                        ? "border-[#0a7ae6] bg-blue-50/40 text-slate-900 shadow-xs ring-1 ring-[#0a7ae6]/30"
                         : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                     }`}
                   >
-                    <span className={`size-3 sm:size-3.5 shrink-0 rounded-full border flex items-center justify-center ${
-                      paymentMethod === "cod" ? "border-[#0a7ae6] bg-[#0a7ae6]" : "border-slate-300"
-                    }`}>
-                      {paymentMethod === "cod" && <span className="size-1 sm:size-1.5 rounded-full bg-white" />}
-                    </span>
-                    <Truck className="size-3 sm:size-3.5 shrink-0" />
-                    <span className="truncate">Cash on delivery</span>
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`size-3.5 shrink-0 rounded-full border flex items-center justify-center ${
+                          paymentMethod === "cod" ? "border-[#0a7ae6] bg-[#0a7ae6]" : "border-slate-300"
+                        }`}>
+                          {paymentMethod === "cod" && <span className="size-1.5 rounded-full bg-white" />}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900">
+                            Cash on Delivery (COD)
+                          </span>
+                          <span className="rounded-full bg-slate-100 text-slate-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                            Verified
+                          </span>
+                        </div>
+                      </div>
+                      <Truck className="size-4 text-slate-500 shrink-0" />
+                    </div>
+
+                    <div className="flex items-center justify-between pl-6 text-[11px] text-slate-500">
+                      <span>Pay via Cash or UPI QR at doorstep</span>
+                      <span className="font-semibold text-slate-500">OTP Confirmed</span>
+                    </div>
                   </button>
                 </div>
 
-                {/* Conditional Fields: Card */}
-                {paymentMethod === "card" && (
-                  <div className="space-y-3 rounded-2xl bg-white p-4 border border-slate-200/80 shadow-xs">
-                    <div>
-                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                        Name on card <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={cardName}
-                        onChange={(e) => setCardName(e.target.value)}
-                        placeholder="John Doe"
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0a7ae6] focus:outline-none focus:ring-1 focus:ring-[#0a7ae6]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                        Card number <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          maxLength={19}
-                          value={cardNumber}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim();
-                            setCardNumber(val);
-                          }}
-                          placeholder="4532 •••• •••• 8921"
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0a7ae6] focus:outline-none focus:ring-1 focus:ring-[#0a7ae6]"
-                        />
-                        <CreditCard className="pointer-events-none absolute right-3.5 top-2.5 size-4 text-slate-400" />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                          Expiry date <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={5}
-                          value={cardExpiry}
-                          onChange={(e) => setCardExpiry(e.target.value)}
-                          placeholder="MM / YY"
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0a7ae6] focus:outline-none focus:ring-1 focus:ring-[#0a7ae6]"
-                        />
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">
-                            CVV <span className="text-red-500">*</span>
-                          </label>
-                          <span title="3 digits on back of card">
-                            <HelpCircle className="size-3 text-slate-400" />
-                          </span>
-                        </div>
-                        <input
-                          type="password"
-                          maxLength={4}
-                          value={cardCvv}
-                          onChange={(e) => setCardCvv(e.target.value)}
-                          placeholder="123"
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0a7ae6] focus:outline-none focus:ring-1 focus:ring-[#0a7ae6]"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                        ZIP / Postal code
-                      </label>
-                      <input
-                        type="text"
-                        value={cardZip}
-                        onChange={(e) => setCardZip(e.target.value)}
-                        placeholder="Postal code"
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0a7ae6] focus:outline-none focus:ring-1 focus:ring-[#0a7ae6]"
-                      />
-                    </div>
+                {/* Compact Razorpay Security Line */}
+                {paymentMethod === "razorpay" && (
+                  <div className="mt-2.5 flex items-center justify-between rounded-lg bg-blue-50/60 border border-blue-100 px-3 py-1.5 text-[10px] text-slate-600">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <CheckCircle2 className="size-3 text-emerald-600" />
+                      Instant UPI, Cards, NetBanking & Wallets
+                    </span>
+                    <span className="font-bold text-emerald-700">Zero Extra Fees</span>
                   </div>
                 )}
 
-                {/* Conditional Fields: UPI */}
-                {paymentMethod === "upi" && (
-                  <div className="space-y-3 rounded-2xl bg-white p-4 border border-slate-200/80 shadow-xs">
-                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1">
-                      Enter UPI ID / VPA <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={upiId}
-                      onChange={(e) => setUpiId(e.target.value)}
-                      placeholder="mobile-number@paytm / name@okhdfcbank"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#0a7ae6] focus:outline-none focus:ring-1 focus:ring-[#0a7ae6]"
-                    />
-                    <p className="text-[11px] text-slate-500">
-                      Supports Google Pay, PhonePe, Paytm, CRED & all UPI apps.
-                    </p>
+                {/* Compact Velocity EMI Information Line */}
+                {paymentMethod === "velocity" && (
+                  <div className="mt-2.5 flex items-center justify-between rounded-lg bg-sky-50/70 border border-sky-100 px-3 py-1.5 text-[10px] text-slate-600">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Sparkles className="size-3 text-[#0a7ae6]" />
+                      Instant digital approval • Pay in 3 or up to 12 months EMI
+                    </span>
+                    <span className="font-bold text-[#0a7ae6]">No Hidden Charges</span>
                   </div>
                 )}
 
-                {/* Conditional Fields: COD */}
+                {/* Compact COD Information Line */}
                 {paymentMethod === "cod" && (
-                  <div className="rounded-2xl bg-white p-4 border border-slate-200/80 text-xs text-slate-600 space-y-1.5 shadow-xs">
-                    <p className="font-semibold text-slate-900">Cash on Delivery Available</p>
-                    <p>Pay with cash or scan delivery QR code at the time of delivery.</p>
+                  <div className="mt-2.5 flex items-center justify-between rounded-lg bg-slate-50 border border-slate-200/80 px-3 py-1.5 text-[10px] text-slate-600">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Truck className="size-3 text-emerald-600" />
+                      Pay via Cash or delivery partner UPI QR
+                    </span>
+                    <span className="font-semibold text-slate-500">Doorstep</span>
                   </div>
                 )}
               </div>
@@ -1063,20 +1377,32 @@ function CheckoutContent() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0a7ae6] py-3.5 text-center text-sm font-semibold uppercase tracking-wider text-white shadow-lg shadow-[#0a7ae6]/25 transition-all hover:bg-[#086ac9] hover:shadow-xl active:scale-98 disabled:opacity-75 disabled:cursor-not-allowed"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0a7ae6] py-3.5 text-center text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-[#0a7ae6]/25 transition-all hover:bg-[#086ac9] hover:shadow-xl active:scale-98 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isSubmitting ? (
                   <div className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 ) : (
                   <>
                     <Lock className="size-4" />
-                    <span>Place order • ₹{total.toLocaleString("en-IN")}</span>
+                    <span>
+                      {paymentMethod === "razorpay"
+                        ? `Pay with Razorpay • ₹${total.toLocaleString("en-IN")}`
+                        : paymentMethod === "velocity"
+                        ? `Proceed to No-Cost EMI • ₹${total.toLocaleString("en-IN")}`
+                        : `Confirm COD Order • ₹${total.toLocaleString("en-IN")}`}
+                    </span>
                   </>
                 )}
               </button>
 
+              {paymentMethod !== "cod" && (
+                <p className="mt-2.5 text-center text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1">
+                  <ShieldCheck className="size-3 text-emerald-600" /> Secured by 256-Bit SSL • RBI & PCI-DSS Compliant
+                </p>
+              )}
+
               {/* Trust Badges */}
-              <div className="mt-6 grid grid-cols-3 gap-2 border-t border-slate-200/80 pt-4 text-center text-[10px] sm:text-[11px] text-slate-500">
+              <div className="mt-5 grid grid-cols-3 gap-2 border-t border-slate-200/80 pt-4 text-center text-[10px] sm:text-[11px] text-slate-500">
                 <div className="flex flex-col items-center">
                   <ShieldCheck className="size-4 text-slate-600 mb-1" />
                   <span>256-Bit SSL</span>
@@ -1094,6 +1420,128 @@ function CheckoutContent() {
           </div>
         </form>
       </main>
+
+      {/* ─── CASH ON DELIVERY OTP VERIFICATION MODAL (COMPACT & SLEEK) ───── */}
+      {isCodOtpModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-[390px] rounded-2xl bg-white p-5 sm:p-6 shadow-xl border border-slate-100 text-left space-y-4">
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsCodOtpModalOpen(false)}
+              className="absolute top-3.5 right-3.5 p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="size-4" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3 pr-6">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0a7ae6]">
+                <Smartphone className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 leading-tight">
+                  Verify COD Order
+                </h3>
+                <p className="text-[12px] text-slate-500 mt-0.5">
+                  Code sent to <span className="font-semibold text-slate-800">+91 {phone.replace(/[^0-9]/g, "")}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleVerifyAndConfirmCodOrder} className="space-y-3 pt-1">
+              <div>
+                <input
+                  type="text"
+                  maxLength={6}
+                  autoFocus
+                  value={codOtp}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    setCodOtp(val);
+                    setOtpError("");
+                  }}
+                  placeholder="• • • • • •"
+                  className="w-full text-center tracking-[0.4em] font-mono text-xl font-bold rounded-xl border border-slate-300 py-2.5 px-3 text-slate-900 focus:border-[#0a7ae6] focus:ring-2 focus:ring-[#0a7ae6]/15 outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-slate-300 placeholder:text-sm"
+                />
+              </div>
+
+              {otpError && (
+                <div className="rounded-lg bg-red-50 border border-red-200/80 px-3 py-1.5 text-[11px] text-red-600 flex items-center gap-1.5">
+                  <X className="size-3.5 shrink-0" />
+                  <span>{otpError}</span>
+                </div>
+              )}
+
+              {demoOtpHint && (
+                <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 text-[11px] text-emerald-800">
+                  <span>💡 Test OTP: <strong className="font-mono">{demoOtpHint}</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCodOtp(demoOtpHint);
+                      setOtpError("");
+                    }}
+                    className="font-bold text-emerald-700 underline hover:text-emerald-900 cursor-pointer"
+                  >
+                    Auto-Fill
+                  </button>
+                </div>
+              )}
+
+              {/* Resend OTP Row */}
+              <div className="flex items-center justify-between text-[11px] text-slate-500 px-0.5">
+                <span>Didn&apos;t get SMS?</span>
+                {otpCountdown > 0 ? (
+                  <span className="font-medium text-slate-400">
+                    Resend in {otpCountdown}s
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isSendingOtp}
+                    onClick={handleSendCodOtp}
+                    className="font-bold text-[#0a7ae6] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSendingOtp ? (
+                      <RefreshCw className="size-2.5 animate-spin" />
+                    ) : (
+                      "Resend Code"
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Submit & Cancel Buttons */}
+              <div className="pt-1 space-y-2">
+                <button
+                  type="submit"
+                  disabled={isVerifyingOtp || isSubmitting || codOtp.length < 6}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#0a7ae6] py-3 text-center text-xs sm:text-sm font-bold uppercase tracking-wider text-white shadow-md shadow-[#0a7ae6]/20 transition-all hover:bg-[#086ac9] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isVerifyingOtp || isSubmitting ? (
+                    <div className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="size-4" />
+                      <span>Confirm COD Order • ₹{total.toLocaleString("en-IN")}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCodOtpModalOpen(false)}
+                  className="w-full text-center text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                >
+                  Change Mobile Number / Details
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

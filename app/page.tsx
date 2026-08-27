@@ -17,6 +17,7 @@ import * as productsController from "@/lib/server/controllers/products.controlle
 import * as categoriesController from "@/lib/server/controllers/categories.controller";
 import * as dealOfTheDayController from "@/lib/server/controllers/deal-of-the-day.controller";
 import * as brandShowcaseController from "@/lib/server/controllers/brand-showcase.controller";
+import * as brandMarqueeController from "@/lib/server/controllers/brand-marquee.controller";
 import { defaultDealOfTheDay } from "@/lib/shared/default-deal-of-the-day";
 import { resolveCategoryImage } from "@/lib/shared/category-utils";
 
@@ -126,8 +127,6 @@ export default async function Home() {
     // The home page remains available while the deal is not configured.
   }
 
-  let brandShowcaseItems: any[] = [];
-
   try {
     const categories = await categoriesController.listCategories();
     storefrontCategories = categories
@@ -146,8 +145,17 @@ export default async function Home() {
     // Keep the rest of the home page available if the category catalog is unavailable.
   }
 
+  let brandShowcaseItems: any[] = [];
+  let brandMarqueeItems: any[] = [];
+
   try {
     brandShowcaseItems = await brandShowcaseController.listBrandShowcaseItems(true);
+  } catch {
+    // Falls back to default items
+  }
+
+  try {
+    brandMarqueeItems = await brandMarqueeController.listBrandMarqueeItems(true);
   } catch {
     // Falls back to default items
   }
@@ -162,7 +170,7 @@ export default async function Home() {
       {dealOfTheDay ? <DealOfTheDaySection deal={dealOfTheDay} /> : null}
       <BrandSetupSection items={brandShowcaseItems} />
       <CreatorVideosSection />
-      <BrandMarqueeSection />
+      <BrandMarqueeSection items={brandMarqueeItems} />
       <VerifiedReviewsSection />
       <FaqSection />
       <BlogSection />

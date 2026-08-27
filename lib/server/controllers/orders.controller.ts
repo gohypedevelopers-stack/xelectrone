@@ -104,10 +104,11 @@ export async function createOrder(data: ordersDal.CreateOrderInput) {
       ? data.total
       : calculatedSubtotal;
 
-  // Generate realistic initial shipping & tracking info if not provided
+  // Fetch live Delhivery Waybill if not provided
+  const { fetchDelhiveryWaybill, getDelhiveryTrackingUrl } = await import("@/lib/server/delhivery");
   const carrier = data.shippingCarrier || "Delhivery Express";
-  const awbNumber = data.trackingNumber || `DEL-${Math.floor(10000000 + Math.random() * 90000000)}`;
-  const trackUrl = data.trackingUrl || `https://www.delhivery.com/track/package/${awbNumber}`;
+  const awbNumber = data.trackingNumber || (await fetchDelhiveryWaybill());
+  const trackUrl = data.trackingUrl || getDelhiveryTrackingUrl(awbNumber);
 
   // Estimate delivery in 3 to 4 business days
   const deliveryDate = new Date();
