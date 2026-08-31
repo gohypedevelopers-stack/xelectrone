@@ -58,3 +58,59 @@ export async function updateCategory(
 export async function deleteCategory(id: string) {
   return db.category.delete({ where: { id } });
 }
+
+export async function deleteCategories(ids: string[], reassignProductsToId?: string) {
+  return db.$transaction(async (transaction: Prisma.TransactionClient) => {
+    const categories = await transaction.category.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        title: true,
+        _count: { select: { products: true } },
+        children: { select: { id: true } },
+      },
+    });
+
+    if (categories.length !== ids.length) {
+      throw new Error("One or more selected categories no longer exist.");
+    }
+
+    const productsMoved = categories.reduce((total, category) => total + category._count.products, 0);
+
+    if (productsMoved > 0) {
+      const destinationCategory = reassignProductsToId
+        ? await transaction.category.findUnique({
+            where: { id: reassignProductsToId },
+            select: { id: true, title: true },
+          })
+        : await transaction.category.findFirst({
+            where: { id: { notIn: ids } },
+            select: { id: true, title: true },
+            orderBy: { title: "asc" },
+          });
+
+      if (!destinationCategory || ids.includes(destinationCategory.id)) {
+        throw new Error("Keep one category available to receive the linked products.");
+      }
+
+      await transaction.product.updateMany({
+        where: { categoryId: { in: ids } },
+        data: { categoryId: destinationCategory.id },
+      });
+    }
+
+    const childCategoryIds = categories
+      .flatMap((category) => category.children.map((child) => child.id))
+      .filter((childId) => !ids.includes(childId));
+
+    if (childCategoryIds.length > 0) {
+      await transaction.category.updateMany({
+        where: { id: { in: childCategoryIds } },
+        data: { parentId: null },
+      });
+    }
+
+    const deletion = await transaction.category.deleteMany({ where: { id: { in: ids } } });
+    return { deleted: deletion.count, productsMoved, childrenPromoted: childCategoryIds.length };
+  });
+}

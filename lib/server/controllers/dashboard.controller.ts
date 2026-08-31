@@ -167,8 +167,10 @@ export async function getDashboardOverview(rangeParam: string = "last30") {
       };
     });
   } else {
-    const diffDays = Math.max(1, Math.round((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)));
-    const step = diffDays <= 7 ? 1 : diffDays <= 14 ? 2 : Math.ceil(diffDays / 10);
+    // Keep a point for every calendar day. The previous three-day sampling
+    // labelled the final 27–29 Aug bucket as "27 Aug", which looked as if the
+    // dashboard was behind. Daily data preserves today's date and sales.
+    const step = 1;
     const points: Date[] = [];
     const curr = new Date(fromDate);
     while (curr <= toDate) {

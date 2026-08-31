@@ -25,12 +25,14 @@ import {
   StarIcon,
   BookOpen,
   Layers,
+  Megaphone,
   Sparkles,
 } from "lucide-react"
 
 const routeIcons: Record<string, React.ReactNode> = {
   Home: <HomeIcon className="size-4 shrink-0" />,
   Banners: <ImageIcon className="size-4 shrink-0" />,
+  Announcements: <Megaphone className="size-4 shrink-0" />,
   "Brand Showcase": <Layers className="size-4 shrink-0" />,
   "Brand Platforms": <Sparkles className="size-4 shrink-0" />,
   "Creator Videos": <VideoIcon className="size-4 shrink-0" />,

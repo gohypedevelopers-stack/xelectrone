@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import {
   CartesianGrid,
   Line,
@@ -52,7 +52,6 @@ function formatOrderStatus(status: string) {
 
 export function AdminOverview({ data }: { data: DashboardData }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   const [currentData, setCurrentData] = useState<DashboardData>(data)
   const [isLoading, setIsLoading] = useState(false)
@@ -64,10 +63,6 @@ export function AdminOverview({ data }: { data: DashboardData }) {
   const [customUnit, setCustomUnit] = useState("Days")
 
   const rangeLabel = currentData.rangeLabel || "Last 30 days"
-
-  useEffect(() => {
-    setCurrentData(data)
-  }, [data])
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening"
@@ -253,6 +248,7 @@ export function AdminOverview({ data }: { data: DashboardData }) {
               <CartesianGrid stroke="#e5e5e5" vertical={false} />
               <XAxis
                 dataKey="date"
+                interval="preserveStartEnd"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "#737373", fontSize: 11 }}

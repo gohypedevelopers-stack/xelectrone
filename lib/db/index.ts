@@ -36,6 +36,8 @@ function getDbInstance(): PrismaClient {
   if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma) {
     if (
       typeof (globalForPrisma.prisma as any).heroBanner === "undefined" ||
+      typeof (globalForPrisma.prisma as any).announcement === "undefined" ||
+      typeof (globalForPrisma.prisma as any).announcementSettings === "undefined" ||
       typeof (globalForPrisma.prisma as any).creatorVideo === "undefined" ||
       typeof (globalForPrisma.prisma as any).productFaq === "undefined" ||
       typeof (globalForPrisma.prisma as any).productBanner === "undefined" ||

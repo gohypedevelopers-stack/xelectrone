@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -107,16 +108,15 @@ export default function BlogSection() {
               >
                 {/* Image */}
                 <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-                  <img
+                  <Image
                     src={post.image || "/blog-1.png"}
                     alt={post.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                   {/* Category badge */}
-                  <span
-                    className="absolute top-3 left-3 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-md"
-                    style={{ backgroundColor: post.accentColor || post.accent || "#0a7ae6" }}
-                  >
+                  <span className="absolute top-3 left-3 rounded-full bg-[#0a7ae6] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-md">
                     {post.category}
                   </span>
                 </div>

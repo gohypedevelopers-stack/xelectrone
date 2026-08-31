@@ -219,6 +219,7 @@ export async function sendOrderConfirmationEmail(order: {
   customerName?: string | null;
   customerEmail?: string | null;
   total: number;
+  shippingCarrier?: string | null;
   trackingNumber?: string | null;
   trackingUrl?: string | null;
   estimatedDelivery?: string | null;
@@ -264,7 +265,7 @@ export async function sendOrderConfirmationEmail(order: {
             <div class="hero-section">
               <span class="badge">✓ Order Confirmed</span>
               <h2 class="headline">Thank you for your order!</h2>
-              <p style="color: #64748b; font-size: 14px; margin: 0;">Hi ${order.customerName || "Valued Customer"}, your order has been received and is being prepared for fulfillment with <strong>Delhivery Express</strong>.</p>
+              <p style="color: #64748b; font-size: 14px; margin: 0;">Hi ${order.customerName || "Valued Customer"}, your order has been received and is being prepared for fulfillment. We will share courier details when your shipment is ready.</p>
             </div>
 
             <div class="details-card">
@@ -277,10 +278,16 @@ export async function sendOrderConfirmationEmail(order: {
                   <td style="padding: 8px 0; color: #64748b; font-size: 13px; font-weight: 600;">Total Amount</td>
                   <td style="padding: 8px 0; color: #0a7ae6; font-size: 14px; font-weight: 800; text-align: right;">${formattedTotal}</td>
                 </tr>
+                ${
+                  order.shippingCarrier
+                    ? `
                 <tr style="border-bottom: 1px solid #e2e8f0;">
                   <td style="padding: 8px 0; color: #64748b; font-size: 13px; font-weight: 600;">Carrier Partner</td>
-                  <td style="padding: 8px 0; color: #0f172a; font-size: 13px; font-weight: 700; text-align: right;">Delhivery Express</td>
+                  <td style="padding: 8px 0; color: #0f172a; font-size: 13px; font-weight: 700; text-align: right;">${order.shippingCarrier}</td>
                 </tr>
+                `
+                    : ""
+                }
                 ${
                   order.trackingNumber
                     ? `
@@ -304,11 +311,17 @@ export async function sendOrderConfirmationEmail(order: {
               </table>
             </div>
 
+            ${
+              order.trackingNumber && order.trackingUrl
+                ? `
             <div class="cta-wrapper">
-              <a href="${order.trackingUrl || `https://track.delhivery.com/p/${order.trackingNumber || ""}`}" class="cta-btn" target="_blank">
+              <a href="${order.trackingUrl}" class="cta-btn" target="_blank">
                 Track Shipment on Delhivery →
               </a>
             </div>
+            `
+                : ""
+            }
 
             <div class="footer">
               <p style="margin: 0 0 6px 0;"><strong>XElectron Technologies Pvt. Ltd.</strong></p>

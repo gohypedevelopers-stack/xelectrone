@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   ChevronDown,
   ChevronRight,
@@ -30,67 +29,119 @@ import { dropdownItems } from "@/components/home/content";
 import { useCart } from "@/components/providers/cart-provider";
 import { formatINR } from "@/lib/format-price";
 
-function TopAnnouncementBar() {
-  const announcements = [
-    {
-      prefix: "Just ordered?",
-      action: "Track your order here →",
-      href: "/orders",
-    },
-    {
-      prefix: "Bought it?",
-      action: "Register your warranty →",
-      href: "/warranty",
-    },
-    {
-      prefix: "Need help?",
-      action: "Visit our Support Hub →",
-      href: "/contact",
-    },
-  ];
+type Announcement = {
+  id: string;
+  prefix: string | null;
+  action: string;
+  href: string;
+  discountCode?: string | null;
+};
 
+function AnnouncementTickerMessages({ items, clone = false }: { items: Announcement[]; clone?: boolean }) {
+  const repeatCount = Math.max(4, Math.ceil(8 / items.length));
+
+  return (
+    <div className="announcement-ticker-group" aria-hidden={clone || undefined}>
+      {Array.from({ length: repeatCount }, (_, repeatIndex) => (
+        <div key={`${clone ? "clone-" : ""}repeat-${repeatIndex}`} className="announcement-ticker-sequence" aria-hidden={clone || repeatIndex > 0 || undefined}>
+          {items.map((item, idx) => (
+            <div key={item.id} className="flex items-center gap-4 lg:gap-7">
+              <Link
+                href={item.href}
+                tabIndex={clone || repeatIndex > 0 ? -1 : undefined}
+                className="inline-flex items-center gap-1 text-white hover:text-white/90 transition-opacity group"
+              >
+                {item.prefix && <span className="opacity-95">{item.prefix}</span>}
+                <strong className="font-bold underline decoration-white/50 underline-offset-2 group-hover:decoration-white">
+                  {item.action}
+                </strong>
+                {item.discountCode && <span className="rounded border border-white/35 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide">CODE: {item.discountCode}</span>}
+              </Link>
+              {idx < items.length - 1 && <span className="text-white/40 select-none text-[11px]">|</span>}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TopAnnouncementBar() {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [tickerEnabled, setTickerEnabled] = useState(true);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const items = announcements;
 
   useEffect(() => {
+    let active = true;
+
+    async function loadAnnouncements() {
+      try {
+        const response = await fetch("/api/announcements", { cache: "no-store" });
+        const json = await response.json();
+        if (active && response.ok && json.success && Array.isArray(json.data)) {
+          setAnnouncements(json.data);
+          setTickerEnabled(json.tickerEnabled !== false);
+        }
+      } catch {
+        // Keep the bar hidden if store announcements cannot be loaded.
+      }
+    }
+
+    void loadAnnouncements();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (items.length < 2) return;
     const timer = setInterval(() => {
-      setCurrentIdx((prev) => (prev + 1) % announcements.length);
+      setCurrentIdx((prev) => (prev + 1) % items.length);
     }, 3500);
     return () => clearInterval(timer);
-  }, [announcements.length]);
+  }, [items.length]);
+
+  if (items.length === 0) return null;
+  const currentAnnouncement = items[currentIdx % items.length];
 
   return (
     <div className="w-full bg-[#0a7ae6] text-white text-[11px] sm:text-xs font-normal tracking-tight sm:tracking-normal">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-1.5 sm:py-2">
-        {/* Desktop View: All items centered with vertical dividers */}
-        <div className="hidden md:flex items-center justify-center gap-4 lg:gap-7">
-          {announcements.map((item, idx) => (
-            <div key={item.href} className="flex items-center gap-4 lg:gap-7">
-              <Link
-                href={item.href}
-                className="inline-flex items-center gap-1 text-white hover:text-white/90 transition-opacity group"
-              >
-                <span className="opacity-95">{item.prefix}</span>
-                <strong className="font-bold underline decoration-white/50 underline-offset-2 group-hover:decoration-white">
-                  {item.action}
-                </strong>
-              </Link>
-              {idx < announcements.length - 1 && (
-                <span className="text-white/40 select-none text-[11px]">|</span>
-              )}
+        {/* Desktop: animate only when enabled; a stopped ribbon uses a centered static layout. */}
+        {tickerEnabled ? (
+          <div className="announcement-ticker hidden md:block">
+            <div className="announcement-ticker-track">
+              <AnnouncementTickerMessages items={items} />
+              <AnnouncementTickerMessages items={items} clone />
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="hidden min-h-5 flex-wrap items-center justify-center gap-x-6 gap-y-1.5 text-center md:flex">
+            {items.map((item, idx) => (
+              <div key={item.id} className="inline-flex items-center gap-2.5">
+                <Link href={item.href} className="inline-flex items-center gap-1 text-white hover:text-white/90 hover:underline">
+                  {item.prefix && <span className="opacity-95">{item.prefix}</span>}
+                  <strong className="font-bold underline decoration-white/50 underline-offset-2">{item.action}</strong>
+                  {item.discountCode && <span className="rounded border border-white/35 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide">CODE: {item.discountCode}</span>}
+                </Link>
+                {idx < items.length - 1 && <span className="text-white/40 select-none text-[11px]">|</span>}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Mobile View: Rotating single line ticker */}
         <div className="flex md:hidden items-center justify-center text-center">
           <Link
-            href={announcements[currentIdx].href}
+            href={currentAnnouncement.href}
             className="inline-flex items-center gap-1 text-white hover:underline transition-all duration-300"
           >
-            <span className="opacity-95">{announcements[currentIdx].prefix}</span>
+            {currentAnnouncement.prefix && <span className="opacity-95">{currentAnnouncement.prefix}</span>}
             <strong className="font-bold underline decoration-white/50 underline-offset-2">
-              {announcements[currentIdx].action}
+              {currentAnnouncement.action}
             </strong>
+            {currentAnnouncement.discountCode && <span className="rounded border border-white/35 bg-white/10 px-1 py-0.5 font-mono text-[9px] font-bold tracking-wide">{currentAnnouncement.discountCode}</span>}
           </Link>
         </div>
       </div>
@@ -311,10 +362,6 @@ export default function Navbar() {
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string; role: string } | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  const pathname = usePathname();
-  const isHome = pathname === "/";
-  const [isScrolled, setIsScrolled] = useState(false);
-
   useEffect(() => {
     let isMounted = true;
     fetch("/api/auth/me")
@@ -480,18 +527,6 @@ export default function Navbar() {
     };
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
   // Prevent background scrolling when mobile menu, cart, wishlist, or search drawer is open
   useEffect(() => {
     const shouldLockPage = mobileOpen || isCartOpen || isWishlistOpen || isSearchDrawerOpen;
@@ -548,8 +583,6 @@ export default function Navbar() {
     return (Date.parse(right.createdAt || "") || 0) - (Date.parse(left.createdAt || "") || 0);
     })
     .slice(0, 2);
-
-  const isTransparent = isHome && !isScrolled && !openMenu && !mobileOpen;
 
   return (
     <>
@@ -771,25 +804,36 @@ export default function Navbar() {
                     </div>
 
                     {/* Column 2: Categories */}
-                    <div className="col-span-4 pr-6 space-y-3">
-                      <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-                        CATEGORIES
-                      </h4>
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                    <div className="col-span-4 border-x border-slate-100 px-6">
+                      <div className="mb-3 flex items-center justify-between">
+                        <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                          CATEGORIES
+                        </h4>
+                        <Link
+                          href="/shop"
+                          onClick={() => setOpenMenu(null)}
+                          className="group inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#0a7ae6] transition-colors hover:text-slate-900"
+                        >
+                          Shop all
+                          <ChevronRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+                        </Link>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
                         {storeCategories.map((category) => (
                           <Link
                             key={category.id}
                             href={`/shop?filter=${encodeURIComponent(category.slug)}`}
                             onClick={() => setOpenMenu(null)}
-                            className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600 hover:bg-slate-50 hover:text-[#0a7ae6] transition-all duration-200"
+                            className="group flex min-h-12 items-center justify-between rounded-lg border border-slate-100 bg-slate-50/70 px-3 text-xs font-bold uppercase tracking-[0.08em] text-slate-700 shadow-[inset_3px_0_0_transparent] transition-all duration-200 hover:border-[#0a7ae6]/20 hover:bg-[#eff7ff] hover:text-[#0a7ae6] hover:shadow-[inset_3px_0_0_#0a7ae6]"
                           >
-                            <span className="group-hover:translate-x-0.5 transition-transform">
+                            <span className="pr-2 transition-transform duration-200 group-hover:translate-x-0.5">
                               {category.title}
                             </span>
+                            <ChevronRight className="size-3.5 shrink-0 text-slate-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#0a7ae6]" />
                           </Link>
                         ))}
                         {areStoreCategoriesLoaded && storeCategories.length === 0 ? (
-                          <p className="col-span-2 px-3 py-2 text-xs text-slate-400">
+                          <p className="col-span-2 rounded-lg border border-dashed border-slate-200 px-3 py-5 text-center text-xs text-slate-400">
                             No categories available
                           </p>
                         ) : null}
@@ -798,7 +842,7 @@ export default function Navbar() {
 
                     {/* Column 3: current dashboard products */}
                     <div className="col-span-5 grid grid-cols-2 gap-4">
-                      {menuFeaturedProducts.map((product, index) => (
+                      {menuFeaturedProducts.map((product) => (
                         <Link
                           key={product.id}
                           href={`/product/${product.slug}`}

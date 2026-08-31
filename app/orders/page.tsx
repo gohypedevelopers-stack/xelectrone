@@ -14,13 +14,11 @@ import {
   User,
   ArrowLeft,
   ShoppingBag,
-  ExternalLink,
   Copy,
   Check,
   Search,
   MapPin,
   Calendar,
-  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -87,8 +85,10 @@ function OrdersContent() {
     }
 
     fetchOrders();
+    const refreshId = window.setInterval(fetchOrders, 15_000);
     return () => {
       isMounted = false;
+      window.clearInterval(refreshId);
     };
   }, []);
 
@@ -132,18 +132,6 @@ function OrdersContent() {
           </span>
         );
     }
-  };
-
-  const getTrackingSteps = (status: string) => {
-    const s = status?.toUpperCase() || "PENDING";
-    const steps = [
-      { key: "PLACED", label: "Order Placed", done: true },
-      { key: "CONFIRMED", label: "Confirmed", done: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"].includes(s) },
-      { key: "PROCESSING", label: "Packing", done: ["PROCESSING", "SHIPPED", "DELIVERED"].includes(s) },
-      { key: "SHIPPED", label: "In Transit", done: ["SHIPPED", "DELIVERED"].includes(s) },
-      { key: "DELIVERED", label: "Delivered", done: s === "DELIVERED" },
-    ];
-    return steps;
   };
 
   if (loading) {
@@ -241,15 +229,11 @@ function OrdersContent() {
                 year: "numeric",
               });
 
-              const cleanAwb = (order.trackingNumber || "").replace(/[^0-9]/g, "");
-              const awb = order.trackingNumber || "";
-              const carrier = order.shippingCarrier || "Delhivery Express";
-              const trackUrl = cleanAwb
-                ? `https://track.delhivery.com/p/${cleanAwb}`
-                : "https://www.delhivery.com/tracking";
-              const estDelivery = order.estimatedDelivery || "3 - 4 Business Days";
-              const steps = getTrackingSteps(order.status);
-
+              const awb = order.trackingNumber?.trim() || "";
+              const hasTracking = Boolean(awb);
+              const carrier = order.shippingCarrier?.trim() || "Courier partner";
+              const estDelivery = order.estimatedDelivery?.trim() || "";
+              const deliveryStatusUrl = `/orders/${order.id}/tracking`;
               return (
                 <div
                   key={order.id}
@@ -277,47 +261,64 @@ function OrdersContent() {
                   <div className="bg-blue-50/40 border-b border-slate-100 p-5 sm:p-6 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Truck className="size-4 text-[#0a7ae6]" />
-                          <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                            Fulfillment Courier: {carrier}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-600">
-                          <span>AWB / Tracking No:</span>
-                          <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
-                            {awb}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyAwb(awb)}
-                            className="p-1 text-slate-400 hover:text-slate-900 transition-colors"
-                            title="Copy AWB number"
-                          >
-                            {copiedAwb === awb ? (
-                              <Check className="size-3.5 text-emerald-600" />
-                            ) : (
-                              <Copy className="size-3.5" />
-                            )}
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium pt-0.5">
-                          <Calendar className="size-3.5" />
-                          <span>Estimated Delivery: {estDelivery}</span>
-                        </div>
+                        {hasTracking ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Truck className="size-4 text-[#0a7ae6]" />
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                                Fulfillment Courier: {carrier}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                              <span>AWB / Tracking No:</span>
+                              <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                {awb}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyAwb(awb)}
+                                className="p-1 text-slate-400 hover:text-slate-900 transition-colors"
+                                title="Copy AWB number"
+                              >
+                                {copiedAwb === awb ? (
+                                  <Check className="size-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="size-3.5" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-medium pt-0.5">
+                              <Calendar className="size-3.5" />
+                              <span>
+                                {estDelivery
+                                  ? `Estimated Delivery: ${estDelivery}`
+                                  : "Tracking updates will appear after the courier's first scan."}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Package className="size-4 text-amber-600" />
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                                Shipment preparation
+                              </span>
+                            </div>
+                            <p className="max-w-lg text-xs leading-5 text-slate-600">
+                              Your tracking number will appear here as soon as our team prepares your shipment.
+                            </p>
+                          </>
+                        )}
                       </div>
 
-                      {/* Live Tracking Link */}
-                      <div>
-                        <a
-                          href={trackUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                      {hasTracking && (
+                        <Link
+                          href={deliveryStatusUrl}
                           className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0a7ae6] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#086ac9] transition-all"
                         >
-                          <ExternalLink className="size-3.5" /> Track Shipment
-                        </a>
-                      </div>
+                          <Search className="size-3.5" /> View Delivery Status
+                        </Link>
+                      )}
                     </div>
 
                     {/* Visual 5-Step Tracker */}

@@ -4,6 +4,16 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   ChevronsUpDown,
   Columns3,
   FolderTree,
@@ -12,6 +22,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Switch } from "@/components/ui/switch"
 
@@ -29,6 +40,8 @@ export function CategoryManager({ initialCategories = [] }: { initialCategories?
   const [categories, setCategories] = useState<ManagedCategory[]>(() => initialCategories ?? [])
   const [query, setQuery] = useState("")
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const selectAllRef = useRef<HTMLInputElement>(null)
   const categoryList = categories ?? []
   const visibleCategories = categoryList.filter((category) =>
@@ -36,6 +49,14 @@ export function CategoryManager({ initialCategories = [] }: { initialCategories?
   )
   const allVisibleSelected = visibleCategories.length > 0 && visibleCategories.every((category) => selectedCategoryIds.includes(category.id))
   const someVisibleSelected = visibleCategories.some((category) => selectedCategoryIds.includes(category.id))
+  const selectedCategories = categoryList.filter((category) => selectedCategoryIds.includes(category.id))
+  const selectedProductCount = selectedCategories.reduce((total, category) => total + category.productCount, 0)
+  const childCategoriesToPromote = categoryList.filter((category) =>
+    category.parentId !== null && selectedCategoryIds.includes(category.parentId) && !selectedCategoryIds.includes(category.id)
+  )
+  const destinationCategories = categoryList.filter((category) => !selectedCategoryIds.includes(category.id))
+  const needsProductDestination = selectedProductCount > 0
+  const canBulkDelete = selectedCategoryIds.length > 0 && (!needsProductDestination || destinationCategories.length > 0)
   const parentTitle = (parentId: string | null) =>
     categoryList.find((category) => category.id === parentId)?.title ?? "—"
 
@@ -88,6 +109,40 @@ export function CategoryManager({ initialCategories = [] }: { initialCategories?
     }
   }
 
+  async function deleteSelectedCategories() {
+    if (selectedCategoryIds.length === 0) return
+    if (!canBulkDelete) {
+      toast.error("Keep one category available to receive the linked products.")
+      return
+    }
+
+    setIsBulkDeleting(true)
+    try {
+      const response = await fetch("/api/categories/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedCategoryIds }),
+      })
+      const result = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(result?.error ?? "Could not delete the selected categories.")
+      }
+
+      const deletedIds = new Set(selectedCategoryIds)
+      setCategories((current) => current.filter((category) => !deletedIds.has(category.id)))
+      setSelectedCategoryIds([])
+      setBulkDeleteOpen(false)
+      toast.success(
+        `${result?.deleted ?? deletedIds.size} categor${(result?.deleted ?? deletedIds.size) === 1 ? "y" : "ies"} deleted${result?.productsMoved ? ` and ${result.productsMoved} product${result.productsMoved === 1 ? "" : "s"} moved` : ""}`
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete the selected categories.")
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
+
   return (
     <main className="min-h-full flex-1 bg-[#f5f5f5] p-4 text-black sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -129,6 +184,40 @@ export function CategoryManager({ initialCategories = [] }: { initialCategories?
           </button>
         </div>
 
+        {selectedCategoryIds.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 bg-blue-50/70 px-4 py-2.5">
+            <div>
+              <p className="text-xs font-medium text-[#0c3152]">
+                {selectedCategoryIds.length} categor{selectedCategoryIds.length === 1 ? "y" : "ies"} selected
+              </p>
+              {needsProductDestination ? (
+                <p className="mt-0.5 text-[11px] text-[#76571a]">
+                  {selectedProductCount} product{selectedProductCount === 1 ? "" : "s"} will be moved to an available category automatically.
+                </p>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryIds([])}
+                className="rounded-md px-2.5 py-1.5 text-xs font-medium text-[#0c3152] transition hover:bg-blue-100"
+              >
+                Clear selection
+              </button>
+              <button
+                type="button"
+                onClick={() => canBulkDelete && setBulkDeleteOpen(true)}
+                disabled={!canBulkDelete}
+                title={!canBulkDelete ? "Keep at least one category to receive the selected products" : undefined}
+                className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+              >
+                <Trash2 className="size-3.5" />
+                {canBulkDelete ? "Delete selected" : "Keep one category"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px] border-collapse text-left text-xs">
             <thead className="bg-black/[0.025] text-black/65">
@@ -166,6 +255,27 @@ export function CategoryManager({ initialCategories = [] }: { initialCategories?
         </div>
         {visibleCategories.length === 0 ? <p className="px-4 py-12 text-center text-sm text-black/55">No categories match your search.</p> : null}
       </section>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete selected categories?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedCategoryIds.length} selected categor{selectedCategoryIds.length === 1 ? "y" : "ies"}.{needsProductDestination ? ` ${selectedProductCount} linked product${selectedProductCount === 1 ? " will" : "s will"} be kept and moved automatically.` : ""}{childCategoriesToPromote.length > 0 ? ` ${childCategoriesToPromote.length} child categor${childCategoriesToPromote.length === 1 ? "y will" : "ies will"} become top-level.` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void deleteSelectedCategories()}
+              disabled={isBulkDeleting}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {isBulkDeleting ? "Deleting…" : "Delete categories"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   )
 }

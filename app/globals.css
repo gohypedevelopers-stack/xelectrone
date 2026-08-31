@@ -172,3 +172,54 @@ html.lenis body {
 .lenis.lenis-smooth iframe {
   pointer-events: none;
 }
+
+/* Store offers move as one continuous ribbon; hover or keyboard focus pauses it. */
+@keyframes announcement-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.announcement-ticker {
+  overflow: hidden;
+}
+
+.announcement-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: announcement-ticker-scroll 38s linear infinite;
+  will-change: transform;
+}
+
+.announcement-ticker-track.is-stopped {
+  animation: none;
+}
+
+.announcement-ticker-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: clamp(3.5rem, 6vw, 7rem);
+  padding-right: clamp(3.5rem, 6vw, 7rem);
+}
+
+.announcement-ticker-sequence {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 1rem;
+}
+
+.announcement-ticker:hover .announcement-ticker-track,
+.announcement-ticker:focus-within .announcement-ticker-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcement-ticker-track {
+    animation: none;
+  }
+}

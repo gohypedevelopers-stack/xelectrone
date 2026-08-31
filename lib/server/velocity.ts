@@ -45,16 +45,65 @@ export interface VelocityOrderResponse {
   customer: VelocityCustomer;
   order_details: VelocityOrderDetails;
   notes?: string;
-  payments: any[];
+  payments: unknown[];
   status: string;
   created_at: string;
+}
+
+export interface VelocityOrderSession {
+  session_uuid: string;
+  order_uuid: string;
+  status: "created" | "processing" | "success" | "failed";
+  kfs_url?: string;
+  error?: {
+    reason?: string;
+    code?: string;
+    step?: string;
+    description?: string;
+    source?: string;
+  };
+}
+
+type JsonRecord = Record<string, unknown>;
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function extractVelocityOrderResponse(value: unknown): VelocityOrderResponse | null {
+  if (!isJsonRecord(value)) return null;
+
+  const candidates: unknown[] = [
+    value,
+    value.data,
+    value.order,
+    isJsonRecord(value.data) ? value.data.order : undefined,
+  ];
+
+  for (const candidate of candidates) {
+    if (
+      isJsonRecord(candidate) &&
+      typeof candidate.velocity_order_id === "string" &&
+      candidate.velocity_order_id.trim()
+    ) {
+      return candidate as unknown as VelocityOrderResponse;
+    }
+  }
+
+  return null;
 }
 
 export function getVelocityConfig() {
   const isProd = process.env.VELOCITY_ENVIRONMENT === "production";
   const apiKey = process.env.VELOCITY_API_KEY || "";
   const apiSecret = process.env.VELOCITY_API_SECRET || "";
-  const merchantId = process.env.VELOCITY_MERCHANT_ID || "";
+  const publicApiKey = process.env.VELOCITY_PUBLIC_API_KEY || apiKey;
+  const configuredMerchantId = process.env.VELOCITY_MERCHANT_ID || "";
+  // A webhook endpoint was mistakenly configured as the merchant ID. Merchant
+  // IDs are issued by Velocity and must not be URLs.
+  const merchantId = /^https?:\/\//i.test(configuredMerchantId)
+    ? ""
+    : configuredMerchantId;
   const webhookSecret = process.env.VELOCITY_WEBHOOK_SECRET || "";
 
   const apiBaseUrl = isProd
@@ -69,10 +118,43 @@ export function getVelocityConfig() {
     isProd,
     apiKey,
     apiSecret,
+    publicApiKey,
     merchantId,
     webhookSecret,
     apiBaseUrl,
     checkoutBaseUrl,
+  };
+}
+
+function requireVelocityConfig() {
+  const config = getVelocityConfig();
+  if (
+    !config.apiKey ||
+    !config.apiSecret ||
+    !config.merchantId ||
+    !config.webhookSecret
+  ) {
+    throw new Error(
+      "Velocity payment is not configured. Set VELOCITY_API_KEY, VELOCITY_API_SECRET, VELOCITY_MERCHANT_ID (the merchant code), and VELOCITY_WEBHOOK_SECRET."
+    );
+  }
+  return config;
+}
+
+/** Validates all credentials required for a secure Velocity checkout. */
+export function assertVelocityConfig() {
+  return requireVelocityConfig();
+}
+
+function velocityHeaders(config: ReturnType<typeof getVelocityConfig>) {
+  const authHeader = `Basic ${Buffer.from(
+    `${config.apiKey}:${config.apiSecret}`
+  ).toString("base64")}`;
+
+  return {
+    Authorization: authHeader,
+    "X-Merchant-ID": config.merchantId,
+    "Content-Type": "application/json",
   };
 }
 
@@ -82,42 +164,49 @@ export function getVelocityConfig() {
 export async function createVelocityOrder(
   payload: CreateVelocityOrderPayload
 ): Promise<VelocityOrderResponse> {
-  const config = getVelocityConfig();
-
-  if (!config.apiKey || !config.apiSecret || !config.merchantId) {
-    // In dev / test mode without configured credentials, provide a mock response for simulation
-    if (process.env.NODE_ENV !== "production") {
-      const mockVelId = `vel_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-      return {
-        velocity_order_id: mockVelId,
-        order_id: payload.order_id,
-        customer: payload.customer,
-        order_details: payload.order_details,
-        notes: payload.notes,
-        payments: [],
-        status: "created",
-        created_at: new Date().toISOString(),
-      };
-    }
-    throw new Error(
-      "Velocity credentials (VELOCITY_API_KEY, VELOCITY_API_SECRET, VELOCITY_MERCHANT_ID) are missing."
-    );
-  }
-
-  const authHeader = `Basic ${Buffer.from(
-    `${config.apiKey}:${config.apiSecret}`
-  ).toString("base64")}`;
+  const config = requireVelocityConfig();
 
   const res = await fetch(`${config.apiBaseUrl}/merchant/api/orders`, {
     method: "POST",
-    headers: {
-      Authorization: authHeader,
-      "X-Merchant-ID": config.merchantId,
-      "Content-Type": "application/json",
-    },
+    headers: velocityHeaders(config),
     body: JSON.stringify(payload),
   });
 
+  const data: unknown = await res.json();
+
+  if (!res.ok || !data) {
+    const response = isJsonRecord(data) ? data : {};
+    const errorMsg =
+      (typeof response.message === "string" && response.message) ||
+      (typeof response.error === "string" && response.error) ||
+      `Velocity API error (Status: ${res.status})`;
+    throw new Error(errorMsg);
+  }
+
+  const order = extractVelocityOrderResponse(data);
+  if (!order) {
+    console.error("Velocity order response did not include velocity_order_id", {
+      keys: isJsonRecord(data) ? Object.keys(data) : [],
+      nestedDataKeys: isJsonRecord(data) && isJsonRecord(data.data) ? Object.keys(data.data) : [],
+    });
+    throw new Error("Velocity returned an order response without a velocity_order_id.");
+  }
+
+  return order;
+}
+
+/** Fetches all payment attempts for a Velocity order. */
+export async function getVelocityOrderSessions(
+  velocityOrderId: string
+): Promise<VelocityOrderSession[]> {
+  const config = requireVelocityConfig();
+  const res = await fetch(
+    `${config.apiBaseUrl}/merchant/api/orders/${encodeURIComponent(velocityOrderId)}/sessions`,
+    {
+      method: "GET",
+      headers: velocityHeaders(config),
+    }
+  );
   const data = await res.json();
 
   if (!res.ok || !data) {
@@ -126,7 +215,9 @@ export async function createVelocityOrder(
     throw new Error(errorMsg);
   }
 
-  return data as VelocityOrderResponse;
+  if (Array.isArray(data)) return data as VelocityOrderSession[];
+  if (Array.isArray(data.data)) return data.data as VelocityOrderSession[];
+  throw new Error("Unexpected Velocity order-sessions response.");
 }
 
 /**
@@ -137,16 +228,60 @@ export function buildVelocityRedirectUrl(params: {
   stateToken: string;
   redirectUri: string;
 }): string {
-  const config = getVelocityConfig();
+  const config = requireVelocityConfig();
+  if (!params.velocityOrderId?.trim()) {
+    throw new Error("Cannot build a Velocity checkout URL without a velocity_order_id.");
+  }
+
   const searchParams = new URLSearchParams({
     order_id: params.velocityOrderId,
     state: params.stateToken,
     redirect_uri: params.redirectUri,
-    api_key: config.apiKey || "demo_key",
-    merchant_id: config.merchantId || "demo_merchant",
+    api_key: config.publicApiKey,
+    merchant_id: config.merchantId,
   });
 
   return `${config.checkoutBaseUrl}/payments?${searchParams.toString()}`;
+}
+
+/** Creates a tamper-evident partner state token for the hosted checkout return. */
+export function createVelocityStateToken(orderId: string): string {
+  const config = requireVelocityConfig();
+  const payload = Buffer.from(
+    JSON.stringify({ orderId, issuedAt: Date.now(), nonce: crypto.randomBytes(16).toString("hex") })
+  ).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", config.webhookSecret)
+    .update(payload)
+    .digest("hex");
+
+  return `v1.${payload}.${signature}`;
+}
+
+/** Returns the partner order ID only when a state token is authentic. */
+export function parseVelocityStateToken(state: string | null): string | null {
+  if (!state) return null;
+  const [version, payload, signature, ...extra] = state.split(".");
+  if (version !== "v1" || !payload || !signature || extra.length > 0) return null;
+
+  const config = getVelocityConfig();
+  if (!config.webhookSecret) return null;
+
+  const expectedSignature = crypto
+    .createHmac("sha256", config.webhookSecret)
+    .update(payload)
+    .digest("hex");
+  const signatureBuffer = Buffer.from(signature, "utf8");
+  const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+  if (signatureBuffer.length !== expectedBuffer.length) return null;
+  if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) return null;
+
+  try {
+    const value = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return typeof value?.orderId === "string" && value.orderId ? value.orderId : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

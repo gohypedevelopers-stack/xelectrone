@@ -2,7 +2,9 @@ import * as ordersDal from "@/lib/server/dal/orders.dal";
 import * as productsDal from "@/lib/server/dal/products.dal";
 import * as usersDal from "@/lib/server/dal/users.dal";
 import * as sessionsDal from "@/lib/server/dal/sessions.dal";
+import * as discountsDal from "@/lib/server/dal/discounts.dal";
 import bcrypt from "bcryptjs";
+import type { Discount } from "@prisma/client";
 
 // ─── List ────────────────────────────────────────────────────────────────────
 
@@ -104,29 +106,9 @@ export async function createOrder(data: ordersDal.CreateOrderInput) {
       ? data.total
       : calculatedSubtotal;
 
-  // Fetch live Delhivery Waybill if not provided
-  const { fetchDelhiveryWaybill, getDelhiveryTrackingUrl } = await import("@/lib/server/delhivery");
-  const carrier = data.shippingCarrier || "Delhivery Express";
-  const awbNumber = data.trackingNumber || (await fetchDelhiveryWaybill());
-  const trackUrl = data.trackingUrl || getDelhiveryTrackingUrl(awbNumber);
-
-  // Estimate delivery in 3 to 4 business days
-  const deliveryDate = new Date();
-  deliveryDate.setDate(deliveryDate.getDate() + 4);
-  const estimatedDelivery = data.estimatedDelivery || deliveryDate.toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
   const createdOrder = await ordersDal.createOrder({
     ...data,
     userId: finalUserId,
-    shippingCarrier: carrier,
-    trackingNumber: awbNumber,
-    trackingUrl: trackUrl,
-    estimatedDelivery: estimatedDelivery,
     items: resolvedItems,
     total: finalTotal,
   });
@@ -140,12 +122,10 @@ export async function createOrder(data: ordersDal.CreateOrderInput) {
 
   // Increment discount usage count if a discount code or automatic discount was applied
   if (data.discountCode) {
-    const discountsDal = await import("@/lib/server/dal/discounts.dal");
     await discountsDal.incrementDiscountUsage(data.discountCode);
   } else if (finalTotal < calculatedSubtotal) {
-    const discountsDal = await import("@/lib/server/dal/discounts.dal");
-    const allDiscounts = await discountsDal.getAllDiscounts();
-    const autoDiscount = allDiscounts.find((d: any) => !d.code);
+    const allDiscounts: Discount[] = await discountsDal.getAllDiscounts();
+    const autoDiscount = allDiscounts.find((discount) => !discount.code);
     if (autoDiscount) {
       await discountsDal.incrementDiscountUsage(autoDiscount.id);
     }
@@ -162,11 +142,9 @@ export async function createOrder(data: ordersDal.CreateOrderInput) {
     } catch {}
   }
 
-  if (sessionToken) {
-    (createdOrder as any).sessionToken = sessionToken;
-  }
-
-  return createdOrder;
+  return sessionToken
+    ? { ...createdOrder, sessionToken }
+    : createdOrder;
 }
 
 // ─── Update Order ────────────────────────────────────────────────────────────

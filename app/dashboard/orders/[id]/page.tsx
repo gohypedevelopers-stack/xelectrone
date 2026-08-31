@@ -5,25 +5,23 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Calendar,
   CheckCircle2,
-  ChevronDown,
   Clock,
   CreditCard,
   Mail,
   MapPin,
   Package,
   Phone,
-  ShieldCheck,
   Truck,
   User,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   Check,
   Save,
-  MessageSquare,
   FileText,
-  Send,
+  RefreshCw,
   Zap,
 } from "lucide-react";
 
@@ -80,10 +78,33 @@ export type OrderDetailData = {
   items: OrderDetailItem[];
 };
 
+type DeliveryTrackingDetails = {
+  found: boolean;
+  trackingNumber: string;
+  status: string | null;
+  statusType: string | null;
+  location: string | null;
+  updatedAt: string | null;
+  estimatedDelivery: string | null;
+  scans: Array<{
+    status: string;
+    location: string | null;
+    occurredAt: string | null;
+    instructions: string | null;
+  }>;
+};
+
 const CARRIERS = [
   "Delhivery Express",
   "Delhivery Surface",
 ];
+
+function getPublicDelhiveryTrackingUrl(trackingNumber: string) {
+  const awb = trackingNumber.replace(/[^0-9A-Za-z-]/g, "").trim();
+  return awb
+    ? `https://www.delhivery.com/tracking?uniqueIdentifier=${encodeURIComponent(awb)}`
+    : "";
+}
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -100,6 +121,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [trackingNumber, setTrackingNumber] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
   const [estimatedDelivery, setEstimatedDelivery] = useState("");
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [deliveryDetails, setDeliveryDetails] = useState<DeliveryTrackingDetails | null>(null);
+  const [deliveryError, setDeliveryError] = useState("");
+  const [isLoadingDelivery, setIsLoadingDelivery] = useState(false);
 
   // Internal team notes state
   const [internalNotes, setInternalNotes] = useState("");
@@ -119,9 +144,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           if (res.ok && json.success && json.data) {
             const ord = json.data;
             setOrder(ord);
-            setCarrier(ord.shippingCarrier || "Delhivery");
-            setTrackingNumber(ord.trackingNumber || "");
-            setTrackingUrl(ord.trackingUrl || "");
+            setCarrier(ord.shippingCarrier || "");
+            const orderAwb = ord.trackingNumber || "";
+            setTrackingNumber(orderAwb);
+            setTrackingUrl(getPublicDelhiveryTrackingUrl(orderAwb) || ord.trackingUrl || "");
             setEstimatedDelivery(ord.estimatedDelivery || "");
             setInternalNotes(ord.internalNotes || "");
           } else {
@@ -143,14 +169,98 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     };
   }, [orderId]);
 
+  const loadDeliveryDetails = async () => {
+    if (!order?.trackingNumber) {
+      setDeliveryDetails(null);
+      setDeliveryError("");
+      return;
+    }
+
+    setIsLoadingDelivery(true);
+    setDeliveryError("");
+    try {
+      const response = await fetch(`/api/orders/${orderId}/tracking`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || "Unable to retrieve the courier status.");
+      setDeliveryDetails(result.data as DeliveryTrackingDetails);
+    } catch (trackingError) {
+      setDeliveryDetails(null);
+      setDeliveryError(trackingError instanceof Error ? trackingError.message : "Unable to retrieve the courier status.");
+    } finally {
+      setIsLoadingDelivery(false);
+    }
+  };
+
+  const toggleDeliveryDetails = () => {
+    const nextOpen = !deliveryOpen;
+    setDeliveryOpen(nextOpen);
+    if (nextOpen) void loadDeliveryDetails();
+  };
+
+  const removeInvalidTracking = async () => {
+    if (!window.confirm("Remove this unverified tracking number from the order?")) return;
+    setIsUpdating(true);
+    setStatusMessage("");
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shippingCarrier: "",
+          trackingNumber: "",
+          trackingUrl: "",
+          estimatedDelivery: "",
+          notifyCustomer: false,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || "Unable to remove the tracking number.");
+      setOrder((current) => current ? { ...current, ...result.data } : current);
+      setCarrier("");
+      setTrackingNumber("");
+      setTrackingUrl("");
+      setEstimatedDelivery("");
+      setDeliveryDetails(null);
+      setDeliveryError("");
+      setStatusMessage("The unverified tracking number was removed. Create a delivery or add a verified AWB.");
+    } catch (removeError) {
+      setStatusMessage(removeError instanceof Error ? removeError.message : "Unable to remove the tracking number.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const saveOrderUpdates = async (overrideData?: Partial<OrderDetailData>) => {
     setIsUpdating(true);
     setStatusMessage("");
     try {
+      const cleanTrackingNumber = trackingNumber.trim();
+      const savedTrackingNumber = order?.trackingNumber?.trim() || "";
+      let resolvedCarrier = carrier;
+
+      if (!overrideData?.status && cleanTrackingNumber && cleanTrackingNumber !== savedTrackingNumber) {
+        setStatusMessage("Verifying the Delhivery tracking number…");
+        const verificationResponse = await fetch("/api/shipping/delhivery/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trackingNumber: cleanTrackingNumber }),
+        });
+        const verification = await verificationResponse.json();
+        if (!verificationResponse.ok || !verification.success) throw new Error(verification.error || "Unable to verify the tracking number.");
+        if (!verification.data?.found) {
+          throw new Error("Delhivery could not find an active shipment for this AWB. It was not saved.");
+        }
+        setDeliveryDetails(verification.data as DeliveryTrackingDetails);
+        resolvedCarrier = carrier || "Delhivery Express";
+        setCarrier(resolvedCarrier);
+      }
+
+      const normalizedTrackingUrl =
+        getPublicDelhiveryTrackingUrl(cleanTrackingNumber) || trackingUrl.trim();
       const payload = {
-        shippingCarrier: carrier,
-        trackingNumber: trackingNumber.trim(),
-        trackingUrl: trackingUrl.trim(),
+        shippingCarrier: resolvedCarrier,
+        trackingNumber: cleanTrackingNumber,
+        trackingUrl: normalizedTrackingUrl,
         estimatedDelivery: estimatedDelivery.trim(),
         internalNotes: internalNotes.trim(),
         notifyCustomer,
@@ -165,23 +275,24 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       const json = await res.json();
       if (res.ok && json.success && json.data) {
         setOrder((prev) => (prev ? { ...prev, ...json.data } : null));
+        setTrackingUrl(normalizedTrackingUrl);
         setStatusMessage(
           overrideData?.status
-            ? `Order status changed to ${overrideData.status}. Customer details notified via Email & SMS.`
-            : "Shipping details and notes updated successfully."
+            ? `Order status changed to ${overrideData.status}.`
+            : "Shipping details and notes updated. The customer can see saved tracking details in My Orders."
         );
         setTimeout(() => setStatusMessage(""), 5000);
       } else {
         alert(json.error || "Failed to update order");
       }
-    } catch {
-      alert("Network error while updating order");
+    } catch (saveError) {
+      setStatusMessage(saveError instanceof Error ? saveError.message : "Network error while updating order.");
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const handleAutoShipWithDelhivery = async () => {
+  const handleGenerateAndPublishAwb = async () => {
     setIsUpdating(true);
     setStatusMessage("");
     try {
@@ -197,13 +308,16 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         setTrackingUrl(json.data.trackingUrl);
         setEstimatedDelivery(json.data.estimatedDelivery);
         setOrder((prev) => (prev ? { ...prev, ...json.data } : null));
-        setStatusMessage(`✅ Order dispatched via Delhivery Express! Live AWB: ${json.data.trackingNumber}`);
+        setDeliveryOpen(true);
+        setDeliveryDetails(null);
+        setDeliveryError("");
+        setStatusMessage(`AWB ${json.data.trackingNumber} generated and published to the customer. Courier updates start after the first scan.`);
         setTimeout(() => setStatusMessage(""), 6000);
       } else {
-        alert(json.error || "Failed to generate Delhivery AWB");
+        setStatusMessage(json.error || "Failed to generate a Delhivery AWB");
       }
     } catch {
-      alert("Network error while communicating with Delhivery API");
+      setStatusMessage("Network error while communicating with Delhivery API");
     } finally {
       setIsUpdating(false);
     }
@@ -283,6 +397,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const orderRef = `#XE-${order.id.slice(-8).toUpperCase()}`;
   const totalItemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const isFulfilled = order.status === "DELIVERED" || order.status === "SHIPPED";
+  const hasLiveDelivery = deliveryDetails?.found === true;
 
   const customerName = order.customerName || order.user?.name || "Guest Customer";
   const customerEmail = order.customerEmail || order.user?.email || "N/A";
@@ -359,7 +474,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   <select
                     value={order.status}
                     disabled={isUpdating}
-                    onChange={(e) => saveOrderUpdates({ status: e.target.value as any })}
+                    onChange={(e) => saveOrderUpdates({ status: e.target.value as OrderDetailData["status"] })}
                     className="h-9 rounded-lg border border-black/15 bg-white px-3 pr-8 text-xs font-semibold text-black/80 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-50"
                   >
                     <option value="PENDING">Status: Pending</option>
@@ -442,140 +557,34 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 </div>
 
-                {/* Shipping & Fulfillment Tracking Card (Delhivery Dedicated) */}
-                <div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm p-5 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/10 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Truck className="size-4 text-emerald-600" />
-                      <span className="text-xs font-bold uppercase tracking-wider text-black/90">
-                        Delhivery Shipping & Fulfillment
-                      </span>
-                      <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                        Official Partner
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {order.trackingNumber && (
-                        <a
-                          href={
-                            (order.trackingNumber || "").replace(/[^0-9]/g, "")
-                              ? `https://track.delhivery.com/p/${(order.trackingNumber || "").replace(/[^0-9]/g, "")}`
-                              : "https://www.delhivery.com/tracking"
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200/80 px-2.5 py-1 text-xs font-semibold text-[#0a7ae6] hover:bg-blue-100 transition"
-                        >
-                          <ExternalLink className="size-3" /> Track on Delhivery
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleAutoShipWithDelhivery}
-                        disabled={isUpdating}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-[#0a7ae6] px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[#086ac9] transition disabled:opacity-50 cursor-pointer"
-                      >
-                        <Zap className="size-3.5 fill-current" />
-                        <span>{order.status === "SHIPPED" ? "Re-Generate Delhivery AWB" : "⚡ 1-Click Delhivery Ship"}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3.5 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-black/70 mb-1">
-                        Shipping Courier
-                      </label>
-                      <select
-                        value={carrier}
-                        onChange={(e) => setCarrier(e.target.value)}
-                        className="w-full h-9 rounded-lg border border-black/20 bg-white px-3 text-xs text-black focus:border-black focus:outline-none font-medium"
-                      >
-                        {CARRIERS.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-black/70 mb-1">
-                        Tracking / AWB Number
-                      </label>
-                      <div className="flex gap-1.5">
-                        <input
-                          type="text"
-                          value={trackingNumber}
-                          onChange={(e) => setTrackingNumber(e.target.value)}
-                          placeholder="e.g. 6111010063232"
-                          className="w-full h-9 rounded-lg border border-black/20 bg-white px-3 text-xs text-black focus:border-black focus:outline-none font-mono font-medium"
-                        />
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const res = await fetch("/api/shipping/delhivery/waybill");
-                              const json = await res.json();
-                              if (json.success && json.awb) {
-                                setTrackingNumber(json.awb);
-                                setTrackingUrl(json.trackingUrl);
-                                return;
-                              }
-                            } catch {}
-                            const newAwb = `${Math.floor(6111000000000 + Math.random() * 90000000000)}`;
-                            setTrackingNumber(newAwb);
-                            setTrackingUrl(`https://track.delhivery.com/p/${newAwb}`);
-                          }}
-                          className="shrink-0 rounded-lg border border-black/20 bg-slate-50 px-2.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                          title="Fetch Live Delhivery AWB"
-                        >
-                          Auto AWB
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-black/70 mb-1">
-                        Live Tracking URL
-                      </label>
-                      <input
-                        type="text"
-                        value={trackingUrl}
-                        onChange={(e) => setTrackingUrl(e.target.value)}
-                        placeholder="https://track.delhivery.com/p/..."
-                        className="w-full h-9 rounded-lg border border-black/20 bg-white px-3 text-xs text-black focus:border-black focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-black/70 mb-1">
-                        Estimated Delivery Date
-                      </label>
-                      <input
-                        type="text"
-                        value={estimatedDelivery}
-                        onChange={(e) => setEstimatedDelivery(e.target.value)}
-                        placeholder="e.g. 28 Aug 2026 (3-4 business days)"
-                        className="w-full h-9 rounded-lg border border-black/20 bg-white px-3 text-xs text-black focus:border-black focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-black/5">
-                    <p className="text-[11px] text-slate-500">
-                      ⚡ Clicking <strong>&quot;1-Click Delhivery Ship&quot;</strong> assigns an AWB, sets delivery dates, updates status to SHIPPED, and sends customer tracking info.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => saveOrderUpdates()}
-                      disabled={isUpdating}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-black/80 transition disabled:opacity-50 cursor-pointer shrink-0"
-                    >
-                      <Save className="size-3.5" />
-                      <span>{isUpdating ? "Saving…" : "Save Details"}</span>
+                {/* Delivery details load only when this panel is opened. */}
+                <section className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+                    <button type="button" onClick={toggleDeliveryDetails} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"><Truck className="size-5" /></span>
+                      <span className="min-w-0"><span className="flex items-center gap-2 text-sm font-semibold text-slate-900">Delivery & fulfillment <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">DELHIVERY</span></span><span className="mt-1 block truncate text-xs text-slate-500">{order.trackingNumber ? (hasLiveDelivery ? `AWB ${order.trackingNumber} — live courier updates available` : "Saved AWB needs verification — click to view delivery details") : "No shipment created yet — click to set up delivery"}</span></span>
                     </button>
+                    <div className="flex items-center gap-2">
+                      {!order.trackingNumber ? <button type="button" onClick={handleGenerateAndPublishAwb} disabled={isUpdating} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#0a7ae6] px-3 text-xs font-bold text-white hover:bg-[#086ac9] disabled:opacity-50"><Zap className="size-3.5 fill-current" />{isUpdating ? "Creating…" : "Create delivery"}</button> : null}
+                      <button type="button" onClick={toggleDeliveryDetails} className="inline-flex size-8 items-center justify-center rounded-lg border border-black/10 text-slate-500 hover:bg-slate-50" aria-label={deliveryOpen ? "Hide delivery details" : "Show delivery details"}>{deliveryOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}</button>
+                    </div>
                   </div>
-                </div>
+
+                  {deliveryOpen ? <div className="border-t border-black/[0.08] px-5 pb-5 pt-4">
+                    {order.trackingNumber ? <div className="mb-4 rounded-xl border border-[#0a7ae6]/15 bg-[#f7fbff] p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-[#075faf]">Live courier status</p><p className="mt-1 text-sm font-semibold text-slate-900">{isLoadingDelivery ? "Checking Delhivery…" : hasLiveDelivery ? (deliveryDetails?.status || "Shipment update received") : deliveryDetails ? "Delhivery could not verify this AWB" : "Waiting for the first Delhivery scan"}</p><p className="mt-1 text-xs text-slate-500">{deliveryDetails?.location || deliveryError || (deliveryDetails ? "This number is not linked to an active Delhivery shipment. Remove it and add a verified AWB." : "A reserved AWB becomes trackable after the parcel is handed to Delhivery.")}</p></div><div className="flex gap-2"><button type="button" onClick={() => void loadDeliveryDetails()} disabled={isLoadingDelivery} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#0a7ae6]/20 bg-white px-2.5 text-xs font-semibold text-[#075faf] hover:bg-[#0a7ae6]/5 disabled:opacity-50"><RefreshCw className={`size-3.5 ${isLoadingDelivery ? "animate-spin" : ""}`} />Refresh</button>{hasLiveDelivery ? <a href={getPublicDelhiveryTrackingUrl(order.trackingNumber)} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-white px-2.5 text-xs font-semibold text-[#075faf] ring-1 ring-[#0a7ae6]/20 hover:bg-[#0a7ae6]/5"><ExternalLink className="size-3.5" />Open Delhivery</a> : null}{deliveryDetails && !deliveryDetails.found && !isLoadingDelivery ? <button type="button" onClick={() => void removeInvalidTracking()} disabled={isUpdating} className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-white px-2.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">Remove invalid AWB</button> : null}</div></div>
+                      {deliveryDetails?.scans?.length ? <ol className="mt-4 space-y-2 border-l border-[#0a7ae6]/20 pl-4">{deliveryDetails.scans.map((scan, index) => <li key={`${scan.status}-${index}`} className="text-xs text-slate-600"><span className="font-semibold text-slate-800">{scan.status}</span>{scan.location ? ` · ${scan.location}` : ""}{scan.occurredAt ? ` · ${scan.occurredAt}` : ""}</li>)}</ol> : null}
+                    </div> : <div className="mb-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center"><Truck className="mx-auto size-5 text-slate-400" /><p className="mt-2 text-sm font-semibold text-slate-700">Delivery has not been created</p><p className="mt-1 text-xs text-slate-500">Create a delivery to reserve and publish a real Delhivery AWB.</p></div>}
+
+                    <div className="grid gap-3.5 sm:grid-cols-2">
+                      <label className="grid gap-1 text-xs font-semibold text-black/70">Shipping courier<select value={carrier} onChange={(e) => setCarrier(e.target.value)} className="h-9 rounded-lg border border-black/20 bg-white px-3 text-xs font-medium text-black focus:border-black focus:outline-none"><option value="">Select courier</option>{CARRIERS.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+                      <label className="grid gap-1 text-xs font-semibold text-black/70">Tracking / AWB number<input type="text" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} placeholder="Enter a manifested AWB" className="h-9 rounded-lg border border-black/20 bg-white px-3 font-mono text-xs font-medium text-black focus:border-black focus:outline-none" /></label>
+                      <label className="grid gap-1 text-xs font-semibold text-black/70">Tracking link<input type="text" value={trackingUrl} readOnly placeholder="Generated automatically from the AWB" className="h-9 rounded-lg border border-black/15 bg-slate-50 px-3 text-xs text-slate-500 outline-none" /></label>
+                      <label className="grid gap-1 text-xs font-semibold text-black/70">Estimated delivery<input type="text" value={estimatedDelivery} onChange={(e) => setEstimatedDelivery(e.target.value)} placeholder="e.g. 28 Aug 2026" className="h-9 rounded-lg border border-black/20 bg-white px-3 text-xs text-black focus:border-black focus:outline-none" /></label>
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.06] pt-4"><p className="text-[11px] text-slate-500">Tracking links are generated automatically from the saved AWB. Courier status refreshes only when you open or refresh this panel.</p><button type="button" onClick={() => saveOrderUpdates()} disabled={isUpdating} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-black px-3 text-xs font-semibold text-white hover:bg-black/80 disabled:opacity-50"><Save className="size-3.5" />{isUpdating ? "Saving…" : "Save delivery"}</button></div>
+                  </div> : null}
+                </section>
 
                 {/* Internal Team Notes Card */}
                 <div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm p-5 space-y-3">

@@ -14,19 +14,42 @@ import {
 import Navbar from "@/components/navbar/navbar";
 import { useCart } from "@/components/providers/cart-provider";
 
+type VelocityOrderData = {
+  id: string;
+  orderNumber: string;
+  total: number;
+  shippingCarrier?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  estimatedDelivery?: string | null;
+  customerName?: string | null;
+  customerEmail?: string | null;
+};
+
+type VelocityVerificationResponse = {
+  success?: boolean;
+  pending?: boolean;
+  paymentStatus?: string;
+  error?: string;
+  data?: VelocityOrderData;
+};
+
 function VelocityCallbackContent() {
   const searchParams = useSearchParams();
   const { clearCart } = useCart();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [orderData, setOrderData] = useState<any>(null);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [orderData, setOrderData] = useState<VelocityOrderData | null>(null);
 
   const state = searchParams.get("state");
   const orderId = searchParams.get("order_id");
 
   useEffect(() => {
     let isMounted = true;
+    let retryTimeout: ReturnType<typeof setTimeout> | undefined;
+    let retryCount = 0;
 
     async function verifyAndConfirm() {
       try {
@@ -36,8 +59,27 @@ function VelocityCallbackContent() {
           body: JSON.stringify({ state, orderId }),
         });
 
-        const json = await res.json();
+        const json = (await res.json()) as VelocityVerificationResponse;
         if (isMounted) {
+          if (json.pending) {
+            retryCount += 1;
+            if (retryCount <= 20) {
+              setPendingMessage(
+                json.paymentStatus === "success"
+                  ? "Payment received. Waiting for Velocity's signed confirmation…"
+                  : "Checking your Velocity payment status…"
+              );
+              retryTimeout = setTimeout(verifyAndConfirm, 3000);
+              return;
+            }
+
+            setError(
+              "We could not receive Velocity's payment confirmation yet. Your order remains pending; please check again shortly."
+            );
+            setLoading(false);
+            return;
+          }
+
           if (json.success && json.data) {
             setOrderData(json.data);
             clearCart();
@@ -73,6 +115,7 @@ function VelocityCallbackContent() {
 
     return () => {
       isMounted = false;
+      if (retryTimeout) clearTimeout(retryTimeout);
     };
   }, [state, orderId, clearCart]);
 
@@ -81,7 +124,7 @@ function VelocityCallbackContent() {
       <div className="min-h-[70vh] flex flex-col items-center justify-center px-4">
         <div className="size-12 animate-spin rounded-full border-4 border-[#0a7ae6] border-t-transparent mb-4" />
         <h2 className="text-base font-bold text-slate-800">
-          Confirming Velocity EMI Approval…
+          {pendingMessage || "Confirming Velocity EMI Approval…"}
         </h2>
         <p className="text-xs text-slate-500 mt-1">
           Please do not refresh or close this window.
@@ -150,12 +193,12 @@ function VelocityCallbackContent() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+            {orderData?.shippingCarrier ? <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
               <span className="font-semibold text-slate-500">Delivery Partner</span>
               <span className="font-semibold text-slate-900 flex items-center gap-1">
-                <Truck className="size-3.5 text-emerald-600" /> Delhivery Express
+                <Truck className="size-3.5 text-emerald-600" /> {orderData.shippingCarrier}
               </span>
-            </div>
+            </div> : null}
 
             {orderData?.trackingNumber && (
               <div className="flex items-center justify-between">

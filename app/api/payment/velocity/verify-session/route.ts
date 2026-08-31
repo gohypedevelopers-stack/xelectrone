@@ -1,32 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import * as productsDal from "@/lib/server/dal/products.dal";
+import { getVelocityOrderSessions, parseVelocityStateToken } from "@/lib/server/velocity";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { state, orderId: explicitOrderId } = body;
-
-    let targetOrderId = explicitOrderId;
-
-    // Parse orderId from state token if not directly passed
-    if (!targetOrderId && state && state.startsWith("st_")) {
-      const parts = state.split("_");
-      if (parts.length >= 2) {
-        targetOrderId = parts[1];
-      }
-    }
+    const body = (await request.json()) as { state?: unknown };
+    const state = typeof body.state === "string" ? body.state : null;
+    const targetOrderId = parseVelocityStateToken(state);
 
     if (!targetOrderId) {
       return NextResponse.json(
-        { success: false, error: "Unable to identify order from return state" },
+        { success: false, error: "Invalid or missing Velocity return state" },
         { status: 400 }
       );
     }
 
     const order = await db.order.findUnique({
       where: { id: targetOrderId },
-      include: { items: { include: { product: true } } },
     });
 
     if (!order) {
@@ -36,37 +26,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If order is still pending upon user return, confirm it
+    // A browser redirect is not proof of an approved payment. Velocity's
+    // signed webhook is the only code path allowed to confirm an order.
     if (order.status === "PENDING") {
-      await db.order.update({
-        where: { id: targetOrderId },
-        data: {
-          status: "CONFIRMED",
-        },
-      });
+      const velocityOrderId = order.internalNotes
+        ?.split("\n")
+        .find((line: string) => line.startsWith("Velocity Order ID: "))
+        ?.slice("Velocity Order ID: ".length);
 
-      if (order.items && order.items.length > 0) {
-        await Promise.all(
-          order.items.map((item: any) =>
-            productsDal.decrementProductStock(item.productId, item.quantity)
-          )
+      if (!velocityOrderId) {
+        return NextResponse.json(
+          { success: false, error: "Velocity order reference is missing" },
+          { status: 500 }
         );
       }
 
-      // Send Order Confirmation Email
-      if (order.customerEmail) {
-        import("@/lib/server/mail").then(({ sendOrderConfirmationEmail }) => {
-          sendOrderConfirmationEmail({
-            id: order.id,
-            customerName: order.customerName,
-            customerEmail: order.customerEmail,
-            total: order.total,
-            trackingNumber: order.trackingNumber,
-            trackingUrl: order.trackingUrl,
-            estimatedDelivery: order.estimatedDelivery,
-          }).catch((err) => console.warn("Failed to send Velocity order email:", err));
-        });
-      }
+      const sessions = await getVelocityOrderSessions(velocityOrderId);
+      const successfulSession = sessions.find((session) => session.status === "success");
+      const latestSession = sessions.at(-1);
+
+      return NextResponse.json(
+        {
+          success: false,
+          pending: true,
+          paymentStatus: successfulSession?.status || latestSession?.status || "created",
+          error:
+            "Payment is awaiting the signed confirmation from Velocity. Your order has not been confirmed.",
+        },
+        { status: 202 }
+      );
+    }
+
+    if (order.status === "CANCELLED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Velocity reported that this payment was not completed. No order has been confirmed.",
+        },
+        { status: 402 }
+      );
     }
 
     return NextResponse.json({

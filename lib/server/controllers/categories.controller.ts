@@ -52,3 +52,13 @@ export async function deleteCategory(id: string) {
   }
   return categoriesDal.deleteCategory(id);
 }
+
+export async function deleteCategories(ids: string[], reassignProductsToId?: string) {
+  const uniqueIds = [...new Set(ids.filter((id) => typeof id === "string" && id.trim()))];
+
+  if (uniqueIds.length === 0) {
+    throw new Error("Select at least one category to delete.");
+  }
+
+  return categoriesDal.deleteCategories(uniqueIds, reassignProductsToId);
+}

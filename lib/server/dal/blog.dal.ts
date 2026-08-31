@@ -18,7 +18,7 @@ export type UpdateBlogPostInput = Partial<CreateBlogPostInput>;
 export function getAllBlogPosts(activeOnly: boolean = false) {
   return db.blogPost.findMany({
     where: activeOnly ? { isActive: true } : {},
-    orderBy: [{ sortOrder: "asc" }, { publishedAt: "desc" }],
+    orderBy: { publishedAt: "desc" },
   });
 }
 
