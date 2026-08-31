@@ -18,7 +18,7 @@ export const customerServiceLinks: FooterLink[] = [
   { label: "Repair & Replacement", href: "/repair-replacement" },
   { label: "Order Tracking", href: "/orders" },
   { label: "Warranty Registration", href: "/warranty" },
-  { label: "Warranty Terms & Conditions", href: "/warranty" },
+  { label: "Warranty Terms & Conditions", href: "/warranty-terms" },
   { label: "Contact Us", href: "/contact" },
 ];
 
@@ -26,14 +26,13 @@ export const companyLinks: FooterLink[] = [
   { label: "About Us", href: "/about" },
   { label: "Find a Store", href: "/find-a-store" },
   { label: "Careers", href: "/careers" },
-  { label: "Stories", href: "/stories" },
 ];
 
 export const policyLinks: FooterLink[] = [
   { label: "Your privacy choices", href: "/privacy-choices" },
   { label: "Privacy Policy", href: "/privacy-policy" },
   { label: "Terms of Use", href: "/terms-of-use" },
-  { label: "Warranty Terms & Conditions", href: "/warranty" },
+  { label: "Warranty Terms & Conditions", href: "/warranty-terms" },
 ];
 
 function FooterColumn({

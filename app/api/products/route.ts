@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: error.status });
     }
     const message = error instanceof Error ? error.message : "Internal server error";
-    const status = message.includes("already exists") || message.includes("Missing") ? 400 : 500;
+    const status = message.includes("already exists") || message.includes("Missing") || message.includes("maximum") ? 400 : 500;
     return NextResponse.json({ success: false, error: message }, { status });
   }
 }

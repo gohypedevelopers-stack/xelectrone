@@ -372,6 +372,58 @@ export async function getBestSellerProducts() {
   });
 }
 
+export async function countNavbarProducts(excludeProductId?: string) {
+  return db.product.count({
+    where: {
+      showInNavbar: true,
+      ...(excludeProductId ? { id: { not: excludeProductId } } : {}),
+    },
+  });
+}
+
+export async function countWarrantyMenuProducts(excludeProductId?: string) {
+  return db.product.count({
+    where: {
+      showInWarrantyMenu: true,
+      ...(excludeProductId ? { id: { not: excludeProductId } } : {}),
+    },
+  });
+}
+
+/** Minimal query used by the navbar toggle. Avoids loading the full product editor payload. */
+export async function getProductNavbarPlacement(id: string) {
+  return db.product.findUnique({
+    where: { id },
+    select: { id: true, slug: true, showInNavbar: true },
+  });
+}
+
+/** Minimal mutation used by the navbar toggle. */
+export async function setProductNavbarPlacement(id: string, showInNavbar: boolean) {
+  return db.product.update({
+    where: { id },
+    data: { showInNavbar },
+    select: { id: true, slug: true, showInNavbar: true },
+  });
+}
+
+/** Minimal query used by the warranty menu toggle. */
+export async function getProductWarrantyMenuPlacement(id: string) {
+  return db.product.findUnique({
+    where: { id },
+    select: { id: true, slug: true, showInWarrantyMenu: true },
+  });
+}
+
+/** Minimal mutation used by the warranty menu toggle. */
+export async function setProductWarrantyMenuPlacement(id: string, showInWarrantyMenu: boolean) {
+  return db.product.update({
+    where: { id },
+    data: { showInWarrantyMenu },
+    select: { id: true, slug: true, showInWarrantyMenu: true },
+  });
+}
+
 export async function getProductById(id: string) {
   return safeFindUnique({
     where: { id },
@@ -454,6 +506,8 @@ export type CreateProductInput = {
   quantity?: number;
   sku?: string | null;
   showInBestSellers?: boolean;
+  showInNavbar?: boolean;
+  showInWarrantyMenu?: boolean;
   colors?: { name: string; bgHex: string; borderHex?: string | null }[];
   variants?: { name: string; sku?: string; price?: string; stock?: number; colorHex?: string; image?: string; sortOrder?: number }[];
   features?: string[];
@@ -478,6 +532,8 @@ export type UpdateProductInput = Partial<CreateProductInput> & {
   quantity?: number;
   sku?: string | null;
   showInBestSellers?: boolean;
+  showInNavbar?: boolean;
+  showInWarrantyMenu?: boolean;
   colors?: { name: string; bgHex: string; borderHex?: string | null }[];
   variants?: { name: string; sku?: string; price?: string; stock?: number; colorHex?: string; image?: string; sortOrder?: number }[];
   /** New files to append. Existing product media is never replaced during an edit. */

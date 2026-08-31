@@ -82,6 +82,8 @@ model Product {
   quantity       Int     @default(0)
   sku            String?
   showInBestSellers Boolean @default(false) @map("show_in_best_sellers")
+  showInNavbar      Boolean @default(false) @map("show_in_navbar")
+  showInWarrantyMenu Boolean @default(false) @map("show_in_warranty_menu")
 
   categoryId String   @map("category_id")
   category   Category @relation(fields: [categoryId], references: [id])

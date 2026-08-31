@@ -1,7 +1,6 @@
-"use client";
-
 import Navbar from "@/components/navbar/navbar";
 import Footer from "@/components/footer/footer";
+import Image from "next/image";
 import {
   MapPin,
   Store,
@@ -10,129 +9,329 @@ import {
   Phone,
   Clock,
   ExternalLink,
-  Navigation,
-  Sparkles,
+  MessageSquare,
 } from "lucide-react";
 
-const STORES = [
+interface StoreItem {
+  id: string;
+  badge: string;
+  name: string;
+  shortName: string;
+  subtitle: string;
+  address: string;
+  landmark: string;
+  phones: string[];
+  timing: string;
+  openDays: string;
+  mapUrl: string;
+  tags: string[];
+  image: string;
+  imageAlt: string;
+  icon: typeof Store;
+}
+
+const STORES: StoreItem[] = [
   {
-    badge: "Flagship Retail Store",
+    id: "experience-center",
+    badge: "Flagship Retail Showroom",
     name: "XElectron Experience Center",
-    type: "Showroom & Demo Hub",
-    address: "LGF- 22, Spectrum Metro Mall, Sector-75, Noida, Uttar Pradesh – 201307.",
-    phones: ["9870293008"],
-    timing: "01:00 PM to 09:00 PM (Open Daily)",
+    shortName: "Experience Center (Noida)",
+    subtitle: "Showroom & 4K Cinema Demo Lounge",
+    address: "LGF-22, Spectrum Metro Mall, Sector-75, Noida, Uttar Pradesh – 201307",
+    landmark: "Near Sector 50 Metro Station (Aqua Line) / Lower Ground Floor Central Atrium",
+    phones: ["+91 98702 93008"],
+    timing: "01:00 PM – 09:00 PM",
+    openDays: "Open Daily (7 Days)",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=Spectrum+Metro+Mall+Sector+75+Noida",
-    features: ["Live 4K Projector Demos", "Smart TV Viewing Wall", "Surround Sound Test Zone"],
+    tags: ["Live 4K Laser Projector Demos", "ALR Ambient Light Screens", "Surround Sound Lounge", "Instant On-site Purchases"],
+    image: "/stores/experience-center.jpg",
+    imageAlt: "XElectron Flagship Home Cinema Experience Center and Showroom",
+    icon: Store,
   },
   {
+    id: "corporate-hq",
     badge: "Corporate Headquarters",
     name: "XElectron Technologies Pvt. Ltd.",
-    type: "Corporate Office & Admin",
-    address: "2417, Tower A, The Corenthum, Sector – 62, Noida – 201301.",
-    phones: ["+91-0120-4550655", "+91-9891332304"],
-    timing: "10:00 AM to 06:00 PM (Mon - Sat)",
+    shortName: "Corporate Office (Noida)",
+    subtitle: "Corporate Administrative Office & B2B Desk",
+    address: "2417, Tower A, The Corenthum, Sector-62, Noida, Uttar Pradesh – 201301",
+    landmark: "Directly Opposite Noida Electronic City Metro Station (Blue Line)",
+    phones: ["+91 120 4550655", "+91 98913 32304"],
+    timing: "10:00 AM – 06:00 PM",
+    openDays: "Monday to Saturday",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=The+Corenthum+Sector+62+Noida",
-    features: ["Corporate Sales Desk", "Partner & Dealer Support", "Executive Offices"],
+    tags: ["B2B & Institutional Sales", "Authorized Dealership Inquiries", "Corporate Desk", "Administrative Offices"],
+    image: "/stores/corporate-hq.jpg",
+    imageAlt: "XElectron Corporate Headquarters in Sector 62 Noida",
+    icon: Building2,
   },
   {
-    badge: "Authorized Technical Center",
-    name: "XElectron Service Center",
-    type: "Repair & Warranty Service",
-    address: "Plot No.626, Ground Floor, Sector - 5, Vaishali, Ghaziabad, UP. PIN - 201010.",
-    landmark: "Landmark: In front of Ram Prashtha Green Colony, Near Mohan Dhaba.",
-    phones: ["0120-4213337", "9650836754"],
-    timing: "10:00 AM to 06:00 PM (Mon - Sat)",
+    id: "service-center",
+    badge: "Authorized Technical Lab",
+    name: "XElectron Technical Service Center",
+    shortName: "Service & Repairs (Vaishali)",
+    subtitle: "Official Diagnostics, Repairs & Warranty Hub",
+    address: "Plot No. 626, Ground Floor, Sector-5, Vaishali, Ghaziabad, UP – 201010",
+    landmark: "In front of Ramprastha Greens, Near Mohan Dhaba (7 min from Vaishali Metro)",
+    phones: ["0120-4213337", "+91 96508 36754"],
+    timing: "10:00 AM – 06:00 PM",
+    openDays: "Monday to Saturday",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=Sector+5+Vaishali+Ghaziabad+Ram+Prashtha+Green",
-    features: ["Hardware Repair", "Replacement Claim Verification", "Genuine Spare Parts"],
+    tags: ["Same-Day Diagnostics", "Official Warranty Claims", "Genuine Replacement Spares", "Firmware & Optical Care"],
+    image: "/stores/service-center.jpg",
+    imageAlt: "XElectron Authorized Technical Repair Center and Workshop",
+    icon: Wrench,
   },
 ];
 
 export default function FindAStorePage() {
   return (
-    <main className="min-h-screen bg-slate-50/50 text-slate-900">
+    <main className="min-h-screen bg-[#f7fbff] text-slate-900">
       <Navbar />
 
-      {/* HERO HEADER */}
-      <section className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-16 sm:py-24 text-white">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-[0.25em] text-[#38bdf8] backdrop-blur-md">
-            <Navigation className="h-3.5 w-3.5" /> Store Locator
+      {/* Header (Cohesive with Legal/Policy Page design) */}
+      <section className="border-b border-[#0a7ae6]/10 bg-white">
+        <div className="mx-auto max-w-5xl px-5 py-12 sm:px-8 sm:py-16">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[#edf7ff] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#0a7ae6]">
+            <MapPin className="size-3.5" /> LOCATIONS & SERVICE HUBS
           </span>
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-5xl text-white">
-            Find an XElectron Store Near You
+          <h1 className="mt-4 max-w-3xl text-3xl font-extrabold tracking-tight text-[#071a38] sm:text-4xl">
+            Choose the right XElectron location
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm sm:text-base text-slate-300">
-            Experience our 4K Android Projectors, Smart TVs, and audio systems in person at our Spectrum Metro Mall showroom or visit our technical centers.
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            Visit our Noida experience centre for hands-on 4K projector demos, or get trusted help from our corporate headquarters and authorized service teams across Delhi-NCR.
+          </p>
+          <p className="mt-5 text-xs font-medium text-slate-400">
+            Delhi-NCR Network • 3 Dedicated Locations • Mon – Sun Operating
           </p>
         </div>
       </section>
 
-      {/* STORES GRID */}
-      <section className="py-12 sm:py-20">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {STORES.map((store) => (
-              <div
-                key={store.name}
-                className="flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-7 shadow-md hover:shadow-xl hover:border-[#0a7ae6]/40 transition-all duration-300"
+      {/* Main Section with Sticky Sidebar and Structured Cards */}
+      <section className="mx-auto grid max-w-5xl gap-7 px-5 py-10 sm:px-8 sm:py-14 lg:grid-cols-[220px_minmax(0,1fr)]">
+        {/* Sticky Left Navigation */}
+        <aside className="lg:sticky lg:top-28 lg:h-fit space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0a7ae6]">
+              On this page
+            </p>
+            <nav className="mt-3 grid gap-1">
+              {STORES.map((store) => (
+                <a
+                  key={store.id}
+                  href={`#${store.id}`}
+                  className="rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-[#edf7ff] hover:text-[#0a7ae6]"
+                >
+                  {store.shortName}
+                </a>
+              ))}
+            </nav>
+          </div>
+
+          {/* Quick Help Card */}
+          <div className="rounded-2xl border border-blue-100 bg-[#edf7ff]/70 p-4 shadow-xs">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0a7ae6]">
+              Need Directions?
+            </p>
+            <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+              Call our central helpline or connect on WhatsApp before your visit.
+            </p>
+            <div className="mt-3 space-y-2 border-t border-blue-200/50 pt-3 text-xs">
+              <a
+                href="tel:01204550655"
+                className="flex items-center gap-2 font-bold text-[#071a38] transition hover:text-[#0a7ae6]"
               >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="bg-blue-50 text-[#0a7ae6] border border-blue-200 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full">
+                <Phone className="size-3.5 text-[#0a7ae6]" />
+                <span>0120-4550655</span>
+              </a>
+              <a
+                href="https://wa.me/919870293008?text=Hi%20XElectron,%20I%20need%20store%20directions."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 font-bold text-emerald-700 transition hover:text-emerald-800"
+              >
+                <MessageSquare className="size-3.5 text-emerald-600" />
+                <span>WhatsApp Desk</span>
+              </a>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Column: Structured Cards */}
+        <div className="grid gap-6">
+          {STORES.map((store) => {
+            const StoreIcon = store.icon;
+
+            return (
+              <article
+                key={store.id}
+                id={store.id}
+                className="scroll-mt-32 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300"
+              >
+                {/* Photo Showcase */}
+                <div className="relative aspect-[16/8] w-full overflow-hidden bg-slate-900 sm:aspect-[16/7]">
+                  <Image
+                    src={store.image}
+                    alt={store.imageAlt}
+                    fill
+                    sizes="(min-width: 1024px) 720px, 100vw"
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#071a38]/80 via-[#071a38]/20 to-transparent" />
+
+                  {/* Top Badge */}
+                  <div className="absolute top-3 left-3">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold text-slate-800 shadow-xs backdrop-blur-md">
+                      <StoreIcon className="size-3 text-[#0a7ae6]" />
                       {store.badge}
                     </span>
-                    <span className="text-[11px] font-semibold text-slate-400">{store.type}</span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-slate-900">{store.name}</h3>
+                  {/* Open Days Pill */}
+                  <div className="absolute bottom-3 right-3">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/95 px-3 py-1 text-[10px] font-bold text-white shadow-xs">
+                      <span className="size-1.5 rounded-full bg-white animate-pulse" />
+                      {store.openDays}
+                    </span>
+                  </div>
+                </div>
 
-                  <div className="space-y-2 text-xs text-slate-600">
-                    <p className="flex items-start gap-2 leading-relaxed">
-                      <MapPin className="size-4 shrink-0 text-[#0a7ae6] mt-0.5" />
-                      <span>{store.address}</span>
+                {/* Details Section */}
+                <div className="p-6 sm:p-7">
+                  <div>
+                    <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#0a7ae6]">
+                      {store.subtitle}
                     </p>
-                    {store.landmark && (
-                      <p className="text-[11px] text-slate-500 italic pl-6">{store.landmark}</p>
-                    )}
+                    <h2 className="mt-1 text-xl font-extrabold tracking-tight text-[#071a38] sm:text-2xl">
+                      {store.name}
+                    </h2>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 space-y-1.5 text-xs">
-                    <p className="flex items-center gap-2 font-bold text-slate-900">
-                      <Phone className="size-3.5 text-[#0a7ae6]" />
-                      <span>{store.phones.join(" / ")}</span>
-                    </p>
-                    <p className="flex items-center gap-2 text-slate-500 font-medium">
-                      <Clock className="size-3.5 text-slate-400" />
-                      <span>{store.timing}</span>
-                    </p>
-                  </div>
+                  {/* Key Fact Rows */}
+                  <div className="mt-5 divide-y divide-slate-100 border-t border-b border-slate-100 text-xs sm:text-sm">
+                    {/* Address Row */}
+                    <div className="grid py-3 sm:grid-cols-[130px_1fr] sm:gap-4">
+                      <span className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">
+                        Address
+                      </span>
+                      <div>
+                        <p className="font-semibold text-slate-800 leading-snug">
+                          {store.address}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {store.landmark}
+                        </p>
+                      </div>
+                    </div>
 
-                  <div className="pt-3 border-t border-slate-100">
-                    <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider mb-2">Available On-Site:</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {store.features.map((feat) => (
-                        <span key={feat} className="bg-slate-100 text-slate-700 text-[10px] font-semibold px-2.5 py-1 rounded-md">
-                          {feat}
+                    {/* Operating Hours Row */}
+                    <div className="grid py-3 sm:grid-cols-[130px_1fr] sm:gap-4">
+                      <span className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">
+                        Hours
+                      </span>
+                      <div className="flex items-center gap-2 text-slate-700">
+                        <Clock className="size-3.5 text-slate-400 shrink-0" />
+                        <span className="font-medium">
+                          {store.timing} ({store.openDays})
                         </span>
-                      ))}
+                      </div>
+                    </div>
+
+                    {/* Contact Row */}
+                    <div className="grid py-3 sm:grid-cols-[130px_1fr] sm:gap-4">
+                      <span className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">
+                        Contact
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Phone className="size-3.5 text-[#0a7ae6] shrink-0" />
+                        {store.phones.map((phone, idx) => (
+                          <a
+                            key={idx}
+                            href={`tel:${phone.replace(/[^+\d]/g, "")}`}
+                            className="font-bold text-[#071a38] transition hover:text-[#0a7ae6]"
+                          >
+                            {phone}
+                            {idx < store.phones.length - 1 && (
+                              <span className="ml-2 text-slate-300">/</span>
+                            )}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Services On-Site Row */}
+                    <div className="grid py-3 sm:grid-cols-[130px_1fr] sm:gap-4">
+                      <span className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">
+                        On-Site
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {store.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100">
-                  <a
-                    href={store.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-[#0a7ae6] transition cursor-pointer"
-                  >
-                    <span>Get Directions on Google Maps</span>
-                    <ExternalLink className="size-3.5" />
-                  </a>
+                  {/* Actions Footer */}
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <a
+                      href={store.mapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#071a38] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#0a7ae6]"
+                    >
+                      <span>Get Directions on Google Maps</span>
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                    <a
+                      href={`tel:${store.phones[0].replace(/[^+\d]/g, "")}`}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                    >
+                      <Phone className="size-3.5 text-slate-500" />
+                      <span>Call Center</span>
+                    </a>
+                  </div>
                 </div>
-              </div>
-            ))}
+              </article>
+            );
+          })}
+
+          {/* Bottom Assistance Banner (Matches Legal/Policy page footer) */}
+          <div className="rounded-2xl bg-[#071a38] p-6 text-white sm:p-8">
+            <p className="text-base font-bold sm:text-lg">
+              Questions before visiting or want a virtual demo?
+            </p>
+            <p className="mt-1.5 text-xs sm:text-sm leading-6 text-slate-300">
+              Contact XElectron Customer Care at{" "}
+              <a
+                href="mailto:customercare@xelectron.com"
+                className="font-semibold text-sky-300 hover:text-white"
+              >
+                customercare@xelectron.com
+              </a>{" "}
+              or call{" "}
+              <a
+                href="tel:01204550655"
+                className="font-semibold text-sky-300 hover:text-white"
+              >
+                0120-4550655
+              </a>
+              . You can also chat directly with our specialists on{" "}
+              <a
+                href="https://wa.me/919870293008?text=Hi%20XElectron,%20I%20would%20like%20to%20know%20more%20about%20store%20visits."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-emerald-300 hover:text-white underline underline-offset-2"
+              >
+                WhatsApp (+91 98702 93008)
+              </a>
+              .
+            </p>
           </div>
         </div>
       </section>

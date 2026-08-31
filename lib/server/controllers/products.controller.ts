@@ -2,6 +2,9 @@ import * as productsDal from "@/lib/server/dal/products.dal";
 import type { CreateProductInput } from "@/lib/server/dal/products.dal";
 import { parsePriceNumber } from "@/lib/format-price";
 
+const NAVBAR_PRODUCT_LIMIT = 2;
+const WARRANTY_MENU_PRODUCT_LIMIT = 2;
+
 // ─── Price Override Helper ───────────────────────────────────────────────────
 
 function applyEffectivePrice(product: any) {
@@ -69,6 +72,13 @@ export async function createProduct(data: CreateProductInput) {
     throw new Error(`Product with slug "${data.slug}" already exists`);
   }
 
+  if (data.showInNavbar) {
+    const navbarProductCount = await productsDal.countNavbarProducts();
+    if (navbarProductCount >= NAVBAR_PRODUCT_LIMIT) {
+      throw new Error(`A maximum of ${NAVBAR_PRODUCT_LIMIT} products can appear in the navigation menu.`);
+    }
+  }
+
   return productsDal.createProduct(data);
 }
 
@@ -92,7 +102,53 @@ export async function updateProduct(
     }
   }
 
+  if (data.showInNavbar && !existing.showInNavbar) {
+    const navbarProductCount = await productsDal.countNavbarProducts(existing.id);
+    if (navbarProductCount >= NAVBAR_PRODUCT_LIMIT) {
+      throw new Error(`A maximum of ${NAVBAR_PRODUCT_LIMIT} products can appear in the navigation menu.`);
+    }
+  }
+
+  if (data.showInWarrantyMenu && !existing.showInWarrantyMenu) {
+    const warrantyProductCount = await productsDal.countWarrantyMenuProducts(existing.id);
+    if (warrantyProductCount >= WARRANTY_MENU_PRODUCT_LIMIT) {
+      throw new Error(`A maximum of ${WARRANTY_MENU_PRODUCT_LIMIT} products can appear in the warranty menu.`);
+    }
+  }
+
   return productsDal.updateProduct(existing.id, data);
+}
+
+export async function setProductNavbarPlacement(id: string, showInNavbar: boolean) {
+  const existing = await productsDal.getProductNavbarPlacement(id);
+  if (!existing) {
+    throw new Error("Product not found");
+  }
+
+  if (showInNavbar && !existing.showInNavbar) {
+    const navbarProductCount = await productsDal.countNavbarProducts(existing.id);
+    if (navbarProductCount >= NAVBAR_PRODUCT_LIMIT) {
+      throw new Error(`A maximum of ${NAVBAR_PRODUCT_LIMIT} products can appear in the navigation menu.`);
+    }
+  }
+
+  return productsDal.setProductNavbarPlacement(existing.id, showInNavbar);
+}
+
+export async function setProductWarrantyMenuPlacement(id: string, showInWarrantyMenu: boolean) {
+  const existing = await productsDal.getProductWarrantyMenuPlacement(id);
+  if (!existing) {
+    throw new Error("Product not found");
+  }
+
+  if (showInWarrantyMenu && !existing.showInWarrantyMenu) {
+    const warrantyProductCount = await productsDal.countWarrantyMenuProducts(existing.id);
+    if (warrantyProductCount >= WARRANTY_MENU_PRODUCT_LIMIT) {
+      throw new Error(`A maximum of ${WARRANTY_MENU_PRODUCT_LIMIT} products can appear in the warranty menu.`);
+    }
+  }
+
+  return productsDal.setProductWarrantyMenuPlacement(existing.id, showInWarrantyMenu);
 }
 
 export async function listBestSellerProducts() {

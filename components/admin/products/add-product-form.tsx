@@ -7,6 +7,7 @@ import { ChevronRight, Pencil, Tag } from "lucide-react";
 import { ProductAdditionalDetailsSection } from "@/components/admin/products/product-additional-details-section";
 import { ProductDescriptionEditor } from "@/components/admin/products/product-description-editor";
 import { HomeShowcaseToggle } from "@/components/admin/products/home-showcase-toggle";
+import { NavbarShowcaseToggle } from "@/components/admin/products/navbar-showcase-toggle";
 import { ProductMediaUploader } from "@/components/admin/products/product-media-uploader";
 import { ProductVariantsSection } from "@/components/admin/products/product-variants-section";
 import { uploadProductImage } from "@/lib/client/upload-product-image";
@@ -67,6 +68,7 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
   const [compareAtPrice, setCompareAtPrice] = useState("");
   const [quantity, setQuantity] = useState("0");
   const [showInBestSellers, setShowInBestSellers] = useState(false);
+  const [showInNavbar, setShowInNavbar] = useState(false);
   const [status, setStatus] = useState("active");
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [variants, setVariants] = useState<any[]>([]);
@@ -141,6 +143,7 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
           shippingNotice: shippingNotice.trim() || "Cinema-grade theater projection, vibrant 4K support, Android Smart OS & immersive stereo audio.",
           quantity: numericQuantity,
           showInBestSellers,
+          showInNavbar,
           media: uploadedMedia,
           variants,
           colors,
@@ -363,6 +366,7 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
         <aside className="space-y-4">
           <Card title="Status"><div className="px-4 pb-4"><select value={status} onChange={(event) => setStatus(event.target.value)} className={inputClass}><option value="active">Active</option><option value="draft">Draft</option></select><p className="mt-2 text-xs text-black/55">Status will be stored when product publishing is added.</p></div></Card>
           <Card title="Home page"><div className="px-4 pb-4"><HomeShowcaseToggle checked={showInBestSellers} onCheckedChange={setShowInBestSellers} /></div></Card>
+          <Card title="Navigation menu"><div className="px-4 pb-4"><NavbarShowcaseToggle checked={showInNavbar} onCheckedChange={setShowInNavbar} /></div></Card>
           <Card title="Product organization"><div className="space-y-4 px-4 pb-4 text-sm"><div><p className="text-black/75">Category</p><p className="mt-1 text-black/55">{selectedCategory?.title || "Choose a category in Product details."}</p></div><div><p className="text-black/75">Collections and tags</p><p className="mt-1 text-black/55">Available when those records are added to the database.</p></div></div></Card>
         </aside>
       </div>

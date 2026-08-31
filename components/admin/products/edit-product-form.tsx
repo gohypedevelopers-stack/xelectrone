@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 
 import { ProductDescriptionEditor } from "@/components/admin/products/product-description-editor";
 import { HomeShowcaseToggle } from "@/components/admin/products/home-showcase-toggle";
+import { NavbarShowcaseToggle } from "@/components/admin/products/navbar-showcase-toggle";
 import { ProductMediaUploader } from "@/components/admin/products/product-media-uploader";
 import { uploadProductImage } from "@/lib/client/upload-product-image";
 import { parsePriceNumber } from "@/lib/format-price";
@@ -35,6 +36,7 @@ type EditableProduct = {
   categoryId: string;
   quantity: number;
   showInBestSellers: boolean;
+  showInNavbar?: boolean;
   category: { title: string } | null;
   media: { id: string; url: string; sortOrder: number }[];
   features?: { featureText: string }[];
@@ -112,6 +114,7 @@ export function EditProductForm({ product, categories }: { product: EditableProd
   const [compareAtPrice, setCompareAtPrice] = useState(inputValueForPrice(product.oldPrice));
   const [quantity, setQuantity] = useState(String(product.quantity));
   const [showInBestSellers, setShowInBestSellers] = useState(product.showInBestSellers);
+  const [showInNavbar, setShowInNavbar] = useState(product.showInNavbar ?? false);
   const [variants, setVariants] = useState<any[]>(() => ((product as any).variants || []).map((v: any) => ({ ...v })));
   const [colors, setColors] = useState<any[]>(() => (product.colors || []).map((c: any) => ({ ...c })));
   const [orderedMedia, setOrderedMedia] = useState<ExistingMediaItem[]>(() => getExistingMedia(product));
@@ -223,6 +226,7 @@ export function EditProductForm({ product, categories }: { product: EditableProd
       compareAtPrice !== inputValueForPrice(product.oldPrice) ||
       quantity !== String(product.quantity) ||
       showInBestSellers !== product.showInBestSellers ||
+      showInNavbar !== (product.showInNavbar ?? false) ||
       mediaChanged ||
       featuresChanged ||
       specsChanged ||
@@ -235,7 +239,7 @@ export function EditProductForm({ product, categories }: { product: EditableProd
       variantsChanged ||
       mediaFiles.length > 0
     );
-  }, [categoryId, compareAtPrice, description, faqs, features, mediaFiles.length, orderedMedia, price, product, quantity, shippingNotice, showcaseBanners, showInBestSellers, sliderBanners, sliderPosition, slug, specs, title, creatorVideos, colors, variants, sku]);
+  }, [categoryId, compareAtPrice, description, faqs, features, mediaFiles.length, orderedMedia, price, product, quantity, shippingNotice, showcaseBanners, showInBestSellers, showInNavbar, sliderBanners, sliderPosition, slug, specs, title, creatorVideos, colors, variants, sku]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -364,6 +368,7 @@ export function EditProductForm({ product, categories }: { product: EditableProd
           oldPrice: numericCompareAtPrice === undefined ? null : formatPrice(compareAtPrice),
           quantity: numericQuantity,
           showInBestSellers,
+          showInNavbar,
           mainImage: orderedMedia[0]?.url ?? uploadedMedia[0]?.url ?? "",
           newMedia: uploadedMedia,
           removeMediaIds: removedMediaIds,
@@ -582,6 +587,9 @@ export function EditProductForm({ product, categories }: { product: EditableProd
         <aside className="space-y-4">
           <Card title="Home page">
             <HomeShowcaseToggle checked={showInBestSellers} onCheckedChange={setShowInBestSellers} />
+          </Card>
+          <Card title="Navigation menu">
+            <NavbarShowcaseToggle checked={showInNavbar} onCheckedChange={setShowInNavbar} />
           </Card>
           <Card title="Product organization">
             <dl className="space-y-3 text-sm"><div><dt className="text-black/55">Category</dt><dd className="mt-1 font-medium">{selectedCategory?.title || product.category?.title || "Uncategorized"}</dd></div><div><dt className="text-black/55">Handle</dt><dd className="mt-1 break-all font-medium">{slugify(title) || product.slug}</dd></div></dl>

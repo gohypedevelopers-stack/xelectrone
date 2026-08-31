@@ -5,6 +5,18 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+type RuntimeModel = {
+  fields?: { name?: string }[];
+};
+
+function hasGeneratedProductField(client: PrismaClient, fieldName: string) {
+  const runtimeDataModel = (client as unknown as {
+    _runtimeDataModel?: { models?: Record<string, RuntimeModel> };
+  })._runtimeDataModel;
+
+  return runtimeDataModel?.models?.Product?.fields?.some((field) => field.name === fieldName) ?? false;
+}
+
 function getDatabaseUrl() {
   let databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
@@ -46,7 +58,9 @@ function getDbInstance(): PrismaClient {
       typeof (globalForPrisma.prisma as any).blogPost === "undefined" ||
       typeof (globalForPrisma.prisma as any).draftOrder === "undefined" ||
       typeof (globalForPrisma.prisma as any).brandShowcaseItem === "undefined" ||
-      typeof (globalForPrisma.prisma as any).brandMarqueeItem === "undefined"
+      typeof (globalForPrisma.prisma as any).brandMarqueeItem === "undefined" ||
+      !hasGeneratedProductField(globalForPrisma.prisma, "showInNavbar") ||
+      !hasGeneratedProductField(globalForPrisma.prisma, "showInWarrantyMenu")
     ) {
       globalForPrisma.prisma = undefined;
     }

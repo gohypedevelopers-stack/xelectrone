@@ -26,19 +26,32 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     await requireAdmin();
     const { id } = await params;
     const body = await request.json();
-    const product = await productsController.updateProduct(id, body);
+    const isNavbarToggle =
+      typeof body?.showInNavbar === "boolean" &&
+      Object.keys(body).length === 1;
+    const isWarrantyMenuToggle =
+      typeof body?.showInWarrantyMenu === "boolean" &&
+      Object.keys(body).length === 1;
+    const product = isNavbarToggle
+      ? await productsController.setProductNavbarPlacement(id, body.showInNavbar)
+      : isWarrantyMenuToggle
+        ? await productsController.setProductWarrantyMenuPlacement(id, body.showInWarrantyMenu)
+      : await productsController.updateProduct(id, body);
     revalidatePath("/");
     revalidatePath("/product");
     revalidatePath(`/product/${product.id}`);
     if (product.slug) revalidatePath(`/product/${product.slug}`);
     revalidatePath("/dashboard/products");
+    revalidatePath("/dashboard/products/navbar");
+    revalidatePath("/dashboard/products/warranty");
+    revalidatePath("/terms-policy");
     return NextResponse.json({ success: true, data: product });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ success: false, error: error.message }, { status: error.status });
     }
     const message = error instanceof Error ? error.message : "Internal server error";
-    const status = message.includes("not found") ? 404 : 500;
+    const status = message.includes("not found") ? 404 : message.includes("maximum") ? 400 : 500;
     return NextResponse.json({ success: false, error: message }, { status });
   }
 }

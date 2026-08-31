@@ -10,9 +10,7 @@ import {
   MapPin,
   Phone,
   Clock,
-  Send,
   CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,75 +27,89 @@ export default function RepairReplacementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.serialNumber) {
+    if (!formData.name || !formData.phone || !formData.serialNumber || !formData.issueDetails) {
       toast.error("Please fill in all required fields.");
       return;
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const response = await fetch("/api/repair-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || "The service request could not be sent.");
+      }
+
       setSubmitted(true);
       toast.success("Service request submitted successfully!");
-    }, 1000);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The service request could not be sent.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <main className="min-h-screen bg-slate-50/50 text-slate-900">
       <Navbar />
 
-      {/* HERO HEADER */}
-      <section className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-16 sm:py-24 text-white">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-[0.25em] text-[#38bdf8] backdrop-blur-md">
-            <RotateCcw className="h-3.5 w-3.5" /> Doorstep Service & Replacement
-          </span>
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-5xl text-white">
-            Repair & Replacement Requests
-          </h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm sm:text-base text-slate-300">
-            Submit a service request for doorstep pickup or visit our Authorized Technical Service Center in Ghaziabad.
-          </p>
+      <section className="border-b border-slate-200/80 bg-white">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[1fr_360px]">
+          <div className="max-w-2xl">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#edf7ff] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#0a7ae6]">
+              <RotateCcw className="size-3.5" /> Service & replacement
+            </span>
+            <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[#071a38] sm:text-4xl">
+              Repair or replace your XElectron product.
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">
+              Tell us what happened and we will arrange doorstep pickup when eligible, or guide you to our authorised service centre.
+            </p>
+          </div>
+          <div className="rounded-2xl bg-[#071a38] p-5 text-white shadow-sm">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-sky-300">How we can help</p>
+            <div className="mt-4 space-y-3 text-sm text-slate-200">
+              <p className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-sky-300" />Free 7-day replacement for eligible issues</p>
+              <p className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-sky-300" />Official warranty repairs from trained technicians</p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* POLICIES CARDS */}
-      <section className="-mt-8 relative z-20 pb-12">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-md">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-[#0a7ae6] mb-4">
-                <RotateCcw className="size-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">7-Day Free Replacement Policy</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                If your product arrives damaged or develops a hardware defect within 7 days of delivery, we provide an immediate 100% free replacement with doorstep pickup.
-              </p>
+      <section className="bg-[#f7fbff] py-7 sm:py-9">
+        <div className="mx-auto grid max-w-6xl gap-4 px-5 sm:grid-cols-2 sm:px-8">
+          <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#edf7ff] text-[#0a7ae6]"><RotateCcw className="size-5" /></div>
+            <div>
+              <h2 className="text-sm font-bold text-[#071a38]">7-day replacement</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-600">For delivery damage or verified hardware defects reported within seven days.</p>
             </div>
-
-            <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-md">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 mb-4">
-                <ShieldCheck className="size-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">1-Year Official Warranty Repairs</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                All XElectron devices come with a 1-Year Manufacturer Warranty. Technical repairs and replacement parts are covered free of charge during the warranty period.
-              </p>
+          </div>
+          <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"><ShieldCheck className="size-5" /></div>
+            <div>
+              <h2 className="text-sm font-bold text-[#071a38]">Official warranty repairs</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Repairs and eligible parts are handled during the one-year warranty period.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* FORM & SERVICE CENTER DETAILS */}
-      <section className="py-12 sm:py-20 bg-white border-t border-slate-200/80">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-12 lg:grid-cols-12 items-start">
+      <section className="bg-white py-12 sm:py-16">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8">
+          <div className="grid items-start gap-8 lg:grid-cols-12">
             {/* SERVICE REQUEST FORM */}
-            <div className="lg:col-span-7 bg-slate-50/60 p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-xs">
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                Submit A Repair / Replacement Request
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6 shadow-sm sm:p-8 lg:col-span-7">
+              <h2 className="text-xl font-bold tracking-tight text-[#071a38] sm:text-2xl">
+                Submit a service request
               </h2>
               <p className="mt-1 text-xs text-slate-500">
                 Provide your order serial number and pickup address for fast service resolution.
@@ -210,8 +222,8 @@ export default function RepairReplacementPage() {
             </div>
 
             {/* AUTHORIZED SERVICE CENTER SIDEBAR */}
-            <div className="lg:col-span-5 space-y-6">
-              <div className="rounded-3xl border border-slate-200/90 bg-slate-900 text-white p-6 sm:p-8 space-y-4">
+            <div className="space-y-6 lg:col-span-5">
+              <div className="space-y-4 rounded-2xl border border-slate-200/90 bg-slate-900 p-6 text-white shadow-sm sm:p-7">
                 <span className="rounded-full bg-[#0a7ae6] text-white text-[10px] font-extrabold uppercase tracking-wider px-3 py-1">
                   Main Service Hub
                 </span>

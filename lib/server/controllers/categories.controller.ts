@@ -50,7 +50,10 @@ export async function deleteCategory(id: string) {
   if (!existing) {
     throw new Error("Category not found");
   }
-  return categoriesDal.deleteCategory(id);
+
+  // Keep direct deletion consistent with the bulk action: linked products are
+  // moved to an available category before the source category is removed.
+  return categoriesDal.deleteCategories([id]);
 }
 
 export async function deleteCategories(ids: string[], reassignProductsToId?: string) {

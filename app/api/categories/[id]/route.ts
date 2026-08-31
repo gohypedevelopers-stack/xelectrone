@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import * as categoriesController from "@/lib/server/controllers/categories.controller";
 import { requireAdmin, AuthError } from "@/lib/server/dal/auth";
 
@@ -43,6 +44,11 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     await requireAdmin();
     const { id } = await params;
     await categoriesController.deleteCategory(id);
+    revalidatePath("/dashboard/products/categories");
+    revalidatePath("/dashboard/products");
+    revalidatePath("/dashboard/products/navbar");
+    revalidatePath("/");
+    revalidatePath("/shop");
     return NextResponse.json({ success: true, message: "Category deleted" });
   } catch (error) {
     if (error instanceof AuthError) {

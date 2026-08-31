@@ -305,6 +305,8 @@ type SearchDrawerProduct = {
   media?: { url: string }[];
   category?: { title?: string | null } | string | null;
   showInBestSellers?: boolean;
+  showInNavbar?: boolean;
+  showInWarrantyMenu?: boolean;
   createdAt?: string;
 };
 
@@ -468,8 +470,6 @@ export default function Navbar() {
   }, [isSearchDrawerOpen]);
 
   useEffect(() => {
-    if (openMenu !== "PRODUCT") return;
-
     let isCurrent = true;
 
     async function loadMenuProducts() {
@@ -499,7 +499,7 @@ export default function Navbar() {
     return () => {
       isCurrent = false;
     };
-  }, [openMenu]);
+  }, []);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -575,13 +575,13 @@ export default function Navbar() {
     : searchProducts;
   const searchProductCards = visibleSearchProducts.slice(0, 4);
   const searchProductListItems = visibleSearchProducts.slice(4);
-  const menuFeaturedProducts = [...menuProducts]
-    .sort((left, right) => {
-      const bestSellerDifference = Number(Boolean(right.showInBestSellers)) - Number(Boolean(left.showInBestSellers));
-      if (bestSellerDifference !== 0) return bestSellerDifference;
-
-    return (Date.parse(right.createdAt || "") || 0) - (Date.parse(left.createdAt || "") || 0);
-    })
+  const menuFeaturedProducts = menuProducts
+    .filter((product) => product.showInNavbar)
+    .sort((left, right) => (Date.parse(right.createdAt || "") || 0) - (Date.parse(left.createdAt || "") || 0))
+    .slice(0, 2);
+  const warrantyMenuProducts = menuProducts
+    .filter((product) => product.showInWarrantyMenu)
+    .sort((left, right) => (Date.parse(right.createdAt || "") || 0) - (Date.parse(left.createdAt || "") || 0))
     .slice(0, 2);
 
   return (
@@ -804,36 +804,26 @@ export default function Navbar() {
                     </div>
 
                     {/* Column 2: Categories */}
-                    <div className="col-span-4 border-x border-slate-100 px-6">
-                      <div className="mb-3 flex items-center justify-between">
-                        <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-                          CATEGORIES
-                        </h4>
-                        <Link
-                          href="/shop"
-                          onClick={() => setOpenMenu(null)}
-                          className="group inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#0a7ae6] transition-colors hover:text-slate-900"
-                        >
-                          Shop all
-                          <ChevronRight className="size-3 transition-transform group-hover:translate-x-0.5" />
-                        </Link>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-4 px-4 space-y-3">
+                      <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                        CATEGORIES
+                      </h4>
+                      <div className="grid grid-cols-2 gap-x-5 gap-y-1">
                         {storeCategories.map((category) => (
                           <Link
                             key={category.id}
                             href={`/shop?filter=${encodeURIComponent(category.slug)}`}
                             onClick={() => setOpenMenu(null)}
-                            className="group flex min-h-12 items-center justify-between rounded-lg border border-slate-100 bg-slate-50/70 px-3 text-xs font-bold uppercase tracking-[0.08em] text-slate-700 shadow-[inset_3px_0_0_transparent] transition-all duration-200 hover:border-[#0a7ae6]/20 hover:bg-[#eff7ff] hover:text-[#0a7ae6] hover:shadow-[inset_3px_0_0_#0a7ae6]"
+                            className="group flex h-9 items-center justify-between rounded-md px-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#0a7ae6]"
                           >
-                            <span className="pr-2 transition-transform duration-200 group-hover:translate-x-0.5">
+                            <span className="pr-2">
                               {category.title}
                             </span>
-                            <ChevronRight className="size-3.5 shrink-0 text-slate-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#0a7ae6]" />
+                            <ChevronRight className="size-3 shrink-0 text-slate-300 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100 group-hover:text-[#0a7ae6]" />
                           </Link>
                         ))}
                         {areStoreCategoriesLoaded && storeCategories.length === 0 ? (
-                          <p className="col-span-2 rounded-lg border border-dashed border-slate-200 px-3 py-5 text-center text-xs text-slate-400">
+                          <p className="col-span-2 px-2 py-2 text-xs text-slate-400">
                             No categories available
                           </p>
                         ) : null}
@@ -841,7 +831,7 @@ export default function Navbar() {
                     </div>
 
                     {/* Column 3: current dashboard products */}
-                    <div className="col-span-5 grid grid-cols-2 gap-4">
+                    <div className="col-span-5 mx-auto grid w-full max-w-[420px] grid-cols-2 gap-3">
                       {menuFeaturedProducts.map((product) => (
                         <Link
                           key={product.id}
@@ -849,16 +839,16 @@ export default function Navbar() {
                           onClick={() => setOpenMenu(null)}
                           className="group flex flex-col items-center justify-between rounded-xl p-2 transition-all duration-300 hover:-translate-y-0.5"
                         >
-                          <div className="relative h-[135px] w-full overflow-hidden rounded-lg">
+                          <div className="relative h-[150px] w-full overflow-hidden rounded-lg">
                             <Image
                               src={menuProductImage(product)}
                               alt={product.name}
                               fill
-                              sizes="(min-width: 1024px) 260px, 0px"
+                              sizes="(min-width: 1024px) 240px, 0px"
                               className="object-contain object-center transition-transform duration-300 group-hover:scale-105"
                             />
                           </div>
-                          <h5 className="mt-2.5 w-full text-center text-xs font-bold uppercase tracking-wider text-slate-800 truncate group-hover:text-[#0a7ae6] transition-colors">
+                          <h5 className="mt-2 w-full text-center text-[11px] font-bold uppercase tracking-wider text-slate-800 truncate group-hover:text-[#0a7ae6] transition-colors">
                             {product.name}
                           </h5>
                         </Link>
@@ -866,14 +856,14 @@ export default function Navbar() {
 
                       {(isLoadingMenuProducts || !areMenuProductsLoaded) && menuFeaturedProducts.length === 0 ? (
                         <>
-                          <div className="h-[195px] animate-pulse bg-slate-100" />
-                          <div className="h-[195px] animate-pulse bg-slate-100" />
+                          <div className="h-[142px] animate-pulse rounded-lg bg-slate-100" />
+                          <div className="h-[142px] animate-pulse rounded-lg bg-slate-100" />
                         </>
                       ) : null}
 
                       {areMenuProductsLoaded && !isLoadingMenuProducts && menuFeaturedProducts.length === 0 ? (
-                        <div className="col-span-2 flex h-[195px] items-center justify-center border border-dashed border-slate-200 px-6 text-center text-sm text-slate-400">
-                          Add products in the dashboard to show them here.
+                        <div className="col-span-2 flex h-[142px] items-center justify-center border border-dashed border-slate-200 px-6 text-center text-sm text-slate-400">
+                          Choose products in Dashboard → Products → Navigation menu to show them here.
                         </div>
                       ) : null}
                     </div>
@@ -883,7 +873,7 @@ export default function Navbar() {
                 {openMenu === "WARRANTY" && (
                   <div className="grid grid-cols-12 gap-8 items-stretch">
                     {/* Column 1: Coverage */}
-                    <div className="col-span-3 pr-6 space-y-3">
+                    <div className="col-span-4 pr-6 space-y-3">
                       <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
                         COVERAGE
                       </h4>
@@ -891,7 +881,7 @@ export default function Navbar() {
                         {[
                           { name: "Check Coverage", href: "/warranty" },
                           { name: "Register Product", href: "/warranty" },
-                          { name: "Terms & Policy", href: "/warranty" },
+                          { name: "Terms & Policy", href: "/terms-policy" },
                         ].map((item) => (
                           <li key={item.name}>
                             <Link
@@ -910,15 +900,15 @@ export default function Navbar() {
                     </div>
 
                     {/* Column 2: Services */}
-                    <div className="col-span-4 pr-6 space-y-3">
+                    <div className="col-span-4 border-l border-slate-100 px-6 space-y-3">
                       <h4 className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
                         SERVICES & REPAIRS
                       </h4>
                       <div className="space-y-0.5">
                         {[
                           { name: "Service Status Tracking", href: "/warranty" },
-                          { name: "Replacement Claims", href: "/warranty" },
-                          { name: "Authorized Service Centers", href: "/warranty" },
+                          { name: "Replacement Claims", href: "/repair-replacement" },
+                          { name: "Authorized Service Centers", href: "/service-centers" },
                         ].map((srv) => (
                           <Link
                             key={srv.name}
@@ -934,43 +924,42 @@ export default function Navbar() {
                       </div>
                     </div>
 
-                    {/* Column 3: Spotlight Image Cards */}
-                    <div className="col-span-5 grid grid-cols-2 gap-4">
-                      <Link
-                        href="/warranty"
-                        onClick={() => setOpenMenu(null)}
-                        className="group flex flex-col items-center justify-between rounded-xl p-2 transition-all duration-300 hover:-translate-y-0.5"
-                      >
-                        <div className="relative h-[135px] w-full overflow-hidden rounded-lg">
-                          <Image
-                            src="/category-headphones.png"
-                            alt="Register Product"
-                            fill
-                            className="object-contain object-center transition-transform duration-300 group-hover:scale-105"
-                          />
-                        </div>
-                        <h5 className="mt-2.5 w-full text-center text-xs font-bold uppercase tracking-wider text-slate-800 truncate group-hover:text-[#0a7ae6] transition-colors">
-                          Register Your Gear
-                        </h5>
-                      </Link>
+                    {/* Column 3: selected navigation products */}
+                    <div className="col-span-4 grid grid-cols-2 gap-4 border-l border-slate-100 pl-6">
+                      {warrantyMenuProducts.map((product) => (
+                        <Link
+                          key={product.id}
+                          href={`/product/${product.slug}`}
+                          onClick={() => setOpenMenu(null)}
+                          className="group flex flex-col items-center justify-between rounded-xl p-2 transition-all duration-300 hover:-translate-y-0.5"
+                        >
+                          <div className="relative h-[150px] w-full overflow-hidden rounded-lg">
+                            <Image
+                              src={menuProductImage(product)}
+                              alt={product.name}
+                              fill
+                              sizes="(min-width: 1024px) 240px, 0px"
+                              className="object-contain object-center transition-transform duration-300 group-hover:scale-105"
+                            />
+                          </div>
+                          <h5 className="mt-2.5 w-full truncate text-center text-xs font-bold uppercase tracking-wider text-slate-800 transition-colors group-hover:text-[#0a7ae6]">
+                            {product.name}
+                          </h5>
+                        </Link>
+                      ))}
 
-                      <Link
-                        href="/warranty"
-                        onClick={() => setOpenMenu(null)}
-                        className="group flex flex-col items-center justify-between rounded-xl p-2 transition-all duration-300 hover:-translate-y-0.5"
-                      >
-                        <div className="relative h-[135px] w-full overflow-hidden rounded-lg">
-                          <Image
-                            src="/banner-earbuds.png"
-                            alt="Care Plus"
-                            fill
-                            className="object-contain object-center transition-transform duration-300 group-hover:scale-105"
-                          />
-                        </div>
-                        <h5 className="mt-2.5 w-full text-center text-xs font-bold uppercase tracking-wider text-slate-800 truncate group-hover:text-[#0a7ae6] transition-colors">
-                          Xelectron Care Plus
-                        </h5>
-                      </Link>
+                      {(isLoadingMenuProducts || !areMenuProductsLoaded) && warrantyMenuProducts.length === 0 ? (
+                        <>
+                          <div className="h-[175px] animate-pulse rounded-lg bg-slate-100" />
+                          <div className="h-[175px] animate-pulse rounded-lg bg-slate-100" />
+                        </>
+                      ) : null}
+
+                      {areMenuProductsLoaded && !isLoadingMenuProducts && warrantyMenuProducts.length === 0 ? (
+                        <p className="col-span-2 flex h-[175px] items-center justify-center rounded-lg border border-dashed border-slate-200 px-5 text-center text-xs leading-5 text-slate-400">
+                          Choose up to two products in Dashboard → Products → Warranty products.
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 )}
@@ -1112,8 +1101,28 @@ export default function Navbar() {
                           label: category.title,
                           href: `/shop?filter=${encodeURIComponent(category.slug)}`,
                         })),
+                        ...menuFeaturedProducts.map((product) => ({
+                          key: `navigation-product-${product.id}`,
+                          label: product.name,
+                          href: `/product/${product.slug}`,
+                        })),
                       ]
-                      : group.items.map((item) => ({ key: item, label: item, href: "/" }));
+                      : group.label === "WARRANTY"
+                        ? [
+                          { key: "check-coverage", label: "Check Coverage", href: "/warranty" },
+                          { key: "register-product", label: "Register Product", href: "/warranty" },
+                          { key: "terms-policy", label: "Terms & Policy", href: "/terms-policy" },
+                          { key: "service-centers", label: "Authorized Service Centers", href: "/service-centers" },
+                          { key: "replacement-claims", label: "Replacement Claims", href: "/repair-replacement" },
+                        ]
+                        : group.label === "SUPPORT & SERVICE"
+                          ? [
+                            { key: "contact-support", label: "Contact Support", href: "/contact" },
+                            { key: "repair-request", label: "Repair & Replacement", href: "/repair-replacement" },
+                            { key: "service-centers", label: "Service Center Locations", href: "/service-centers" },
+                            { key: "troubleshooting", label: "Troubleshooting Guide", href: "/troubleshooting" },
+                          ]
+                          : group.items.map((item) => ({ key: item, label: item, href: "/" }));
 
                     return (
                       <div
