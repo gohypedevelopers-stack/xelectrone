@@ -64,15 +64,14 @@ function formatPrice(value: string) {
   return `₹${Number(value).toFixed(2)}`;
 }
 
-function slugify(value: string, maxWords = 5) {
-  const words = value
+function slugify(value: string) {
+  return value
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9\s-]/g, "")
     .split(/[\s-]+/)
     .filter(Boolean)
-    .slice(0, maxWords);
-  return words.join("-");
+    .join("-");
 }
 
 function getExistingMedia(product: EditableProduct): ExistingMediaItem[] {
@@ -104,10 +103,18 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 export function EditProductForm({ product, categories }: { product: EditableProduct; categories: CategoryOption[] }) {
   const router = useRouter();
+  const generatedSlug = slugify(product.name);
+  const usesGeneratedSlug =
+    !product.slug ||
+    product.slug === generatedSlug ||
+    generatedSlug.startsWith(`${product.slug}-`);
   const [title, setTitle] = useState(product.name);
   const [sku, setSku] = useState((product as any).sku || "");
-  const [slug, setSlug] = useState(product.slug || slugify(product.name, 4));
+  const [slug, setSlug] = useState(usesGeneratedSlug ? generatedSlug : product.slug);
   const [shippingNotice, setShippingNotice] = useState(product.shippingNotice || "");
+  const [isSlugTouched, setIsSlugTouched] = useState(
+    !usesGeneratedSlug
+  );
   const [categoryId, setCategoryId] = useState(product.categoryId);
   const [description, setDescription] = useState(product.description);
   const [price, setPrice] = useState(inputValueForPrice(product.price));
@@ -165,6 +172,11 @@ export function EditProductForm({ product, categories }: { product: EditableProd
     () => categories.find((category) => category.id === categoryId),
     [categories, categoryId]
   );
+
+  function handleTitleChange(nextTitle: string) {
+    setTitle(nextTitle);
+    if (!isSlugTouched) setSlug(slugify(nextTitle));
+  }
   const isDirty = useMemo(() => {
     const initialMedia = getExistingMedia(product);
     const mediaChanged =
@@ -326,7 +338,7 @@ export function EditProductForm({ product, categories }: { product: EditableProd
     const numericPrice = Number(price);
     const numericCompareAtPrice = compareAtPrice.trim() ? Number(compareAtPrice) : undefined;
     const numericQuantity = Number(quantity);
-    const finalSlug = slug.trim() || slugify(title, 4);
+    const finalSlug = slug.trim() || slugify(title);
 
     if (!title.trim() || !description.trim() || !categoryId || !finalSlug || !Number.isFinite(numericPrice) || numericPrice < 0 || !Number.isSafeInteger(numericQuantity) || numericQuantity < 0) {
       setMessage("Add a title, category, description, valid price, and whole-number quantity before saving.");
@@ -448,7 +460,7 @@ export function EditProductForm({ product, categories }: { product: EditableProd
             <div className="space-y-4">
               <label className="grid gap-1.5 text-sm text-black/75">
                 <span>Title</span>
-                <input value={title} onChange={(event) => setTitle(event.target.value)} className={inputClass} />
+                <input value={title} onChange={(event) => handleTitleChange(event.target.value)} className={inputClass} />
               </label>
 
               <label className="grid gap-1.5 text-sm text-black/75">
@@ -479,7 +491,10 @@ export function EditProductForm({ product, categories }: { product: EditableProd
                   <span className="text-black/45 select-none shrink-0 font-mono text-xs">/product/</span>
                   <input
                     value={slug}
-                    onChange={(event) => setSlug(slugify(event.target.value, 8))}
+                    onChange={(event) => {
+                      setIsSlugTouched(true);
+                      setSlug(slugify(event.target.value));
+                    }}
                     className="h-10 w-full bg-transparent px-1 font-mono text-xs text-black outline-none"
                     placeholder="techno-projector"
                   />

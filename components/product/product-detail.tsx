@@ -37,7 +37,6 @@ import {
   Copy,
 } from "lucide-react";
 import {
-  getProductById,
   ProductDetailItem,
   type SimilarProductCard,
 } from "@/lib/products-data";
@@ -45,12 +44,13 @@ import SimilarProductsSection from "@/components/product/similar-products-sectio
 import RecentlyViewedSection from "@/components/product/recently-viewed-section";
 import ProductReviewsSection from "@/components/product/product-reviews-section";
 import { ProductDescriptionContent } from "@/components/product/product-description-content";
+import { VelocityLogo } from "@/components/checkout/payment-logos";
 import { priceToNumber, useCart } from "@/components/providers/cart-provider";
 import { formatINR } from "@/lib/format-price";
 import { recordRecentlyViewedProduct } from "@/lib/recently-viewed-products";
 
 interface ProductDetailProps {
-  initialProduct?: ProductDetailItem;
+  initialProduct: ProductDetailItem;
   initialRelatedProducts?: SimilarProductCard[];
   productId?: string;
   initialReviews?: any[];
@@ -83,7 +83,7 @@ function toProductDetailItem(product: any, activeDeal?: any): ProductDetailItem 
             bg: color.bg || color.bgHex || "#1e1e24",
             border: color.border || color.borderHex,
           }))
-        : [{ name: "Standard", bg: "#1e1e24" }],
+        : [],
     features:
       Array.isArray(product.features) && product.features.length > 0
         ? product.features.map((feature: any) =>
@@ -103,6 +103,10 @@ function toProductDetailItem(product: any, activeDeal?: any): ProductDetailItem 
             { label: "Model SKU", value: product.sku || product.id },
           ],
     shippingNotice: product.shippingNotice || "Free express delivery across India & Official Brand Warranty",
+    quantity:
+      typeof product.quantity === "number" && Number.isFinite(product.quantity)
+        ? Math.max(0, product.quantity)
+        : undefined,
     mainImage: product.images?.[0] || product.mainImage || "/category-smartphone.png",
     images:
       Array.isArray(product.media) && product.media.length > 0
@@ -169,11 +173,10 @@ export default function ProductDetail({
   const [activeVideoModal, setActiveVideoModal] = useState<{ url: string; title?: string } | null>(null);
   const buyBoxRef = useRef<HTMLDivElement>(null);
 
-  const product = useMemo(() => {
-    if (apiProduct) return apiProduct;
-    if (initialProduct) return initialProduct;
-    return getProductById(searchProductId);
-  }, [apiProduct, initialProduct, searchProductId]);
+  const product = useMemo(
+    () => apiProduct ?? initialProduct,
+    [apiProduct, initialProduct]
+  );
 
   useEffect(() => {
     if (!isSliderPlaying) return;
@@ -238,8 +241,22 @@ export default function ProductDetail({
 
   const numericPrice = useMemo(() => priceToNumber(product.price), [product.price]);
   const emiAmount = useMemo(() => Math.round(numericPrice / 3), [numericPrice]);
+  // Only an explicit stored quantity of zero marks the product as unavailable.
+  // A missing value must never be treated as out of stock while product data loads.
+  const availableStock =
+    typeof product.quantity === "number" && Number.isFinite(product.quantity)
+      ? Math.max(0, product.quantity)
+      : null;
+  const isOutOfStock = availableStock === 0;
+  const maximumPurchaseQuantity = availableStock === null ? 10 : Math.min(10, availableStock);
+
+  useEffect(() => {
+    setQuantity((currentQuantity) => Math.max(1, Math.min(currentQuantity, maximumPurchaseQuantity || 1)));
+  }, [maximumPurchaseQuantity]);
 
   const addProductToCart = () => {
+    if (isOutOfStock) return;
+
     for (let i = 0; i < quantity; i++) {
       addItem({
         id: product.id,
@@ -403,7 +420,7 @@ export default function ProductDetail({
                         >
                           <span
                             className="size-6 rounded-full border border-black/15 shadow-2xs"
-                            style={{ backgroundColor: color.bgHex }}
+                            style={{ backgroundColor: color.bg || color.bgHex }}
                           />
                         </button>
                       );
@@ -447,41 +464,51 @@ export default function ProductDetail({
                 </div>
               )}
 
-              {/* EMI & Cashback Promo Offer Box */}
-              <div className="mt-4 rounded-2xl border border-emerald-300/80 bg-emerald-50/60 p-3.5 space-y-1.5">
+              {/* Velocity EMI */}
+              <div className="mt-4 space-y-1.5 rounded-2xl border border-sky-200 bg-sky-50/60 p-3.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white">
-                    Flat 10% cashback up to ₹500
+                  <span className="inline-flex items-center gap-2 text-xs font-bold text-slate-900">
+                    <VelocityLogo className="h-4" />
+                    EMI / Pay Later
                   </span>
-                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                    NO COST EMI
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#0a7ae6]">
+                    Available
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-700 font-medium">
                   <span>
-                    or <strong className="text-slate-900 font-bold">₹{emiAmount.toLocaleString("en-IN")}/month</strong> (3 months)
+                    From <strong className="font-bold text-slate-900">₹{emiAmount.toLocaleString("en-IN")}/month</strong> for 3 months
                   </span>
-                  <span className="text-[11px] font-bold text-[#0a7ae6] underline cursor-pointer">
-                    Buy on EMI
-                  </span>
+                  {isOutOfStock ? (
+                    <span className="text-[11px] font-bold text-slate-400">Unavailable</span>
+                  ) : (
+                    <Link
+                      href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}&payment=velocity&emiTenure=3`}
+                      onClick={addProductToCart}
+                      className="text-[11px] font-bold text-[#0a7ae6] underline"
+                    >
+                      Buy on EMI
+                    </Link>
+                  )}
                 </div>
-                <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                  <span>UPI & Cards Accepted</span>
-                  <span>•</span>
-                  <span>0 Extra Cost</span>
-                  <span>•</span>
-                  <span className="font-semibold text-slate-700">Official Brand Warranty</span>
-                </p>
+                <p className="text-[10px] text-slate-500">Eligible plans and final terms are shown by Velocity at checkout.</p>
               </div>
 
-              {/* Live Urgency / Social Proof Indicator */}
-              <div className="mt-4 flex items-center gap-2.5 text-sm sm:text-[15px] font-medium text-emerald-800">
-                <span className="relative flex size-2.5 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-                  <span className="relative inline-flex size-2.5 rounded-full bg-emerald-600" />
-                </span>
-                <span>300+ Customers ordered this in the last 24 hours</span>
-              </div>
+              {/* Stock state */}
+              {isOutOfStock ? (
+                <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-bold text-red-700">
+                  <span className="flex size-2.5 shrink-0 rounded-full bg-red-600" />
+                  <span>Out of stock</span>
+                </div>
+              ) : (
+                <div className="mt-4 flex items-center gap-2.5 text-sm sm:text-[15px] font-medium text-emerald-800">
+                  <span className="relative flex size-2.5 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex size-2.5 rounded-full bg-emerald-600" />
+                  </span>
+                  <span>{availableStock !== null && availableStock <= 5 ? `Only ${availableStock} left in stock` : "In stock and ready to ship"}</span>
+                </div>
+              )}
 
               {/* Quantity Selector */}
               <div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-4">
@@ -494,7 +521,7 @@ export default function ProductDetail({
                     onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
                     aria-label="Decrease quantity"
                     className="flex size-7 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition active:scale-95 disabled:opacity-40"
-                    disabled={quantity <= 1}
+                    disabled={isOutOfStock || quantity <= 1}
                   >
                     <Minus className="size-3.5" />
                   </button>
@@ -503,9 +530,10 @@ export default function ProductDetail({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQuantity((prev) => Math.min(10, prev + 1))}
+                    onClick={() => setQuantity((prev) => Math.min(maximumPurchaseQuantity, prev + 1))}
                     aria-label="Increase quantity"
-                    className="flex size-7 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition active:scale-95"
+                    className="flex size-7 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition active:scale-95 disabled:opacity-40"
+                    disabled={isOutOfStock || quantity >= maximumPurchaseQuantity}
                   >
                     <Plus className="size-3.5" />
                   </button>
@@ -514,22 +542,29 @@ export default function ProductDetail({
 
               {/* Primary Action Buttons */}
               <div className="mt-5 space-y-2.5">
-                <Link
-                  href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}`}
-                  onClick={addProductToCart}
-                  className="flex h-12 w-full items-center justify-center rounded-xl bg-[#0a7ae6] text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all hover:bg-[#086ac9] active:scale-[0.99]"
-                >
-                  Buy Now
-                </Link>
+                {isOutOfStock ? (
+                  <button type="button" disabled className="flex h-12 w-full cursor-not-allowed items-center justify-center rounded-xl bg-slate-300 text-sm font-bold text-slate-600">
+                    Out of Stock
+                  </button>
+                ) : (
+                  <Link
+                    href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}`}
+                    onClick={addProductToCart}
+                    className="flex h-12 w-full items-center justify-center rounded-xl bg-[#0a7ae6] text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all hover:bg-[#086ac9] active:scale-[0.99]"
+                  >
+                    Buy Now
+                  </Link>
+                )}
 
                 <div className="flex items-center gap-2.5">
                   <button
                     type="button"
                     onClick={addProductToCart}
-                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-bold text-white transition-all hover:bg-slate-800 active:scale-[0.99]"
+                    disabled={isOutOfStock}
+                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-bold text-white transition-all hover:bg-slate-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
                   >
                     <ShoppingBag className="size-4" />
-                    <span>Add to Cart</span>
+                    <span>{isOutOfStock ? "Out of Stock" : "Add to Cart"}</span>
                   </button>
 
                   <button
@@ -1205,7 +1240,7 @@ export default function ProductDetail({
                     type="button"
                     onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
                     className="size-7 flex items-center justify-center text-slate-600 hover:bg-white rounded-md transition shadow-2xs"
-                    disabled={quantity <= 1}
+                    disabled={isOutOfStock || quantity <= 1}
                   >
                     <Minus className="size-3" />
                   </button>
@@ -1214,20 +1249,25 @@ export default function ProductDetail({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQuantity((prev) => Math.min(10, prev + 1))}
-                    className="size-7 flex items-center justify-center text-slate-600 hover:bg-white rounded-md transition shadow-2xs"
+                    onClick={() => setQuantity((prev) => Math.min(maximumPurchaseQuantity, prev + 1))}
+                    disabled={isOutOfStock || quantity >= maximumPurchaseQuantity}
+                    className="size-7 flex items-center justify-center rounded-md text-slate-600 shadow-2xs transition hover:bg-white disabled:opacity-40"
                   >
                     <Plus className="size-3" />
                   </button>
                 </div>
 
-                <Link
-                  href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}`}
-                  onClick={addProductToCart}
-                  className="rounded-lg bg-[#0a7ae6] px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#086ac9] transition active:scale-95"
-                >
-                  Buy Now
-                </Link>
+                {isOutOfStock ? (
+                  <span className="rounded-lg bg-slate-300 px-6 py-2 text-xs font-bold text-slate-600 sm:py-2.5 sm:text-sm">Out of Stock</span>
+                ) : (
+                  <Link
+                    href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}`}
+                    onClick={addProductToCart}
+                    className="rounded-lg bg-[#0a7ae6] px-6 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#086ac9] active:scale-95 sm:py-2.5 sm:text-sm"
+                  >
+                    Buy Now
+                  </Link>
+                )}
 
                 <button
                   type="button"

@@ -35,6 +35,7 @@ type VelocityCheckoutRequest = {
   shippingAddress?: string;
   createAccount?: boolean;
   password?: string;
+  emiTenure?: number;
 };
 
 export async function POST(request: NextRequest) {
@@ -60,8 +61,10 @@ export async function POST(request: NextRequest) {
       shippingAddress,
       createAccount,
       password,
+      emiTenure,
     } = body;
     const orderTotal = typeof total === "number" ? total : Number.NaN;
+    const preferredEmiTenure = [3, 6, 9, 12].includes(emiTenure || 0) ? emiTenure : undefined;
 
     if (
       !customerEmail ||
@@ -121,7 +124,7 @@ export async function POST(request: NextRequest) {
       state: state || "",
       pincode: pincode || "",
       country: "India",
-      internalNotes: "Payment method: VELOCITY_BNPL",
+      internalNotes: `Payment method: VELOCITY_BNPL${preferredEmiTenure ? `\nEMI preference: ${preferredEmiTenure} months` : ""}`,
       items: items.map((item) => ({
         productId: item.productId || item.id || "",
         quantity: item.quantity || 1,
@@ -168,7 +171,10 @@ export async function POST(request: NextRequest) {
           };
         }),
       },
-      notes: discountCode ? `Coupon applied: ${discountCode}` : undefined,
+      notes: [
+        discountCode ? `Coupon applied: ${discountCode}` : null,
+        preferredEmiTenure ? `EMI preference: ${preferredEmiTenure} months` : null,
+      ].filter(Boolean).join("\n") || undefined,
     };
 
     // 5. Call Velocity API to create order

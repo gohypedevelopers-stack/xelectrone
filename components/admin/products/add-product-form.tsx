@@ -44,15 +44,14 @@ function Card({ title, children, className = "", actions }: CardProps) {
   );
 }
 
-function slugify(value: string, maxWords = 5) {
-  const words = value
+function slugify(value: string) {
+  return value
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9\s-]/g, "")
     .split(/[\s-]+/)
     .filter(Boolean)
-    .slice(0, maxWords);
-  return words.join("-");
+    .join("-");
 }
 
 export function AddProductForm({ categories }: { categories: ProductCategoryOption[] }) {
@@ -91,7 +90,7 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
   function handleTitleChange(newTitle: string) {
     setTitle(newTitle);
     if (!isSlugTouched) {
-      setSlug(slugify(newTitle, 4));
+      setSlug(slugify(newTitle));
     }
   }
 
@@ -111,7 +110,7 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
       return;
     }
 
-    const finalSlug = slug.trim() || slugify(title, 4);
+    const finalSlug = slug.trim() || slugify(title);
     if (!finalSlug) {
       setMessage("Use letters or numbers in the product title or URL slug.");
       return;
@@ -266,7 +265,7 @@ export function AddProductForm({ categories }: { categories: ProductCategoryOpti
                     value={slug}
                     onChange={(event) => {
                       setIsSlugTouched(true);
-                      setSlug(slugify(event.target.value, 8));
+                      setSlug(slugify(event.target.value));
                     }}
                     placeholder="cinema-grade-smart-projector"
                     className="h-10 w-full bg-transparent px-1 font-mono text-xs text-black outline-none"

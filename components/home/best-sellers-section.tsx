@@ -5,7 +5,7 @@ import ScrollTrigger from "gsap/ScrollTrigger";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { bestSellers, type BestSellerItem } from "@/components/home/best-sellers-data";
+import type { BestSellerItem } from "@/components/home/best-sellers-data";
 import { formatINR } from "@/lib/format-price";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -20,17 +20,7 @@ function SpecificationRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function BestSellersSection({ additionalItems = [] }: { additionalItems?: BestSellerItem[] }) {
-  const items = useMemo(() => {
-    const selectedById = new Map(additionalItems.map((item) => [item.id, item]));
-    const defaultItemIds = new Set(bestSellers.map((item) => item.id));
-
-    // Keep the original storefront slides in place. A dashboard-selected product
-    // either refreshes its matching slide or is appended as another slide.
-    return [
-      ...bestSellers.map((item) => selectedById.get(item.id) ?? item),
-      ...additionalItems.filter((item) => !defaultItemIds.has(item.id)),
-    ];
-  }, [additionalItems]);
+  const items = useMemo(() => additionalItems, [additionalItems]);
 
   const sectionRef = useRef<HTMLElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -52,7 +42,7 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
   }, []);
 
   useLayoutEffect(() => {
-    if (reduceMotion) return;
+    if (items.length === 0 || reduceMotion) return;
 
     const section = sectionRef.current;
     const viewport = viewportRef.current;
@@ -224,6 +214,8 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
 
   const titleClass =
     "shrink-0 whitespace-nowrap text-[clamp(1.4rem,2.6vw,2.8rem)] xl:text-[clamp(1.8rem,3.2vw,3.6rem)] font-bold leading-tight tracking-[-0.03em] will-change-transform cursor-pointer transition-opacity duration-300 hover:opacity-100 select-none py-0.5";
+
+  if (items.length === 0) return null;
 
   if (reduceMotion) {
     return (

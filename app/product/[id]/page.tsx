@@ -1,8 +1,9 @@
 import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import Navbar from "@/components/navbar/navbar";
 import Footer from "@/components/footer/footer";
 import ProductDetail from "@/components/product/product-detail";
-import { getProductById, type SimilarProductCard } from "@/lib/products-data";
+import type { SimilarProductCard } from "@/lib/products-data";
 import * as productsController from "@/lib/server/controllers/products.controller";
 import * as dealOfTheDayController from "@/lib/server/controllers/deal-of-the-day.controller";
 import * as reviewsController from "@/lib/server/controllers/reviews.controller";
@@ -19,6 +20,8 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
     dealOfTheDayController.getActiveDealOfTheDay().catch(() => null),
     reviewsController.getProductReviews(id).catch(() => []),
   ]);
+
+  if (!dbProduct) notFound();
 
   const isDealActiveForProduct = activeDeal && dbProduct && (activeDeal.productId === dbProduct.id || activeDeal.product.slug === dbProduct.slug);
   let effectivePrice = isDealActiveForProduct && activeDeal.dealPrice ? activeDeal.dealPrice : dbProduct?.price;
@@ -55,8 +58,7 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
         }))
     : [];
 
-  const product = dbProduct
-    ? {
+  const product = {
         id: dbProduct.id,
         slug: dbProduct.slug,
         name: dbProduct.name,
@@ -84,6 +86,7 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
           sortOrder: banner.sortOrder,
         })) || [],
         shippingNotice: dbProduct.shippingNotice,
+        quantity: dbProduct.quantity,
         mainImage: dbProduct.mainImage,
         images: [...new Set([dbProduct.mainImage, ...dbProduct.media.map((media: any) => media.url)])],
         creatorVideos: dbProduct.creatorVideos?.map((v: any) => ({
@@ -95,8 +98,7 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
           isActive: v.isActive,
           isProductVideo: v.isProductVideo ?? v.is_product_video ?? true,
         })) || [],
-      }
-    : getProductById(id);
+      };
 
   const formattedReviews = Array.isArray(dbReviews) && dbReviews.length > 0
     ? dbReviews.map((r: any) => ({

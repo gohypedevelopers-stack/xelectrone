@@ -430,10 +430,15 @@ export async function getProductById(id: string) {
   });
 }
 
-export async function getProductBySlug(slug: string) {
-  const exact = await safeFindUnique({
+/** Exact slug lookup for uniqueness checks. Product page resolution may use a fuzzy fallback. */
+export async function getProductByExactSlug(slug: string) {
+  return safeFindUnique({
     where: { slug },
   });
+}
+
+export async function getProductBySlug(slug: string) {
+  const exact = await getProductByExactSlug(slug);
   if (exact) return exact;
 
   // Fallback for long or shortened slug variations

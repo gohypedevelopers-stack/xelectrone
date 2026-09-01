@@ -5,6 +5,18 @@ import { parsePriceNumber } from "@/lib/format-price";
 const NAVBAR_PRODUCT_LIMIT = 2;
 const WARRANTY_MENU_PRODUCT_LIMIT = 2;
 
+async function createUniqueSlug(requestedSlug: string) {
+  const baseSlug = requestedSlug.trim();
+  if (!(await productsDal.getProductByExactSlug(baseSlug))) return baseSlug;
+
+  let suffix = 2;
+  while (await productsDal.getProductByExactSlug(`${baseSlug}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${baseSlug}-${suffix}`;
+}
+
 // ─── Price Override Helper ───────────────────────────────────────────────────
 
 function applyEffectivePrice(product: any) {
@@ -66,11 +78,8 @@ export async function createProduct(data: CreateProductInput) {
     throw new Error("Missing required fields: name, slug, categoryId, price");
   }
 
-  // Check if slug already exists
-  const existing = await productsDal.getProductBySlug(data.slug);
-  if (existing) {
-    throw new Error(`Product with slug "${data.slug}" already exists`);
-  }
+  // Keep generated customer-facing URLs unique without blocking an upload.
+  const slug = await createUniqueSlug(data.slug);
 
   if (data.showInNavbar) {
     const navbarProductCount = await productsDal.countNavbarProducts();
@@ -79,7 +88,7 @@ export async function createProduct(data: CreateProductInput) {
     }
   }
 
-  return productsDal.createProduct(data);
+  return productsDal.createProduct({ ...data, slug });
 }
 
 // ─── Update ──────────────────────────────────────────────────────────────────
@@ -96,7 +105,7 @@ export async function updateProduct(
   }
 
   if (data.slug && data.slug !== existing.slug) {
-    const duplicate = await productsDal.getProductBySlug(data.slug);
+    const duplicate = await productsDal.getProductByExactSlug(data.slug);
     if (duplicate && duplicate.id !== existing.id) {
       throw new Error(`Product with slug "${data.slug}" already exists`);
     }

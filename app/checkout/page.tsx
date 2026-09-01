@@ -37,6 +37,8 @@ import {
 } from "@/components/checkout/payment-logos";
 
 const CHECKOUT_SESSION_KEY = "xelectron-active-checkout";
+const EMI_TENURES = [3, 6, 9, 12] as const;
+type EmiTenure = (typeof EMI_TENURES)[number];
 
 function createCheckoutSessionToken() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -172,7 +174,21 @@ function CheckoutContent() {
 
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "velocity" | "cod">("razorpay");
-  const [selectedEmiTenure, setSelectedEmiTenure] = useState<3 | 6 | 9 | 12>(3);
+  const [selectedEmiTenure, setSelectedEmiTenure] = useState<EmiTenure>(3);
+
+  // Product-page EMI links arrive with the Velocity method already selected.
+  useEffect(() => {
+    if (!isMounted) return;
+
+    if (searchParams.get("payment") === "velocity") {
+      setPaymentMethod("velocity");
+    }
+
+    const requestedTenure = Number(searchParams.get("emiTenure"));
+    if (EMI_TENURES.includes(requestedTenure as EmiTenure)) {
+      setSelectedEmiTenure(requestedTenure as EmiTenure);
+    }
+  }, [isMounted, searchParams]);
 
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -538,6 +554,7 @@ function CheckoutContent() {
             discountAmount,
             discountCode: appliedCoupon || undefined,
             shippingAddress: fullAddress,
+            emiTenure: selectedEmiTenure,
           }),
         });
 
@@ -1296,9 +1313,9 @@ function CheckoutContent() {
                     </div>
 
                     <div className="flex items-center justify-between pl-6 text-[11px] text-slate-500">
-                      <span>Pay in 3, 6, 9 or 12 monthly installments</span>
+                      <span>{selectedEmiTenure}-month preference • plans from 3 to 12 months</span>
                       <span className="font-bold text-[#0a7ae6]">
-                        From ₹{Math.round(total / 12).toLocaleString("en-IN")}/mo
+                        ₹{Math.ceil(total / selectedEmiTenure).toLocaleString("en-IN")}/mo
                       </span>
                     </div>
                   </button>
@@ -1355,7 +1372,7 @@ function CheckoutContent() {
                   <div className="mt-2.5 flex items-center justify-between rounded-lg bg-sky-50/70 border border-sky-100 px-3 py-1.5 text-[10px] text-slate-600">
                     <span className="flex items-center gap-1.5 font-medium">
                       <Sparkles className="size-3 text-[#0a7ae6]" />
-                      Instant digital approval • Pay in 3 or up to 12 months EMI
+                      Your {selectedEmiTenure}-month EMI preference will be sent to Velocity
                     </span>
                     <span className="font-bold text-[#0a7ae6]">No Hidden Charges</span>
                   </div>
