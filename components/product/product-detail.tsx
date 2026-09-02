@@ -464,7 +464,7 @@ export default function ProductDetail({
           <div className="lg:col-span-5 lg:sticky lg:top-20 self-start space-y-6 sm:space-y-8">
             <div
               ref={buyBoxRef}
-              className="rounded-[28px] border border-slate-200/90 bg-[#f2f3f5] p-5 sm:p-7 xl:p-8 shadow-xs"
+              className="rounded-xl sm:rounded-2xl border border-slate-200/90 bg-[#f2f3f5] p-5 sm:p-7 xl:p-8 shadow-xs"
             >
               {/* Product Brand / Series & New Arrivals Badge */}
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -507,7 +507,7 @@ export default function ProductDetail({
               </p>
 
               {/* Snapmint / Pay Later Card */}
-              <div className="mt-4 rounded-xl bg-white p-3.5 border border-slate-200/90 shadow-2xs">
+              <div className="mt-4 rounded-lg bg-white p-3.5 border border-slate-200/90 shadow-2xs">
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex items-center rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
                     Flat 10% cashback up to ₹500
@@ -649,7 +649,7 @@ export default function ProductDetail({
                 <h3 className="text-sm sm:text-base font-bold text-slate-950 mb-2.5">
                   Services and benefits
                 </h3>
-                <div className="rounded-2xl bg-white p-4 sm:p-5 border border-slate-200/80 shadow-2xs">
+                <div className="rounded-lg sm:rounded-xl bg-white p-4 sm:p-5 border border-slate-200/80 shadow-2xs">
                   <div className="grid grid-cols-2 gap-y-4 gap-x-4">
                     <div className="flex items-start gap-2.5">
                       <Truck className="size-5 text-slate-950 shrink-0 mt-0.5" />
@@ -685,7 +685,7 @@ export default function ProductDetail({
                   type="button"
                   onClick={addProductToCart}
                   disabled={isOutOfStock}
-                  className="h-12 flex-1 rounded-xl bg-black text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-sm hover:bg-slate-900 active:scale-[0.98] transition cursor-pointer flex items-center justify-center disabled:opacity-40"
+                  className="h-12 flex-1 rounded-lg bg-black text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-sm hover:bg-slate-900 active:scale-[0.98] transition cursor-pointer flex items-center justify-center disabled:opacity-40"
                 >
                   ADD TO CART
                 </button>
@@ -695,14 +695,14 @@ export default function ProductDetail({
                     Easy EMI available
                   </div>
                   {isOutOfStock ? (
-                    <button type="button" disabled className="h-12 w-full rounded-xl bg-slate-300 text-slate-600 font-bold text-xs sm:text-sm uppercase tracking-wider cursor-not-allowed">
+                    <button type="button" disabled className="h-12 w-full rounded-lg bg-slate-300 text-slate-600 font-bold text-xs sm:text-sm uppercase tracking-wider cursor-not-allowed">
                       Out of Stock
                     </button>
                   ) : (
                     <Link
                       href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}`}
                       onClick={addProductToCart}
-                      className="h-12 w-full rounded-xl bg-[#0a7ae6] text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-md shadow-blue-500/25 hover:bg-[#086ac9] active:scale-[0.98] transition flex items-center justify-center gap-2"
+                      className="h-12 w-full rounded-lg bg-[#0a7ae6] text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-md shadow-blue-500/25 hover:bg-[#086ac9] active:scale-[0.98] transition flex items-center justify-center gap-2"
                     >
                       <span>BUY NOW</span>
                       <div className="flex items-center -space-x-1.5 bg-white rounded-full p-0.5 shadow-xs shrink-0">
@@ -734,7 +734,7 @@ export default function ProductDetail({
                 <button
                   type="button"
                   onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
-                  className="flex w-full items-center justify-between rounded-xl bg-white p-4 border border-slate-200 font-bold text-sm text-slate-900 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+                  className="flex w-full items-center justify-between rounded-lg bg-white p-4 border border-slate-200 font-bold text-sm text-slate-900 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
                 >
                   <span>Description</span>
                   <span className="flex size-7 items-center justify-center rounded-lg bg-black text-white font-bold">
@@ -743,7 +743,7 @@ export default function ProductDetail({
                 </button>
 
                 {isDescriptionOpen && (
-                  <div className="mt-2 rounded-xl bg-white border border-slate-200 p-4 text-xs sm:text-sm text-slate-700 leading-relaxed shadow-2xs">
+                  <div className="mt-2 rounded-lg bg-white border border-slate-200 p-4 text-xs sm:text-sm text-slate-700 leading-relaxed shadow-2xs">
                     <ProductDescriptionContent description={product.description} specs={product.specs} />
                   </div>
                 )}
@@ -754,7 +754,7 @@ export default function ProductDetail({
                 <button
                   type="button"
                   onClick={() => handleShare("facebook")}
-                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-slate-300 shadow-2xs transition cursor-pointer"
+                  className="flex size-11 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-slate-300 shadow-2xs transition cursor-pointer"
                   title="Share on Facebook"
                   aria-label="Share on Facebook"
                 >
@@ -763,7 +763,7 @@ export default function ProductDetail({
                 <button
                   type="button"
                   onClick={() => handleShare("twitter")}
-                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 shadow-2xs transition cursor-pointer"
+                  className="flex size-11 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 shadow-2xs transition cursor-pointer"
                   title="Share on X"
                   aria-label="Share on X"
                 >
@@ -772,7 +772,7 @@ export default function ProductDetail({
                 <button
                   type="button"
                   onClick={() => handleShare("whatsapp")}
-                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-600 hover:border-slate-300 shadow-2xs transition cursor-pointer"
+                  className="flex size-11 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-emerald-600 hover:border-slate-300 shadow-2xs transition cursor-pointer"
                   title="Share on WhatsApp"
                   aria-label="Share on WhatsApp"
                 >
@@ -781,7 +781,7 @@ export default function ProductDetail({
                 <button
                   type="button"
                   onClick={() => handleShare("email")}
-                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 shadow-2xs transition cursor-pointer"
+                  className="flex size-11 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 shadow-2xs transition cursor-pointer"
                   title="Share via Email"
                   aria-label="Share via Email"
                 >
@@ -790,7 +790,7 @@ export default function ProductDetail({
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 shadow-2xs transition cursor-pointer relative"
+                  className="flex size-11 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 shadow-2xs transition cursor-pointer relative"
                   title="Copy Link"
                 >
                   <Copy className="size-4" />
@@ -914,7 +914,7 @@ export default function ProductDetail({
                   const isVid = isVideoUrl(mediaUrl);
 
                   return (
-                    <div className="w-full rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/10">
+                    <div className="w-full rounded-md sm:rounded-lg overflow-hidden shadow-2xl bg-black border border-white/10">
                       {isYt ? (
                         <div className="relative aspect-16/9 w-full">
                           <iframe
@@ -966,7 +966,7 @@ export default function ProductDetail({
                       <div
                         key={banner.id || `slider-banner-card-${idx}`}
                         onClick={() => setActiveBannerSlide(idx)}
-                        className={`w-[80vw] rounded-2xl sm:rounded-3xl overflow-hidden shrink-0 transition-all duration-500 shadow-2xl bg-black border border-white/10 ${
+                        className={`w-[80vw] rounded-md sm:rounded-lg overflow-hidden shrink-0 transition-all duration-500 shadow-2xl bg-black border border-white/10 ${
                           isActive
                             ? "opacity-100 scale-100 ring-1 ring-white/15"
                             : "opacity-40 scale-[0.93] hover:opacity-75 cursor-pointer"
@@ -1111,7 +1111,7 @@ export default function ProductDetail({
                       {/* Desktop Banner Media */}
                       <div className={banner.mobileImageUrl ? "hidden md:block leading-none m-0 p-0" : "block leading-none m-0 p-0"}>
                         {isDeskYt ? (
-                          <div className="relative aspect-16/9 w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl bg-black border border-black/10">
+                          <div className="relative aspect-16/9 w-full rounded-md sm:rounded-lg overflow-hidden shadow-xl bg-black border border-black/10">
                             <iframe
                               src={getYouTubeEmbedUrl(banner.imageUrl, true, true, true)}
                               title={banner.title || `${product.name} showcase video ${startIdx + idx + 1}`}
@@ -1121,7 +1121,7 @@ export default function ProductDetail({
                             />
                           </div>
                         ) : isDeskVid ? (
-                          <div className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl bg-black border border-black/10">
+                          <div className="relative w-full rounded-md sm:rounded-lg overflow-hidden shadow-xl bg-black border border-black/10">
                             <video
                               src={banner.imageUrl}
                               autoPlay
@@ -1146,7 +1146,7 @@ export default function ProductDetail({
                       {banner.mobileImageUrl && (
                         <div className="block md:hidden leading-none m-0 p-0">
                           {isMobYt ? (
-                            <div className="relative aspect-16/9 w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-black border border-black/10">
+                            <div className="relative aspect-16/9 w-full rounded-md sm:rounded-lg overflow-hidden shadow-lg bg-black border border-black/10">
                               <iframe
                                 src={getYouTubeEmbedUrl(banner.mobileImageUrl, true, true, true)}
                                 title={banner.title || `${product.name} mobile showcase video ${startIdx + idx + 1}`}
@@ -1156,7 +1156,7 @@ export default function ProductDetail({
                               />
                             </div>
                           ) : isMobVid ? (
-                            <div className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-black border border-black/10">
+                            <div className="relative w-full rounded-md sm:rounded-lg overflow-hidden shadow-lg bg-black border border-black/10">
                               <video
                                 src={banner.mobileImageUrl}
                                 autoPlay
