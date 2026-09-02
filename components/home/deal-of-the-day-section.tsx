@@ -153,21 +153,21 @@ export default function DealOfTheDaySection({ deal }: { deal: StorefrontDealOfTh
       />
 
       {/* DYNAMIC TIMER / DATE DISPLAY */}
-      <div className="text-right">
+      <div className="text-right" suppressHydrationWarning>
         {timerInfo.isMoreThan24Hours ? (
-          <div>
+          <div suppressHydrationWarning>
             <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               {timerInfo.labelText}
             </p>
-            <div className="mt-0.5 text-base sm:text-2xl font-bold tracking-tight text-[#0a7ae6]">
+            <div className="mt-0.5 text-base sm:text-2xl font-bold tracking-tight text-[#0a7ae6]" suppressHydrationWarning>
               {timerInfo.dateDisplay}
             </div>
           </div>
         ) : (
-          <div className="font-mono text-xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
-            <span>{formatTime(timerInfo.totalHours)}</span>:
-            <span>{formatTime(timerInfo.minutes)}</span>:
-            <span className={isUrgent ? "text-rose-600" : "text-[#0a7ae6]"}>
+          <div className="font-mono text-xl sm:text-3xl font-extrabold tracking-tight text-slate-950" suppressHydrationWarning>
+            <span suppressHydrationWarning>{formatTime(timerInfo.totalHours)}</span>:
+            <span suppressHydrationWarning>{formatTime(timerInfo.minutes)}</span>:
+            <span suppressHydrationWarning className={isUrgent ? "text-rose-600" : "text-[#0a7ae6]"}>
               {formatTime(timerInfo.seconds)}
             </span>
           </div>

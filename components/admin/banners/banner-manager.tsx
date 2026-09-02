@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   PlusIcon,
   Trash2Icon,
@@ -63,6 +64,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function BannerManager({ initialBanners }: { initialBanners: HeroBannerItem[] }) {
+  const router = useRouter()
   const [banners, setBanners] = useState<HeroBannerItem[]>(initialBanners)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<HeroBannerItem | null>(null)
@@ -215,6 +217,7 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
       setBanners((prev) => prev.filter((b) => !ids.includes(b.id)))
       setSelectedIds(new Set())
       toast.success(`${ids.length} banner(s) deleted`)
+      router.refresh()
     } catch {
       toast.error("Failed to delete some banners")
     } finally {
@@ -230,6 +233,7 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
       const data = await res.json()
       setBanners(data)
       toast.success("Default banners loaded successfully!")
+      router.refresh()
     } catch (err) {
       console.error(err)
       toast.error("Failed to load default banners")
@@ -368,6 +372,7 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
         throw new Error("Failed to update status")
       }
       toast.success(`Banner ${newStatus ? "activated" : "deactivated"}`)
+      router.refresh()
     } catch {
       setBanners((prev) =>
         prev.map((b) => (b.id === banner.id ? { ...b, isActive: banner.isActive } : b))
@@ -390,6 +395,7 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
       })
       toast.success("Banner deleted successfully")
       setDeleteTargetId(null)
+      router.refresh()
     } catch (err) {
       console.error(err)
       toast.error("Failed to delete banner")
@@ -477,6 +483,7 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
         toast.success("New banner added successfully")
       }
       setIsModalOpen(false)
+      router.refresh()
     } catch (err: any) {
       console.error(err)
       toast.error(err?.message || "Failed to save banner")

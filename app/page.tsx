@@ -23,6 +23,9 @@ import * as bannersController from "@/lib/server/controllers/banners.controller"
 import { defaultDealOfTheDay } from "@/lib/shared/default-deal-of-the-day";
 import { resolveCategoryImage } from "@/lib/shared/category-utils";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function Home() {
   let selectedBestSellers: BestSellerItem[] = [];
   let storefrontCategories: Array<{ id: string; title: string; slug: string; image: string }> = [];
@@ -174,21 +177,23 @@ export default async function Home() {
   }
 
   return (
-    <main className="min-h-screen w-full overflow-x-clip bg-white text-[#1d1d1f]">
+    <div className="min-h-screen w-full bg-white text-[#1d1d1f]">
       <Navbar />
-      <HeroShowcase initialBanners={heroBanners} />
-      <CategorySection categories={storefrontCategories} />
-      <ProductShowcaseSection products={featuredProducts} />
-      <BestSellersSection additionalItems={selectedBestSellers} />
-      {dealOfTheDay ? <DealOfTheDaySection deal={dealOfTheDay} /> : null}
-      <BrandSetupSection items={brandShowcaseItems} />
-      <CreatorVideosSection />
-      <BrandMarqueeSection items={brandMarqueeItems} />
-      <VerifiedReviewsSection />
-      <FaqSection />
-      <BlogSection />
-      <WhatsAppSupportBanner />
+      <main className="w-full">
+        <HeroShowcase initialBanners={heroBanners} />
+        <CategorySection categories={storefrontCategories} />
+        <ProductShowcaseSection products={featuredProducts} />
+        <BestSellersSection additionalItems={selectedBestSellers} />
+        {dealOfTheDay ? <DealOfTheDaySection deal={dealOfTheDay} /> : null}
+        <BrandSetupSection items={brandShowcaseItems} />
+        <CreatorVideosSection />
+        <BrandMarqueeSection items={brandMarqueeItems} />
+        <VerifiedReviewsSection />
+        <FaqSection />
+        <BlogSection />
+        <WhatsAppSupportBanner />
+      </main>
       <Footer />
-    </main>
+    </div>
   );
 }

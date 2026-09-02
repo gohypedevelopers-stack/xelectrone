@@ -106,11 +106,15 @@ export default function HeroShowcase({ initialBanners }: { initialBanners?: Bann
   const minSwipeDistance = 45;
 
   useEffect(() => {
-    if (initialBanners && initialBanners.length > 0) return;
+    if (initialBanners && initialBanners.length > 0) {
+      setBannerList(initialBanners);
+    }
+  }, [initialBanners]);
 
-    async function fetchBanners() {
+  useEffect(() => {
+    async function syncBanners() {
       try {
-        const res = await fetch("/api/banners");
+        const res = await fetch("/api/banners", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
@@ -121,8 +125,8 @@ export default function HeroShowcase({ initialBanners }: { initialBanners?: Bann
         console.error("Failed to fetch active banners:", err);
       }
     }
-    fetchBanners();
-  }, [initialBanners]);
+    syncBanners();
+  }, []);
 
   const activeBanners = bannerList.length > 0 ? bannerList : defaultBanners;
   const totalBanners = activeBanners.length;

@@ -404,6 +404,25 @@ export default function Navbar() {
   const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
   const [areStoreCategoriesLoaded, setAreStoreCategoriesLoaded] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
+  const navWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [navHeight, setNavHeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (!navWrapperRef.current) return;
+    const updateHeight = () => {
+      if (navWrapperRef.current) {
+        setNavHeight(navWrapperRef.current.offsetHeight);
+      }
+    };
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(navWrapperRef.current);
+    window.addEventListener("resize", updateHeight);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, []);
 
   useEffect(() => {
     let isCurrent = true;
@@ -586,12 +605,16 @@ export default function Navbar() {
 
   return (
     <>
-      <TopAnnouncementBar />
-      <header
-        ref={headerRef}
-        className="sticky top-0 z-50 bg-white shadow-xs border-b border-slate-100 text-slate-800 transition-colors"
-        onMouseLeave={() => handleOpenMenu(null)}
+      <div
+        ref={navWrapperRef}
+        className="fixed top-0 inset-x-0 z-50 w-full bg-white shadow-xs"
       >
+        <TopAnnouncementBar />
+        <header
+          ref={headerRef}
+          className="relative w-full bg-white shadow-xs border-b border-slate-100 text-slate-800 transition-colors"
+          onMouseLeave={() => handleOpenMenu(null)}
+        >
         <div className="w-full relative z-40 bg-white">
           <div className="mx-auto flex h-[64px] sm:h-[80px] max-w-[1600px] items-center justify-between px-3 sm:px-6 lg:px-8 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
           {/* Brand Logo */}
@@ -1068,12 +1091,16 @@ export default function Navbar() {
           <>
             {/* Backdrop Overlay */}
             <div
-              className="fixed inset-0 top-[96px] sm:top-[112px] z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden -z-10"
+              style={{ top: navHeight ? `${navHeight}px` : "96px" }}
               onClick={() => setMobileOpen(false)}
             />
 
             {/* Slide-Down Drawer Container */}
-            <div className="absolute top-full inset-x-0 z-50 max-h-[calc(100dvh-100px)] overflow-y-auto border-t border-slate-200 bg-white shadow-2xl lg:hidden animate-in slide-in-from-top-2 duration-200">
+            <div
+              className="absolute top-full inset-x-0 z-50 overflow-y-auto border-t border-slate-200 bg-white shadow-2xl lg:hidden animate-in slide-in-from-top-2 duration-200"
+              style={{ maxHeight: `calc(100dvh - ${navHeight || 96}px)` }}
+            >
               <div className="mx-auto max-w-[1600px] px-4 py-4 space-y-4 bg-white">
                 {/* Navigation Items List */}
                 <div className="space-y-1">
@@ -1213,6 +1240,14 @@ export default function Navbar() {
           </>
         ) : null}
       </header>
+      </div>
+
+      {/* Dynamic spacer to prevent page content from jumping under fixed navbar */}
+      <div
+        style={{ height: navHeight ? `${navHeight}px` : undefined }}
+        className={navHeight ? "" : "h-[92px] sm:h-[116px]"}
+        aria-hidden="true"
+      />
 
       {/* Cart Drawer */}
       <div className={`fixed inset-0 z-[100] ${isCartOpen ? "pointer-events-auto" : "pointer-events-none"}`}>

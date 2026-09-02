@@ -117,17 +117,19 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
     : undefined;
 
   return (
-    <main className="min-h-dvh overflow-x-clip bg-white">
+    <div className="min-h-dvh bg-white">
       <Navbar />
-      <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center text-slate-400">Loading product...</div>}>
-        <ProductDetail
-          initialProduct={product}
-          initialRelatedProducts={relatedProducts}
-          productId={dbProduct?.id}
-          initialReviews={formattedReviews}
-        />
-      </Suspense>
+      <main className="w-full">
+        <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center text-slate-400">Loading product...</div>}>
+          <ProductDetail
+            initialProduct={product}
+            initialRelatedProducts={relatedProducts}
+            productId={dbProduct?.id}
+            initialReviews={formattedReviews}
+          />
+        </Suspense>
+      </main>
       <Footer />
-    </main>
+    </div>
   );
 }

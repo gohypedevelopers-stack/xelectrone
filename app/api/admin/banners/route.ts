@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { verifySession } from "@/lib/server/dal/auth"
 import { listBanners, createBanner } from "@/lib/server/controllers/banners.controller"
+
+export const dynamic = "force-dynamic"
 
 export async function GET() {
   const session = await verifySession()
@@ -36,6 +39,14 @@ export async function POST(request: Request) {
       sortOrder: Number(body.sortOrder) || 0,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
     })
+
+    try {
+      revalidatePath("/")
+      revalidatePath("/dashboard/banners")
+      revalidatePath("/api/banners")
+    } catch (revalErr) {
+      console.error("Revalidation error:", revalErr)
+    }
 
     return NextResponse.json(banner, { status: 201 })
   } catch (error: any) {
