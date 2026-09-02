@@ -23,6 +23,8 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
+  ArrowLeft,
+  ArrowRight,
   LayoutList,
   Layers,
   Play,
@@ -44,10 +46,16 @@ import SimilarProductsSection from "@/components/product/similar-products-sectio
 import RecentlyViewedSection from "@/components/product/recently-viewed-section";
 import ProductReviewsSection from "@/components/product/product-reviews-section";
 import { ProductDescriptionContent } from "@/components/product/product-description-content";
-import { VelocityLogo } from "@/components/checkout/payment-logos";
+import { VelocityLogo, UpiLogo, GPayLogo, PhonePeLogo, PaytmLogo } from "@/components/checkout/payment-logos";
 import { priceToNumber, useCart } from "@/components/providers/cart-provider";
 import { formatINR } from "@/lib/format-price";
 import { recordRecentlyViewedProduct } from "@/lib/recently-viewed-products";
+import {
+  isYouTubeUrl,
+  getYouTubeEmbedUrl,
+  getYouTubeThumbnail,
+  isVideoUrl,
+} from "@/lib/banner-media";
 
 interface ProductDetailProps {
   initialProduct: ProductDetailItem;
@@ -239,6 +247,43 @@ export default function ProductDetail({
   const heroImage = productImages[0] || "/category-projector.png";
   const additionalImages = productImages.slice(1);
 
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const minSwipeDistance = 40;
+
+  const handlePrevImage = () => {
+    if (productImages.length <= 1) return;
+    setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : productImages.length - 1));
+  };
+
+  const handleNextImage = () => {
+    if (productImages.length <= 1) return;
+    setActiveImageIndex((prev) => (prev < productImages.length - 1 ? prev + 1 : 0));
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe) {
+      handleNextImage();
+    } else if (isRightSwipe) {
+      handlePrevImage();
+    }
+  };
+
   const numericPrice = useMemo(() => priceToNumber(product.price), [product.price]);
   const emiAmount = useMemo(() => Math.round(numericPrice / 3), [numericPrice]);
   // Only an explicit stored quantity of zero marks the product as unavailable.
@@ -291,6 +336,22 @@ export default function ProductDetail({
     }
   };
 
+  const handleShare = (platform: "facebook" | "twitter" | "whatsapp" | "email") => {
+    if (typeof window === "undefined") return;
+    const url = window.location.href;
+    const title = product.name;
+
+    if (platform === "facebook") {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
+    } else if (platform === "twitter") {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out ${title} on XElectron`)}&url=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
+    } else if (platform === "whatsapp") {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Check out ${title} on XElectron: ${url}`)}`, "_blank", "noopener,noreferrer");
+    } else if (platform === "email") {
+      window.location.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`Check out ${title} on XElectron: ${url}`)}`;
+    }
+  };
+
   const [recentDisplayedIds, setRecentDisplayedIds] = useState<string[]>([]);
 
   return (
@@ -300,101 +361,184 @@ export default function ProductDetail({
         <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10 xl:gap-14">
           
           {/* LEFT COLUMN: MULTI-IMAGE SHOWCASE / GALLERY */}
-          <div className="lg:col-span-7 space-y-4 sm:space-y-6">
-            {/* Primary Hero Feature Image */}
-            <div className="relative aspect-square sm:aspect-[4/3] w-full overflow-hidden rounded-lg sm:rounded-xl flex items-center justify-center">
-              <Image
-                src={heroImage}
-                alt={product.name}
-                fill
-                priority
-                className="object-contain transition-transform duration-500 hover:scale-[1.02]"
-                sizes="(min-width: 1024px) 55vw, 100vw"
-              />
+          <div className="lg:col-span-7">
+            {/* DESKTOP VIEW: ORIGINAL MULTI-IMAGE SHOWCASE */}
+            <div className="hidden lg:block space-y-4 sm:space-y-6">
+              {/* Primary Hero Feature Image */}
+              <div className="relative aspect-square sm:aspect-[4/3] w-full overflow-hidden rounded-lg sm:rounded-xl flex items-center justify-center">
+                <Image
+                  src={heroImage}
+                  alt={product.name}
+                  fill
+                  priority
+                  className="object-contain transition-transform duration-500 hover:scale-[1.02]"
+                  sizes="(min-width: 1024px) 55vw, 100vw"
+                />
+              </div>
+
+              {/* Gallery Grid Below Hero Image */}
+              {additionalImages.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  {additionalImages.map((image, idx) => (
+                    <div
+                      key={`${image}-${idx}`}
+                      className="relative aspect-square w-full overflow-hidden rounded-lg sm:rounded-xl flex items-center justify-center group"
+                    >
+                      <Image
+                        src={image}
+                        alt={`${product.name} feature ${idx + 1}`}
+                        fill
+                        className="object-contain transition-transform duration-500 hover:scale-[1.02]"
+                        sizes="(min-width: 1024px) 28vw, 50vw"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Gallery Grid Below Hero Image */}
-            {additionalImages.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                {additionalImages.map((image, idx) => (
-                  <div
-                    key={`${image}-${idx}`}
-                    className="relative aspect-square w-full overflow-hidden rounded-lg sm:rounded-xl flex items-center justify-center group"
-                  >
-                    <Image
-                      src={image}
-                      alt={`${product.name} feature ${idx + 1}`}
-                      fill
-                      className="object-contain transition-transform duration-500 group-hover:scale-105"
-                      sizes="(min-width: 1024px) 28vw, 50vw"
-                    />
-                  </div>
-                ))}
+            {/* MOBILE / PHONE VIEW: CAROUSEL WITH SWIPE, ARROWS & EXTENDED PILL INDICATOR */}
+            <div className="lg:hidden flex flex-col items-center">
+              {/* Primary Product Image with Touch Swipe Support */}
+              <div
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                className="relative aspect-square w-full overflow-hidden rounded-2xl bg-white flex items-center justify-center select-none shadow-xs border border-slate-100"
+              >
+                <Image
+                  src={productImages[activeImageIndex] || heroImage}
+                  alt={`${product.name} image ${activeImageIndex + 1}`}
+                  fill
+                  priority
+                  className="object-contain rounded-2xl transition-transform duration-300"
+                  sizes="100vw"
+                />
               </div>
-            )}
+
+              {/* GALLERY CONTROLS ROW: END-TO-END ARROWS WITH CENTERED PAGINATION */}
+              {productImages.length > 1 && (
+                <div className="flex items-center justify-between w-full px-2 pt-5 pb-2.5 select-none">
+                  {/* PREV ARROW (FAR LEFT) */}
+                  <button
+                    type="button"
+                    onClick={handlePrevImage}
+                    aria-label="Previous image"
+                    className="p-2 text-slate-700 hover:text-slate-950 transition-colors cursor-pointer active:scale-90"
+                  >
+                    <ArrowLeft className="size-5 stroke-[1.75]" />
+                  </button>
+
+                  {/* PAGINATION: EXTENDED ACTIVE PILL & ROUND DOTS (CENTERED) */}
+                  <div className="flex items-center justify-center gap-2 mx-auto">
+                    {productImages.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActiveImageIndex(idx)}
+                        aria-label={`Go to slide ${idx + 1}`}
+                        className={`transition-all duration-300 rounded-full cursor-pointer ${
+                          activeImageIndex === idx
+                            ? "w-8 h-2 bg-[#0a7ae6]"
+                            : "size-2 bg-slate-300 hover:bg-slate-400"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* NEXT ARROW (FAR RIGHT) */}
+                  <button
+                    type="button"
+                    onClick={handleNextImage}
+                    aria-label="Next image"
+                    className="p-2 text-slate-700 hover:text-slate-950 transition-colors cursor-pointer active:scale-90"
+                  >
+                    <ArrowRight className="size-5 stroke-[1.75]" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* RIGHT COLUMN: PRODUCT PURCHASE CARD */}
-          <div className="lg:col-span-5 space-y-6 sm:space-y-8">
+          {/* RIGHT COLUMN: PRODUCT PURCHASE CARD (STICKY AS LEFT GALLERY SCROLLS) */}
+          <div className="lg:col-span-5 lg:sticky lg:top-20 self-start space-y-6 sm:space-y-8">
             <div
               ref={buyBoxRef}
-              className="rounded-3xl border border-slate-200/90 bg-[#fafafa]/90 p-5 sm:p-7 xl:p-8 shadow-xs backdrop-blur-xs"
+              className="rounded-[28px] border border-slate-200/90 bg-[#f2f3f5] p-5 sm:p-7 xl:p-8 shadow-xs"
             >
-              {/* Product Category & Title with Badge */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#0a7ae6]">
-                    NEW ARRIVALS
+              {/* Product Brand / Series & New Arrivals Badge */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+                  {product.category || "XElectron"}
+                </span>
+                <span className="rounded bg-[#0a7ae6] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-2xs">
+                  NEW ARRIVALS
+                </span>
+                {product.sku && (
+                  <span className="rounded bg-white border border-slate-200 px-2 py-0.5 font-mono text-[10px] font-medium text-slate-600">
+                    SKU: {product.sku}
                   </span>
-                  {product.sku && (
-                    <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-slate-700">
-                      SKU: {product.sku}
-                    </span>
-                  )}
-                </div>
-
-                <h1 className="text-xl sm:text-2xl xl:text-3xl font-bold tracking-tight text-slate-900 leading-tight">
-                  {product.name}
-                </h1>
-
-                {/* Subtitle / Spec Summary */}
-                {product.shippingNotice && (
-                  <p className="text-sm sm:text-base font-normal text-gray-500 leading-relaxed">
-                    {product.shippingNotice}
-                  </p>
                 )}
               </div>
 
-              {/* Rating & Review Counter */}
-              <div className="mt-3.5 flex items-center gap-2.5">
-                <div className="inline-flex items-center rounded-none bg-[#15803d] px-2.5 py-0.5 text-sm sm:text-base font-bold text-white shadow-2xs">
-                  <span>{typeof product.rating === "number" ? product.rating.toFixed(1) : product.rating}</span>
-                </div>
-                <span className="text-sm sm:text-base font-medium text-slate-500">
-                  ({product.reviewsCount})
-                </span>
-              </div>
+              {/* Product Subtitle / Spec Summary */}
+              <h1 className="mt-2 text-base sm:text-lg font-normal text-slate-600 leading-snug">
+                {product.name}
+              </h1>
 
               {/* Price Row */}
-              <div className="mt-4 pt-3 border-t border-slate-200/70">
-                <div className="flex items-baseline gap-3 flex-wrap">
-                  <span className="text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900">
-                    {formatINR(product.price)}
+              <div className="mt-3.5 flex items-baseline gap-2.5 flex-wrap">
+                <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+                  {formatINR(product.price)}
+                </span>
+                {product.oldPrice && (
+                  <span className="text-sm sm:text-base text-slate-400 line-through font-normal">
+                    {formatINR(product.oldPrice)}
                   </span>
-                  {product.oldPrice && (
-                    <span className="text-lg sm:text-xl text-slate-400 line-through font-normal">
-                      {formatINR(product.oldPrice)}
-                    </span>
-                  )}
-                  {product.discount && (
-                    <span className="text-base sm:text-lg font-semibold text-emerald-600">
-                      {product.discount}
-                    </span>
-                  )}
+                )}
+                {product.discount && (
+                  <span className="text-sm sm:text-base font-semibold text-emerald-600">
+                    {product.discount}
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 text-xs text-slate-400 font-medium">
+                (MRP Inclusive of all taxes)
+              </p>
+
+              {/* Snapmint / Pay Later Card */}
+              <div className="mt-4 rounded-xl bg-white p-3.5 border border-slate-200/90 shadow-2xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
+                    Flat 10% cashback up to ₹500
+                  </span>
+                  <span className="rounded bg-emerald-100 text-emerald-800 px-1.5 py-0.2 text-[9px] font-bold">
+                    NEW
+                  </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm text-gray-400 font-medium">
-                  (MRP Inclusive of all taxes)
-                </p>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-800 font-medium">
+                    <span>or</span>
+                    <span className="rounded border border-emerald-500 bg-emerald-50 px-1.5 py-0.5 font-bold text-emerald-700">
+                      ₹{emiAmount.toLocaleString("en-IN")}
+                    </span>
+                    <span>/month (3 months)</span>
+                  </div>
+                  <Link
+                    href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}&payment=velocity&emiTenure=3`}
+                    onClick={addProductToCart}
+                    className="rounded-lg bg-[#0a7ae6] px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[#086ac9] transition active:scale-95"
+                  >
+                    Buy on EMI
+                  </Link>
+                </div>
+                <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <UpiLogo className="h-3.5 w-auto shrink-0" />
+                    <span>& Cards Accepted | 0 Extra Cost</span>
+                  </div>
+                  <VelocityLogo className="h-3.5 opacity-80" />
+                </div>
               </div>
 
               {/* Crossbeats Style Color Swatches */}
@@ -464,160 +608,70 @@ export default function ProductDetail({
                 </div>
               )}
 
-              {/* Velocity EMI */}
-              <div className="mt-4 space-y-1.5 rounded-2xl border border-sky-200 bg-sky-50/60 p-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-2 text-xs font-bold text-slate-900">
-                    <VelocityLogo className="h-4" />
-                    EMI / Pay Later
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#0a7ae6]">
-                    Available
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-700 font-medium">
-                  <span>
-                    From <strong className="font-bold text-slate-900">₹{emiAmount.toLocaleString("en-IN")}/month</strong> for 3 months
-                  </span>
-                  {isOutOfStock ? (
-                    <span className="text-[11px] font-bold text-slate-400">Unavailable</span>
-                  ) : (
-                    <Link
-                      href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}&payment=velocity&emiTenure=3`}
-                      onClick={addProductToCart}
-                      className="text-[11px] font-bold text-[#0a7ae6] underline"
-                    >
-                      Buy on EMI
-                    </Link>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-500">Eligible plans and final terms are shown by Velocity at checkout.</p>
-              </div>
-
-              {/* Stock state */}
-              {isOutOfStock ? (
-                <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-bold text-red-700">
-                  <span className="flex size-2.5 shrink-0 rounded-full bg-red-600" />
-                  <span>Out of stock</span>
-                </div>
-              ) : (
-                <div className="mt-4 flex items-center gap-2.5 text-sm sm:text-[15px] font-medium text-emerald-800">
-                  <span className="relative flex size-2.5 shrink-0">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-                    <span className="relative inline-flex size-2.5 rounded-full bg-emerald-600" />
-                  </span>
-                  <span>{availableStock !== null && availableStock <= 5 ? `Only ${availableStock} left in stock` : "In stock and ready to ship"}</span>
-                </div>
-              )}
-
-              {/* Quantity Selector */}
-              <div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              {/* Quantity Selector Row */}
+              <div className="mt-4 flex items-center justify-between border-t border-b border-slate-300/60 py-3.5">
+                <span className="text-sm font-bold text-slate-900">
                   Quantity :
                 </span>
-                <div className="flex items-center rounded-xl border border-slate-300 bg-white p-1 shadow-2xs">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <button
                     type="button"
                     onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
                     aria-label="Decrease quantity"
-                    className="flex size-7 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition active:scale-95 disabled:opacity-40"
+                    className="flex size-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-base font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition active:scale-95 disabled:opacity-40 cursor-pointer"
                     disabled={isOutOfStock || quantity <= 1}
                   >
-                    <Minus className="size-3.5" />
+                    -
                   </button>
-                  <span className="w-9 text-center text-xs font-bold text-slate-900">
+                  <span className="flex h-9 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-sm font-bold text-slate-900 shadow-inner">
                     {quantity}
                   </span>
                   <button
                     type="button"
                     onClick={() => setQuantity((prev) => Math.min(maximumPurchaseQuantity, prev + 1))}
                     aria-label="Increase quantity"
-                    className="flex size-7 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition active:scale-95 disabled:opacity-40"
+                    className="flex size-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-base font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition active:scale-95 disabled:opacity-40 cursor-pointer"
                     disabled={isOutOfStock || quantity >= maximumPurchaseQuantity}
                   >
-                    <Plus className="size-3.5" />
+                    +
                   </button>
                 </div>
               </div>
 
-              {/* Primary Action Buttons */}
-              <div className="mt-5 space-y-2.5">
-                {isOutOfStock ? (
-                  <button type="button" disabled className="flex h-12 w-full cursor-not-allowed items-center justify-center rounded-xl bg-slate-300 text-sm font-bold text-slate-600">
-                    Out of Stock
-                  </button>
-                ) : (
-                  <Link
-                    href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}`}
-                    onClick={addProductToCart}
-                    className="flex h-12 w-full items-center justify-center rounded-xl bg-[#0a7ae6] text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all hover:bg-[#086ac9] active:scale-[0.99]"
-                  >
-                    Buy Now
-                  </Link>
-                )}
-
-                <div className="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={addProductToCart}
-                    disabled={isOutOfStock}
-                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-bold text-white transition-all hover:bg-slate-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
-                  >
-                    <ShoppingBag className="size-4" />
-                    <span>{isOutOfStock ? "Out of Stock" : "Add to Cart"}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={toggleProductWishlist}
-                    aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
-                    className={`flex size-11 shrink-0 items-center justify-center rounded-xl border transition-all ${
-                      isFavorite
-                        ? "border-red-200 bg-red-50 text-red-500"
-                        : "border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-                    }`}
-                  >
-                    <Heart className={`size-4.5 ${isFavorite ? "fill-red-500" : ""}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Delivery Estimate */}
-              <div className="mt-5 border-t border-slate-200/70 pt-4">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                  <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
-                  <span>Delivered to your doorstep within 24-48 hours</span>
-                </div>
+              {/* Delivery Doorstep Notice */}
+              <div className="mt-4 flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-slate-700">
+                <CheckCircle2 className="size-5 fill-emerald-600 text-white shrink-0" />
+                <span>Delivered to your doorstep within 24 hours (pincode based)</span>
               </div>
 
               {/* Services and Benefits Section */}
-              <div className="mt-6 border-t border-slate-200/70 pt-4">
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 mb-2.5">
+              <div className="mt-5">
+                <h3 className="text-sm sm:text-base font-bold text-slate-950 mb-2.5">
                   Services and benefits
                 </h3>
-                <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-2xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
-                    <div className="flex items-center gap-3">
-                      <Truck className="size-5 text-slate-900 shrink-0" />
-                      <span className="text-xs sm:text-sm font-medium text-slate-800">
+                <div className="rounded-2xl bg-white p-4 sm:p-5 border border-slate-200/80 shadow-2xs">
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                    <div className="flex items-start gap-2.5">
+                      <Truck className="size-5 text-slate-950 shrink-0 mt-0.5" />
+                      <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-tight">
                         Fast, Free Shipping
                       </span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <ShieldCheck className="size-5 text-slate-900 shrink-0" />
-                      <span className="text-xs sm:text-sm font-medium text-slate-800">
+                    <div className="flex items-start gap-2.5">
+                      <ShieldCheck className="size-5 text-slate-950 shrink-0 mt-0.5" />
+                      <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-tight">
                         Hassle-Free Warranty
                       </span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="size-5 text-slate-900 shrink-0" />
-                      <span className="text-xs sm:text-sm font-medium text-slate-800">
+                    <div className="flex items-start gap-2.5">
+                      <CreditCard className="size-5 text-slate-950 shrink-0 mt-0.5" />
+                      <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-tight">
                         Lowest Price Guarantee
                       </span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <HelpCircle className="size-5 text-slate-900 shrink-0" />
-                      <span className="text-xs sm:text-sm font-medium text-slate-800">
+                    <div className="flex items-start gap-2.5">
+                      <HelpCircle className="size-5 text-slate-950 shrink-0 mt-0.5" />
+                      <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-tight">
                         Lifetime Customer Support
                       </span>
                     </div>
@@ -625,66 +679,127 @@ export default function ProductDetail({
                 </div>
               </div>
 
-              {/* Collapsible Accordion: Description */}
-              <div className="mt-5 border-t border-slate-200/70 pt-4">
-                <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs transition-all">
-                  <button
-                    type="button"
-                    onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
-                    className="flex w-full items-center justify-between p-3.5 text-left font-bold text-xs sm:text-sm text-slate-900 hover:bg-slate-50/80 transition cursor-pointer"
-                  >
-                    <span className="text-slate-900 font-bold">Product Description</span>
-                    <span className="flex size-5 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-                      {isDescriptionOpen ? <Minus className="size-3" /> : <Plus className="size-3" />}
-                    </span>
-                  </button>
+              {/* Primary Action Buttons: ADD TO CART & BUY NOW (Side-by-Side) */}
+              <div className="mt-6 flex items-end gap-3">
+                <button
+                  type="button"
+                  onClick={addProductToCart}
+                  disabled={isOutOfStock}
+                  className="h-12 flex-1 rounded-xl bg-black text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-sm hover:bg-slate-900 active:scale-[0.98] transition cursor-pointer flex items-center justify-center disabled:opacity-40"
+                >
+                  ADD TO CART
+                </button>
 
-                  {isDescriptionOpen && (
-                    <div className="border-t border-slate-100 p-4 pt-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                      <ProductDescriptionContent description={product.description} />
-                    </div>
+                <div className="relative flex-1">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-sm bg-[#22c55e] px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider shadow-xs">
+                    Easy EMI available
+                  </div>
+                  {isOutOfStock ? (
+                    <button type="button" disabled className="h-12 w-full rounded-xl bg-slate-300 text-slate-600 font-bold text-xs sm:text-sm uppercase tracking-wider cursor-not-allowed">
+                      Out of Stock
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/checkout?product=${encodeURIComponent(product.slug || product.id)}`}
+                      onClick={addProductToCart}
+                      className="h-12 w-full rounded-xl bg-[#0a7ae6] text-white font-bold text-xs sm:text-sm uppercase tracking-wider shadow-md shadow-blue-500/25 hover:bg-[#086ac9] active:scale-[0.98] transition flex items-center justify-center gap-2"
+                    >
+                      <span>BUY NOW</span>
+                      <div className="flex items-center -space-x-1.5 bg-white rounded-full p-0.5 shadow-xs shrink-0">
+                        {/* Google G Logo Badge */}
+                        <div className="size-5 rounded-full bg-white flex items-center justify-center shadow-2xs overflow-hidden">
+                          <svg viewBox="0 0 24 24" className="size-3.5">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                          </svg>
+                        </div>
+                        {/* PhonePe Logo Badge */}
+                        <div className="size-5 rounded-full bg-[#5f259f] flex items-center justify-center text-white font-extrabold text-[9px] shadow-2xs">
+                          पे
+                        </div>
+                        {/* Paytm Logo Badge */}
+                        <div className="size-5 rounded-full bg-[#00baf2] flex items-center justify-center text-white font-black text-[7.5px] shadow-2xs tracking-tighter">
+                          tm
+                        </div>
+                      </div>
+                    </Link>
                   )}
                 </div>
               </div>
 
-              {/* Social Sharing Icons */}
-              <div className="mt-5 flex items-center justify-between border-t border-slate-200/70 pt-4">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Share Product
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <a
-                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Check out ${product.name} on XElectron: `)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex size-8 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 transition shadow-2xs"
-                    title="Share on WhatsApp"
-                  >
-                    <MessageSquare className="size-3.5" />
-                  </a>
-                  <a
-                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out ${product.name} on XElectron`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex size-8 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-sky-500 hover:border-sky-200 transition shadow-2xs"
-                    title="Share on X"
-                  >
-                    <Share2 className="size-3.5" />
-                  </a>
-                  <button
-                    type="button"
-                    onClick={handleCopyLink}
-                    className="flex size-8 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-[#0a7ae6] hover:border-blue-200 transition shadow-2xs relative"
-                    title="Copy Link"
-                  >
-                    <Copy className="size-3.5" />
-                    {copiedLink && (
-                      <span className="absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-white whitespace-nowrap shadow-md">
-                        Copied!
-                      </span>
-                    )}
-                  </button>
-                </div>
+              {/* Collapsible Accordion: Description */}
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
+                  className="flex w-full items-center justify-between rounded-xl bg-white p-4 border border-slate-200 font-bold text-sm text-slate-900 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+                >
+                  <span>Description</span>
+                  <span className="flex size-7 items-center justify-center rounded-lg bg-black text-white font-bold">
+                    {isDescriptionOpen ? <Minus className="size-4" /> : <Plus className="size-4" />}
+                  </span>
+                </button>
+
+                {isDescriptionOpen && (
+                  <div className="mt-2 rounded-xl bg-white border border-slate-200 p-4 text-xs sm:text-sm text-slate-700 leading-relaxed shadow-2xs">
+                    <ProductDescriptionContent description={product.description} specs={product.specs} />
+                  </div>
+                )}
+              </div>
+
+              {/* Social Sharing Icons (5 Square Buttons) */}
+              <div className="mt-4 flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => handleShare("facebook")}
+                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-slate-300 shadow-2xs transition cursor-pointer"
+                  title="Share on Facebook"
+                  aria-label="Share on Facebook"
+                >
+                  <span className="font-bold text-sm">f</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShare("twitter")}
+                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 shadow-2xs transition cursor-pointer"
+                  title="Share on X"
+                  aria-label="Share on X"
+                >
+                  <span className="font-bold text-sm">𝕏</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShare("whatsapp")}
+                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-600 hover:border-slate-300 shadow-2xs transition cursor-pointer"
+                  title="Share on WhatsApp"
+                  aria-label="Share on WhatsApp"
+                >
+                  <MessageSquare className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShare("email")}
+                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 shadow-2xs transition cursor-pointer"
+                  title="Share via Email"
+                  aria-label="Share via Email"
+                >
+                  <ExternalLink className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="flex size-11 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-slate-950 hover:border-slate-300 shadow-2xs transition cursor-pointer relative"
+                  title="Copy Link"
+                >
+                  <Copy className="size-4" />
+                  {copiedLink && (
+                    <span className="absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-white whitespace-nowrap shadow-md">
+                      Copied!
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
 
@@ -790,8 +905,50 @@ export default function ProductDetail({
 
           return (
             <section id="product-slider-banners" className="relative w-full bg-[#060609] py-8 sm:py-14 overflow-hidden block select-none">
-              {/* True Horizontal Carousel Track with Peeking Cards */}
-              <div className="relative w-full overflow-hidden">
+              {/* MOBILE VIEW: SIMPLE FULL-WIDTH BANNER (NOT SCROLLABLE / NO PEEKING SIDES) */}
+              <div className="block sm:hidden w-full px-4">
+                {sliderBanners[currentIdx] && (() => {
+                  const currentBanner = sliderBanners[currentIdx];
+                  const mediaUrl = currentBanner.mobileImageUrl || currentBanner.imageUrl;
+                  const isYt = isYouTubeUrl(mediaUrl);
+                  const isVid = isVideoUrl(mediaUrl);
+
+                  return (
+                    <div className="w-full rounded-2xl overflow-hidden shadow-2xl bg-black border border-white/10">
+                      {isYt ? (
+                        <div className="relative aspect-16/9 w-full">
+                          <iframe
+                            src={getYouTubeEmbedUrl(mediaUrl, true, true, true)}
+                            title={currentBanner.cleanTitle || `${product.name} mobile video`}
+                            className="w-full h-full border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                          />
+                        </div>
+                      ) : isVid ? (
+                        <video
+                          src={mediaUrl}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="w-full h-auto block object-contain mx-auto"
+                        />
+                      ) : (
+                        <img
+                          src={mediaUrl}
+                          alt={currentBanner.cleanTitle || `${product.name} banner ${currentIdx + 1}`}
+                          className="w-full h-auto block object-contain mx-auto"
+                          loading="eager"
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* DESKTOP VIEW: HORIZONTAL CAROUSEL TRACK WITH PEEKING CARDS */}
+              <div className="hidden sm:block relative w-full overflow-hidden">
                 <div
                   className="flex items-center gap-4 sm:gap-6 transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]"
                   style={{
@@ -800,6 +957,10 @@ export default function ProductDetail({
                 >
                   {sliderBanners.map((banner: any, idx: number) => {
                     const isActive = currentIdx === idx;
+                    const isDeskYt = isYouTubeUrl(banner.imageUrl);
+                    const isDeskVid = isVideoUrl(banner.imageUrl);
+                    const isMobYt = isYouTubeUrl(banner.mobileImageUrl);
+                    const isMobVid = isVideoUrl(banner.mobileImageUrl);
 
                     return (
                       <div
@@ -811,25 +972,67 @@ export default function ProductDetail({
                             : "opacity-40 scale-[0.93] hover:opacity-75 cursor-pointer"
                         }`}
                       >
-                        {/* Desktop Banner Image */}
+                        {/* Desktop Banner Media */}
                         <div className={banner.mobileImageUrl ? "hidden md:block w-full leading-none m-0 p-0" : "block w-full leading-none m-0 p-0"}>
-                          <img
-                            src={banner.imageUrl}
-                            alt={banner.cleanTitle || `${product.name} slide ${idx + 1}`}
-                            className="w-full h-auto block object-contain mx-auto"
-                            loading={idx === 0 ? "eager" : "lazy"}
-                          />
-                        </div>
-
-                        {/* Mobile Banner Image */}
-                        {banner.mobileImageUrl && (
-                          <div className="block md:hidden w-full leading-none m-0 p-0">
+                          {isDeskYt ? (
+                            <div className="relative aspect-21/9 md:aspect-16/9 w-full bg-black">
+                              <iframe
+                                src={getYouTubeEmbedUrl(banner.imageUrl, isActive, true, true)}
+                                title={banner.cleanTitle || `${product.name} slide ${idx + 1}`}
+                                className="w-full h-full border-0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                              />
+                            </div>
+                          ) : isDeskVid ? (
+                            <video
+                              src={banner.imageUrl}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="w-full h-auto block object-contain mx-auto"
+                            />
+                          ) : (
                             <img
-                              src={banner.mobileImageUrl}
-                              alt={banner.cleanTitle || `${product.name} mobile slide ${idx + 1}`}
+                              src={banner.imageUrl}
+                              alt={banner.cleanTitle || `${product.name} slide ${idx + 1}`}
                               className="w-full h-auto block object-contain mx-auto"
                               loading={idx === 0 ? "eager" : "lazy"}
                             />
+                          )}
+                        </div>
+
+                        {/* Mobile Banner Media */}
+                        {banner.mobileImageUrl && (
+                          <div className="block md:hidden w-full leading-none m-0 p-0">
+                            {isMobYt ? (
+                              <div className="relative aspect-16/9 w-full bg-black">
+                                <iframe
+                                  src={getYouTubeEmbedUrl(banner.mobileImageUrl, isActive, true, true)}
+                                  title={banner.cleanTitle || `${product.name} mobile slide ${idx + 1}`}
+                                  className="w-full h-full border-0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  allowFullScreen
+                                />
+                              </div>
+                            ) : isMobVid ? (
+                              <video
+                                src={banner.mobileImageUrl}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="w-full h-auto block object-contain mx-auto"
+                              />
+                            ) : (
+                              <img
+                                src={banner.mobileImageUrl}
+                                alt={banner.cleanTitle || `${product.name} mobile slide ${idx + 1}`}
+                                className="w-full h-auto block object-contain mx-auto"
+                                loading={idx === 0 ? "eager" : "lazy"}
+                              />
+                            )}
                           </div>
                         )}
                       </div>
@@ -888,42 +1091,102 @@ export default function ProductDetail({
           return (
             <section className="relative w-full space-y-0 leading-none overflow-hidden block">
               <div className="space-y-0 leading-none block m-0 p-0">
-                {slice.map((banner: any, idx: number) => (
-                  <div
-                    id={`showcase-slide-${startIdx + idx}`}
-                    key={banner.id || `showcase-banner-${startIdx + idx}`}
-                    className="relative w-full overflow-hidden leading-none block m-0 p-0"
-                  >
-                    {/* Desktop Banner Image (Full width end-to-end) */}
-                    <div className={banner.mobileImageUrl ? "hidden md:block leading-none m-0 p-0" : "block leading-none m-0 p-0"}>
-                      <img
-                        src={banner.imageUrl}
-                        alt={banner.title || `${product.name} showcase banner ${startIdx + idx + 1}`}
-                        className="w-full h-auto block m-0 p-0"
-                        loading="lazy"
-                      />
-                    </div>
+                {slice.map((banner: any, idx: number) => {
+                  const isDeskYt = isYouTubeUrl(banner.imageUrl);
+                  const isDeskVid = isVideoUrl(banner.imageUrl);
+                  const isMobYt = isYouTubeUrl(banner.mobileImageUrl);
+                  const isMobVid = isVideoUrl(banner.mobileImageUrl);
+                  const hasVideo = isDeskYt || isDeskVid || isMobYt || isMobVid;
 
-                    {/* Mobile Banner Image (Full width end-to-end) */}
-                    {banner.mobileImageUrl && (
-                      <div className="block md:hidden leading-none m-0 p-0">
-                        <img
-                          src={banner.mobileImageUrl}
-                          alt={banner.title || `${product.name} mobile banner ${startIdx + idx + 1}`}
-                          className="w-full h-auto block m-0 p-0"
-                          loading="lazy"
-                        />
+                  return (
+                    <div
+                      id={`showcase-slide-${startIdx + idx}`}
+                      key={banner.id || `showcase-banner-${startIdx + idx}`}
+                      className={`relative w-full overflow-hidden leading-none block ${
+                        hasVideo
+                          ? "py-8 sm:py-16 px-3 sm:px-6 lg:px-8 max-w-[1400px] mx-auto"
+                          : "m-0 p-0"
+                      }`}
+                    >
+                      {/* Desktop Banner Media */}
+                      <div className={banner.mobileImageUrl ? "hidden md:block leading-none m-0 p-0" : "block leading-none m-0 p-0"}>
+                        {isDeskYt ? (
+                          <div className="relative aspect-16/9 w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl bg-black border border-black/10">
+                            <iframe
+                              src={getYouTubeEmbedUrl(banner.imageUrl, true, true, true)}
+                              title={banner.title || `${product.name} showcase video ${startIdx + idx + 1}`}
+                              className="w-full h-full border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                              allowFullScreen
+                            />
+                          </div>
+                        ) : isDeskVid ? (
+                          <div className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl bg-black border border-black/10">
+                            <video
+                              src={banner.imageUrl}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              controls
+                              className="w-full h-auto block m-0 p-0"
+                            />
+                          </div>
+                        ) : (
+                          <img
+                            src={banner.imageUrl}
+                            alt={banner.title || `${product.name} showcase banner ${startIdx + idx + 1}`}
+                            className="w-full h-auto block m-0 p-0"
+                            loading="lazy"
+                          />
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      {/* Mobile Banner Media */}
+                      {banner.mobileImageUrl && (
+                        <div className="block md:hidden leading-none m-0 p-0">
+                          {isMobYt ? (
+                            <div className="relative aspect-16/9 w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-black border border-black/10">
+                              <iframe
+                                src={getYouTubeEmbedUrl(banner.mobileImageUrl, true, true, true)}
+                                title={banner.title || `${product.name} mobile showcase video ${startIdx + idx + 1}`}
+                                className="w-full h-full border-0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                              />
+                            </div>
+                          ) : isMobVid ? (
+                            <div className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-black border border-black/10">
+                              <video
+                                src={banner.mobileImageUrl}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                controls
+                                className="w-full h-auto block m-0 p-0"
+                              />
+                            </div>
+                          ) : (
+                            <img
+                              src={banner.mobileImageUrl}
+                              alt={banner.title || `${product.name} mobile banner ${startIdx + idx + 1}`}
+                              className="w-full h-auto block m-0 p-0"
+                              loading="lazy"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           );
         };
 
         return (
-          <div id="product-features" className="w-full space-y-0 my-8 sm:my-14 leading-none m-0 p-0 block scroll-mt-24">
+          <div id="product-features" className="w-full space-y-0 my-8 sm:my-16 leading-none m-0 p-0 block scroll-mt-24">
             {renderShowcaseSlice(topShowcase, 0)}
             {renderSliderSection()}
             {renderShowcaseSlice(bottomShowcase, splitIdx)}
@@ -931,8 +1194,8 @@ export default function ProductDetail({
         );
       })()}
 
-      {/* BOTTOM SECTIONS CONTAINER */}
-      <div className="mx-auto max-w-[1440px] px-3 sm:px-6 lg:px-8">
+      {/* BOTTOM SECTIONS CONTAINER WITH DISTINCT GAP BEFORE VIDEO SECTION */}
+      <div className="mx-auto max-w-[1440px] px-3 sm:px-6 lg:px-8 mt-8 sm:mt-12 pt-6 border-t border-black/5">
         {/* CREATOR & HANDS-ON VIDEOS SECTION (MATCHING USER IMAGES) */}
         {(() => {
           const videos = ((product as any)?.creatorVideos || []).filter((v: any) => v && (v.isProductVideo !== false) && Boolean(v.videoUrl?.trim() || v.thumbnailUrl?.trim()));
@@ -1066,25 +1329,28 @@ export default function ProductDetail({
             <section id="product-specifications" className="mt-16 sm:mt-24 pt-12 sm:pt-16 border-t border-slate-200 scroll-mt-24">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 xl:gap-20">
                 {/* Column 1: Design, Display & Performance */}
-                <div className="space-y-4">
-                  <h2 className="text-xl sm:text-2xl lg:text-[26px] font-bold text-slate-900 tracking-tight pb-3.5 border-b border-slate-200/90">
-                    Design, Display & Performance
+                <div className="space-y-3">
+                  <h2 className="text-2xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-2">
+                    Performance, Design & Lighting
                   </h2>
                   {designSpecs.length > 0 ? (
-                    <div className="divide-y divide-slate-100">
-                      {designSpecs.map((spec: any, idx: number) => (
-                        <div
-                          key={`d-full-${idx}`}
-                          className="grid grid-cols-1 sm:grid-cols-[190px_1fr] py-3.5 sm:py-4 items-baseline gap-1.5 sm:gap-6"
-                        >
-                          <span className="text-xs sm:text-sm font-medium text-slate-500">
-                            {spec.label}
-                          </span>
-                          <span className="text-xs sm:text-sm md:text-[15px] font-semibold text-slate-900 whitespace-pre-line leading-relaxed">
-                            {spec.value}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="divide-y divide-slate-100 border-t border-slate-100">
+                      {designSpecs.map((spec: any, idx: number) => {
+                        const formattedLabel = spec.label.endsWith(":") ? spec.label : `${spec.label}:`;
+                        return (
+                          <div
+                            key={`d-full-${idx}`}
+                            className="grid grid-cols-[40%_60%] sm:grid-cols-[35%_65%] py-3.5 sm:py-4 items-baseline gap-2 sm:gap-6"
+                          >
+                            <span className="text-[14px] sm:text-sm font-bold text-slate-400">
+                              {formattedLabel}
+                            </span>
+                            <span className="text-[15px] sm:text-sm md:text-[15px] font-semibold text-slate-800 leading-snug whitespace-pre-line">
+                              {spec.value}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-xs text-slate-400 italic py-3">No specifications listed.</p>
@@ -1092,25 +1358,28 @@ export default function ProductDetail({
                 </div>
 
                 {/* Column 2: Connectivity, Battery & Smart Features */}
-                <div className="space-y-4">
-                  <h2 className="text-xl sm:text-2xl lg:text-[26px] font-bold text-slate-900 tracking-tight pb-3.5 border-b border-slate-200/90">
-                    Connectivity, Battery & Smart Features
+                <div className="space-y-3">
+                  <h2 className="text-2xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-2">
+                    Connectivity & Smart Features
                   </h2>
                   {connectivitySpecs.length > 0 ? (
-                    <div className="divide-y divide-slate-100">
-                      {connectivitySpecs.map((spec: any, idx: number) => (
-                        <div
-                          key={`c-full-${idx}`}
-                          className="grid grid-cols-1 sm:grid-cols-[190px_1fr] py-3.5 sm:py-4 items-baseline gap-1.5 sm:gap-6"
-                        >
-                          <span className="text-xs sm:text-sm font-medium text-slate-500">
-                            {spec.label}
-                          </span>
-                          <span className="text-xs sm:text-sm md:text-[15px] font-semibold text-slate-900 whitespace-pre-line leading-relaxed">
-                            {spec.value}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="divide-y divide-slate-100 border-t border-slate-100">
+                      {connectivitySpecs.map((spec: any, idx: number) => {
+                        const formattedLabel = spec.label.endsWith(":") ? spec.label : `${spec.label}:`;
+                        return (
+                          <div
+                            key={`c-full-${idx}`}
+                            className="grid grid-cols-[40%_60%] sm:grid-cols-[35%_65%] py-3.5 sm:py-4 items-baseline gap-2 sm:gap-6"
+                          >
+                            <span className="text-[14px] sm:text-sm font-bold text-slate-400">
+                              {formattedLabel}
+                            </span>
+                            <span className="text-[15px] sm:text-sm md:text-[15px] font-semibold text-slate-800 leading-snug whitespace-pre-line">
+                              {spec.value}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-xs text-slate-400 italic py-3">No specifications listed.</p>

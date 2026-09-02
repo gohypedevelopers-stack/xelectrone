@@ -13,8 +13,19 @@ import {
   Loader2,
   Smartphone,
   Monitor,
+  Video,
+  Film,
+  Play,
+  Link as LinkIcon,
+  X,
 } from "lucide-react";
 import { uploadProductImage } from "@/lib/client/upload-product-image";
+import {
+  isYouTubeUrl,
+  getYouTubeThumbnail,
+  isVideoUrl,
+  getBannerMediaType,
+} from "@/lib/banner-media";
 
 export type BannerItem = {
   id?: string;
@@ -102,7 +113,7 @@ export function ProductBannersSection({
         onChange([...banners, ...newBanners]);
       }
     } catch (err: any) {
-      alert(err.message || "Failed to upload image(s).");
+      alert(err.message || "Failed to upload media file(s).");
     } finally {
       setIsUploading(false);
       setUploadIndex(null);
@@ -118,11 +129,11 @@ export function ProductBannersSection({
 
   return (
     <div className="space-y-4">
-      {/* Hidden file input supporting multiple files for cascade uploads */}
+      {/* Hidden file input supporting both images and videos */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         multiple={uploadIndex === null}
         onChange={handleFileUpload}
         className="hidden"
@@ -135,7 +146,7 @@ export function ProductBannersSection({
             Product Showcase & Marketing Banners ({banners.length})
           </h3>
           <p className="text-xs text-black/50">
-            Full-width promotional, storytelling, and cascade graphic banners displayed on the product page.
+            Full-width promotional graphics, MP4 videos, or YouTube showcases displayed on the product page.
           </p>
         </div>
 
@@ -151,7 +162,7 @@ export function ProductBannersSection({
             ) : (
               <Upload className="size-3.5" />
             )}
-            Upload Banner
+            Upload Banner (Image / Video)
           </button>
           <button
             type="button"
@@ -181,160 +192,296 @@ export function ProductBannersSection({
               Click to upload product showcase banners
             </p>
             <p className="text-xs text-black/50 max-w-sm mx-auto">
-              Upload high-resolution landscape banners (e.g. 1920x800 or 2560x1080) to showcase features, specs, and lifestyle graphics.
+              Upload landscape banners (1920x800 or 16:9), MP4 videos, or paste YouTube links to showcase features, specs, and demos.
             </p>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          {banners.map((banner, index) => (
-            <div
-              key={`banner-row-${index}`}
-              className="rounded-xl border border-black/15 bg-white p-4 shadow-xs space-y-4"
-            >
-              <div className="flex items-center justify-between gap-2 border-b border-black/5 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="flex size-5.5 items-center justify-center rounded-md bg-black text-[11px] font-bold text-white">
-                    {index + 1}
-                  </span>
-                  <span className="text-xs font-semibold text-black/80">
-                    Showcase Banner #{index + 1} {banner.title ? `— ${banner.title}` : ""}
-                  </span>
-                </div>
+          {banners.map((banner, index) => {
+            const desktopMediaType = getBannerMediaType(banner.imageUrl);
+            const mobileMediaType = getBannerMediaType(banner.mobileImageUrl);
 
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => moveBanner(index, index - 1)}
-                    disabled={index === 0}
-                    title="Move Up"
-                    className="p-1 rounded hover:bg-black/5 text-black/50 hover:text-black disabled:opacity-30 cursor-pointer"
-                  >
-                    <ArrowUp className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveBanner(index, index + 1)}
-                    disabled={index === banners.length - 1}
-                    title="Move Down"
-                    className="p-1 rounded hover:bg-black/5 text-black/50 hover:text-black disabled:opacity-30 cursor-pointer"
-                  >
-                    <ArrowDown className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeBanner(index)}
-                    title="Delete Banner"
-                    className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-700 cursor-pointer ml-1"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Title & Caption */}
-              <div>
-                <label className="block text-[11px] font-semibold text-black/70 mb-1">
-                  Banner Caption / Title (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={banner.title || ""}
-                  onChange={(e) => updateBanner(index, "title", e.target.value)}
-                  placeholder="e.g. Cinema-Grade Contrast. Any Screen Size."
-                  className="h-8 w-full rounded-md border border-black/20 bg-white px-2.5 text-xs text-black/90 outline-none focus:border-black/50"
-                />
-              </div>
-
-              {/* Dual Desktop + Mobile Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                {/* Desktop Version */}
-                <div className="rounded-lg border border-black/10 bg-slate-50/50 p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-black/80">
-                      <Monitor className="size-3.5 text-[#0a7ae6]" />
-                      Desktop Banner (Wide / 16:9 or 21:9)
+            return (
+              <div
+                key={`banner-row-${index}`}
+                className="rounded-xl border border-black/15 bg-white p-4 shadow-xs space-y-4"
+              >
+                <div className="flex items-center justify-between gap-2 border-b border-black/5 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-5.5 items-center justify-center rounded-md bg-black text-[11px] font-bold text-white">
+                      {index + 1}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => triggerUpload(index, "desktop")}
-                      disabled={isUploading}
-                      className="inline-flex items-center gap-1 rounded bg-black px-2.5 py-1 text-[11px] font-medium text-white hover:bg-black/80 cursor-pointer"
-                    >
-                      <Upload className="size-3" />
-                      {banner.imageUrl ? "Change Image" : "Upload Desktop"}
-                    </button>
-                  </div>
-
-                  <div
-                    onClick={() => triggerUpload(index, "desktop")}
-                    className="relative aspect-21/9 w-full overflow-hidden rounded-md border border-black/10 bg-white flex items-center justify-center cursor-pointer hover:border-black/30 transition group"
-                  >
-                    {banner.imageUrl ? (
-                      <img
-                        src={banner.imageUrl}
-                        alt={banner.title || `Desktop Banner ${index + 1}`}
-                        className="w-full h-full object-cover block"
-                      />
-                    ) : (
-                      <div className="text-center p-3 text-black/40 group-hover:text-black/70">
-                        <ImageIcon className="size-6 mx-auto mb-1 opacity-50" />
-                        <span className="text-[11px] font-medium">Click to upload desktop banner</span>
-                      </div>
+                    <span className="text-xs font-semibold text-black/80">
+                      Showcase Banner #{index + 1} {banner.title ? `— ${banner.title}` : ""}
+                    </span>
+                    {desktopMediaType === "youtube" && (
+                      <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
+                        YouTube
+                      </span>
+                    )}
+                    {desktopMediaType === "video" && (
+                      <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-700">
+                        MP4 Video
+                      </span>
                     )}
                   </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveBanner(index, index - 1)}
+                      disabled={index === 0}
+                      title="Move Up"
+                      className="p-1 rounded hover:bg-black/5 text-black/50 hover:text-black disabled:opacity-30 cursor-pointer"
+                    >
+                      <ArrowUp className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveBanner(index, index + 1)}
+                      disabled={index === banners.length - 1}
+                      title="Move Down"
+                      className="p-1 rounded hover:bg-black/5 text-black/50 hover:text-black disabled:opacity-30 cursor-pointer"
+                    >
+                      <ArrowDown className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeBanner(index)}
+                      title="Delete Banner"
+                      className="p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-700 cursor-pointer ml-1"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Mobile Version */}
-                <div className="rounded-lg border border-black/10 bg-slate-50/50 p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-black/80">
-                      <Smartphone className="size-3.5 text-emerald-600" />
-                      Mobile Banner (Portrait / 1080x1350)
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {banner.mobileImageUrl ? (
+                {/* Title & Caption */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-black/70 mb-1">
+                    Banner Caption / Title (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={banner.title || ""}
+                    onChange={(e) => updateBanner(index, "title", e.target.value)}
+                    placeholder="e.g. Cinema-Grade Contrast. Any Screen Size."
+                    className="h-8 w-full rounded-md border border-black/20 bg-white px-2.5 text-xs text-black/90 outline-none focus:border-black/50"
+                  />
+                </div>
+
+                {/* Dual Desktop + Mobile Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                  {/* Desktop Version */}
+                  <div className="rounded-lg border border-black/10 bg-slate-50/50 p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-black/80">
+                        <Monitor className="size-3.5 text-[#0a7ae6]" />
+                        Desktop Banner (16:9 / 21:9)
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {banner.imageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => updateBanner(index, "imageUrl", "")}
+                            className="text-[10px] text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        ) : null}
                         <button
                           type="button"
-                          onClick={() => updateBanner(index, "mobileImageUrl", null)}
-                          className="text-[10px] text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                          onClick={() => triggerUpload(index, "desktop")}
+                          disabled={isUploading}
+                          className="inline-flex items-center gap-1 rounded bg-black px-2.5 py-1 text-[11px] font-medium text-white hover:bg-black/80 cursor-pointer"
                         >
-                          Remove
+                          <Upload className="size-3" />
+                          {banner.imageUrl ? "Change File" : "Upload File"}
                         </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => triggerUpload(index, "mobile")}
-                        disabled={isUploading}
-                        className="inline-flex items-center gap-1 rounded bg-black px-2.5 py-1 text-[11px] font-medium text-white hover:bg-black/80 cursor-pointer"
-                      >
-                        <Upload className="size-3" />
-                        {banner.mobileImageUrl ? "Change Image" : "Upload Mobile"}
-                      </button>
+                      </div>
+                    </div>
+
+                    {/* Preview Screen */}
+                    <div
+                      onClick={() => !banner.imageUrl && triggerUpload(index, "desktop")}
+                      className="relative aspect-21/9 w-full overflow-hidden rounded-md border border-black/10 bg-black flex items-center justify-center cursor-pointer group"
+                    >
+                      {desktopMediaType === "youtube" ? (
+                        <div className="relative w-full h-full bg-black flex items-center justify-center">
+                          <img
+                            src={getYouTubeThumbnail(banner.imageUrl) || "/creator-projector.png"}
+                            alt={banner.title || `Desktop Banner ${index + 1}`}
+                            className="w-full h-full object-cover opacity-85"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="flex size-10 items-center justify-center rounded-full bg-red-600 text-white shadow-lg">
+                              <Play className="size-5 fill-white ml-0.5" />
+                            </div>
+                          </div>
+                          <div className="absolute top-2 left-2 rounded bg-black/80 px-2 py-0.5 text-[10px] font-bold text-red-400 flex items-center gap-1 backdrop-blur-xs">
+                            <Video className="size-3 text-red-500" /> YouTube
+                          </div>
+                        </div>
+                      ) : desktopMediaType === "video" ? (
+                        <div className="relative w-full h-full bg-black">
+                          <video
+                            src={banner.imageUrl}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 left-2 rounded bg-black/80 px-2 py-0.5 text-[10px] font-bold text-sky-400 flex items-center gap-1 backdrop-blur-xs">
+                            <Film className="size-3 text-sky-400" /> Video MP4
+                          </div>
+                        </div>
+                      ) : banner.imageUrl ? (
+                        <div className="relative w-full h-full">
+                          <img
+                            src={banner.imageUrl}
+                            alt={banner.title || `Desktop Banner ${index + 1}`}
+                            className="w-full h-full object-cover block"
+                          />
+                          <div className="absolute top-2 left-2 rounded bg-black/80 px-2 py-0.5 text-[10px] font-bold text-emerald-400 flex items-center gap-1 backdrop-blur-xs">
+                            <ImageIcon className="size-3 text-emerald-400" /> Image
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center p-3 text-white/50 group-hover:text-white/80 transition">
+                          <div className="flex items-center justify-center gap-1.5 mb-1 opacity-60">
+                            <ImageIcon className="size-5" />
+                            <Video className="size-5 text-[#0a7ae6]" />
+                          </div>
+                          <span className="text-[11px] font-medium block">Click to upload image or video</span>
+                          <span className="text-[10px] opacity-60 block">or paste link below</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* URL Input (Paste YouTube or MP4 Link or Image URL) */}
+                    <div className="space-y-1 pt-0.5">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-black/65">
+                        <LinkIcon className="size-3 text-black/50" />
+                        <span>Or Paste Video / YouTube / Image URL:</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={banner.imageUrl || ""}
+                        onChange={(e) => updateBanner(index, "imageUrl", e.target.value)}
+                        placeholder="https://www.youtube.com/watch?v=... or .mp4 link"
+                        className="h-8 w-full rounded-md border border-black/15 bg-white px-2.5 text-xs text-black placeholder:text-black/35 outline-none focus:border-black"
+                      />
                     </div>
                   </div>
 
-                  <div
-                    onClick={() => triggerUpload(index, "mobile")}
-                    className="relative aspect-21/9 md:aspect-21/9 w-full overflow-hidden rounded-md border border-black/10 bg-white flex items-center justify-center cursor-pointer hover:border-black/30 transition group"
-                  >
-                    {banner.mobileImageUrl ? (
-                      <img
-                        src={banner.mobileImageUrl}
-                        alt={banner.title || `Mobile Banner ${index + 1}`}
-                        className="w-full h-full object-contain block"
-                      />
-                    ) : (
-                      <div className="text-center p-3 text-black/40 group-hover:text-black/70">
-                        <Smartphone className="size-6 mx-auto mb-1 opacity-50" />
-                        <span className="text-[11px] font-medium">Click to upload optional mobile banner</span>
+                  {/* Mobile Version */}
+                  <div className="rounded-lg border border-black/10 bg-slate-50/50 p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-black/80">
+                        <Smartphone className="size-3.5 text-emerald-600" />
+                        Mobile Banner (Portrait / 1080x1350)
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {banner.mobileImageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => updateBanner(index, "mobileImageUrl", null)}
+                            className="text-[10px] text-red-500 hover:text-red-700 hover:underline cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => triggerUpload(index, "mobile")}
+                          disabled={isUploading}
+                          className="inline-flex items-center gap-1 rounded bg-black px-2.5 py-1 text-[11px] font-medium text-white hover:bg-black/80 cursor-pointer"
+                        >
+                          <Upload className="size-3" />
+                          {banner.mobileImageUrl ? "Change File" : "Upload Mobile"}
+                        </button>
                       </div>
-                    )}
+                    </div>
+
+                    {/* Mobile Preview Screen */}
+                    <div
+                      onClick={() => !banner.mobileImageUrl && triggerUpload(index, "mobile")}
+                      className="relative aspect-21/9 md:aspect-21/9 w-full overflow-hidden rounded-md border border-black/10 bg-black flex items-center justify-center cursor-pointer group"
+                    >
+                      {mobileMediaType === "youtube" ? (
+                        <div className="relative w-full h-full bg-black flex items-center justify-center">
+                          <img
+                            src={getYouTubeThumbnail(banner.mobileImageUrl) || "/creator-projector.png"}
+                            alt={banner.title || `Mobile Banner ${index + 1}`}
+                            className="w-full h-full object-cover opacity-85"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="flex size-10 items-center justify-center rounded-full bg-red-600 text-white shadow-lg">
+                              <Play className="size-5 fill-white ml-0.5" />
+                            </div>
+                          </div>
+                          <div className="absolute top-2 left-2 rounded bg-black/80 px-2 py-0.5 text-[10px] font-bold text-red-400 flex items-center gap-1 backdrop-blur-xs">
+                            <Video className="size-3 text-red-500" /> YouTube
+                          </div>
+                        </div>
+                      ) : mobileMediaType === "video" ? (
+                        <div className="relative w-full h-full bg-black">
+                          <video
+                            src={banner.mobileImageUrl || ""}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            className="w-full h-full object-contain"
+                          />
+                          <div className="absolute top-2 left-2 rounded bg-black/80 px-2 py-0.5 text-[10px] font-bold text-sky-400 flex items-center gap-1 backdrop-blur-xs">
+                            <Film className="size-3 text-sky-400" /> Video MP4
+                          </div>
+                        </div>
+                      ) : banner.mobileImageUrl ? (
+                        <div className="relative w-full h-full">
+                          <img
+                            src={banner.mobileImageUrl}
+                            alt={banner.title || `Mobile Banner ${index + 1}`}
+                            className="w-full h-full object-contain block"
+                          />
+                          <div className="absolute top-2 left-2 rounded bg-black/80 px-2 py-0.5 text-[10px] font-bold text-emerald-400 flex items-center gap-1 backdrop-blur-xs">
+                            <ImageIcon className="size-3 text-emerald-400" /> Image
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center p-3 text-white/50 group-hover:text-white/80 transition">
+                          <div className="flex items-center justify-center gap-1.5 mb-1 opacity-60">
+                            <Smartphone className="size-5" />
+                            <Video className="size-5 text-emerald-500" />
+                          </div>
+                          <span className="text-[11px] font-medium block">Click to upload optional mobile media</span>
+                          <span className="text-[10px] opacity-60 block">or paste link below</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Mobile URL Input */}
+                    <div className="space-y-1 pt-0.5">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-black/65">
+                        <LinkIcon className="size-3 text-black/50" />
+                        <span>Or Paste Mobile Video / YouTube / Image URL:</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={banner.mobileImageUrl || ""}
+                        onChange={(e) => updateBanner(index, "mobileImageUrl", e.target.value)}
+                        placeholder="Optional mobile media URL (YouTube, MP4, or Image)"
+                        className="h-8 w-full rounded-md border border-black/15 bg-white px-2.5 text-xs text-black placeholder:text-black/35 outline-none focus:border-black"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           <button
             type="button"

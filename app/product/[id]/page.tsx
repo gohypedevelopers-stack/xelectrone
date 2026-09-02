@@ -66,7 +66,10 @@ export default async function DynamicProductPage({ params }: DynamicProductPageP
         categorySlug: dbProduct.category?.slug || "general",
         price: effectivePrice || dbProduct.price,
         oldPrice: effectiveOldPrice || undefined,
-        discount: dbProduct.discount || undefined,
+        discount:
+          isDealActiveForProduct && effectivePrice && effectiveOldPrice && parsePriceNumber(effectiveOldPrice) > parsePriceNumber(effectivePrice)
+            ? `${Math.round((1 - parsePriceNumber(effectivePrice) / parsePriceNumber(effectiveOldPrice)) * 100)}% off`
+            : (dbProduct.discount || undefined),
         rating: dbProduct.rating,
         reviewsCount: `${dbProduct.reviewsCount} Reviews`,
         description: dbProduct.description,

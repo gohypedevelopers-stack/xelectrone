@@ -42,14 +42,14 @@ const renderNodes = (node, keyPrefix = 'node') => {
 const ScrollReveal = ({
   children,
   scrollContainerRef = null,
-  enableBlur = true,
-  baseOpacity = 0.15,
+  enableBlur = false,
+  baseOpacity = 0.25,
   baseRotation = 0,
-  blurStrength = 4,
+  blurStrength = 0,
   containerClassName = '',
   textClassName = '',
-  rotationEnd = 'bottom 40%',
-  wordAnimationEnd = 'bottom 40%'
+  rotationEnd = 'bottom 45%',
+  wordAnimationEnd = 'bottom 45%'
 }) => {
   const containerRef = useRef(null);
 
@@ -64,60 +64,40 @@ const ScrollReveal = ({
     const ctx = gsap.context(() => {
       const wordElements = el.querySelectorAll('.word');
 
-      if (baseRotation !== 0) {
-        gsap.fromTo(
-          el,
-          { transformOrigin: '0% 50%', rotate: baseRotation },
-          {
-            ease: 'none',
-            rotate: 0,
-            scrollTrigger: {
-              trigger: el,
-              scroller,
-              start: 'top 85%',
-              end: rotationEnd,
-              scrub: 0.8
-            }
-          }
-        );
-      }
-
       if (wordElements.length > 0) {
-        gsap.fromTo(
+        wordElements.forEach((word) => {
+          const isAccent =
+            word.closest('.text-\\[\\#0a7ae6\\]') !== null ||
+            word.closest('.text-blue-600') !== null ||
+            word.classList.contains('text-[#0a7ae6]');
+          word.setAttribute('data-accent', isAccent ? 'true' : 'false');
+        });
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: el,
+            scroller,
+            start: 'top 80%',
+            end: wordAnimationEnd || 'bottom 45%',
+            scrub: 1,
+          },
+        });
+
+        tl.fromTo(
           wordElements,
-          { opacity: baseOpacity, willChange: 'opacity, filter' },
           {
-            ease: 'power1.out',
+            color: '#cbd5e1',
+            opacity: baseOpacity,
+          },
+          {
+            color: (index, target) => {
+              return target.getAttribute('data-accent') === 'true' ? '#0a7ae6' : '#0f172a';
+            },
             opacity: 1,
-            stagger: 0.04,
-            scrollTrigger: {
-              trigger: el,
-              scroller,
-              start: 'top 85%',
-              end: wordAnimationEnd,
-              scrub: 0.8
-            }
+            stagger: 0.12,
+            ease: 'none',
           }
         );
-
-        if (enableBlur) {
-          gsap.fromTo(
-            wordElements,
-            { filter: `blur(${blurStrength}px)` },
-            {
-              ease: 'power1.out',
-              filter: 'blur(0px)',
-              stagger: 0.04,
-              scrollTrigger: {
-                trigger: el,
-                scroller,
-                start: 'top 85%',
-                end: wordAnimationEnd,
-                scrub: 0.8
-              }
-            }
-          );
-        }
       }
     }, containerRef);
 
@@ -129,12 +109,12 @@ const ScrollReveal = ({
       clearTimeout(timer);
       ctx.revert();
     };
-  }, [scrollContainerRef, enableBlur, baseRotation, baseOpacity, rotationEnd, wordAnimationEnd, blurStrength]);
+  }, [scrollContainerRef, baseOpacity, wordAnimationEnd]);
 
   return (
-    <h2 ref={containerRef} className={`my-5 w-full ${containerClassName}`}>
-      <p className={`block w-full text-[clamp(1.6rem,4vw,3rem)] leading-[1.5] font-semibold ${textClassName}`}>{splitText}</p>
-    </h2>
+    <div ref={containerRef} className={`my-5 w-full ${containerClassName}`}>
+      <p className={`block w-full ${textClassName || "text-[clamp(2.2rem,5vw,4.2rem)] leading-[1.1]"}`}>{splitText}</p>
+    </div>
   );
 };
 

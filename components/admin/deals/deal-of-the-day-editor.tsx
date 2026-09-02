@@ -8,6 +8,26 @@ import { CalendarClock, ChevronDown, ChevronRight, ExternalLink, Flame, ImagePlu
 
 import { Switch } from "@/components/ui/switch";
 import { uploadProductImage } from "@/lib/client/upload-product-image";
+import { formatINR, parsePriceNumber } from "@/lib/format-price";
+
+function getDiscountPercentage(price?: string | null, compareAt?: string | null): string {
+  const pPrice = parsePriceNumber(price);
+  const pCompare = parsePriceNumber(compareAt);
+  if (pCompare > 0 && pPrice > 0 && pPrice < pCompare) {
+    return String(Math.round(((pCompare - pPrice) / pCompare) * 100));
+  }
+  return "";
+}
+
+function calculatePriceFromDiscount(compareAt: string, discountPercent: string | number): string {
+  const pCompare = parsePriceNumber(compareAt);
+  const pDiscount = Number(discountPercent);
+  if (pCompare > 0 && Number.isFinite(pDiscount) && pDiscount >= 0 && pDiscount <= 100) {
+    const discounted = Math.round(pCompare * (1 - pDiscount / 100));
+    return formatINR(discounted);
+  }
+  return "";
+}
 
 type DealProduct = {
   id: string;
@@ -163,8 +183,24 @@ export function DealOfTheDayEditor({ deal, products }: { deal: EditableDeal | nu
   const [title, setTitle] = useState(deal?.title ?? "");
   const [description, setDescription] = useState(deal?.description ?? "");
   const [image, setImage] = useState(deal?.image ?? "");
-  const [dealPrice, setDealPrice] = useState(deal?.dealPrice ?? initiallySelectedProduct?.price ?? "");
-  const [compareAtPrice, setCompareAtPrice] = useState(deal?.compareAtPrice ?? initiallySelectedProduct?.oldPrice ?? "");
+
+  const initialDiscount = (() => {
+    const dPrice = parsePriceNumber(deal?.dealPrice);
+    const dComp = parsePriceNumber(deal?.compareAtPrice);
+    if (dComp > 0 && dPrice > 0 && dPrice < dComp) {
+      return String(Math.round(((dComp - dPrice) / dComp) * 100));
+    }
+    const pPrice = parsePriceNumber(initiallySelectedProduct?.price);
+    if (pPrice > 0 && dPrice > 0 && dPrice < pPrice) {
+      return String(Math.round(((pPrice - dPrice) / pPrice) * 100));
+    }
+    return "";
+  })();
+
+  const [discountPercent, setDiscountPercent] = useState(initialDiscount);
+  const [isCustomPricing, setIsCustomPricing] = useState(false);
+  const [customCompareAt, setCustomCompareAt] = useState(deal?.compareAtPrice ?? "");
+  const [customDealPrice, setCustomDealPrice] = useState(deal?.dealPrice ?? "");
   const [badge, setBadge] = useState(deal?.badge ?? "FLASH OFFER");
   const [featuresText, setFeaturesText] = useState(deal?.features.join(", ") ?? "");
   const [unitsLeft, setUnitsLeft] = useState(String(deal?.unitsLeft ?? ""));
@@ -183,15 +219,48 @@ export function DealOfTheDayEditor({ deal, products }: { deal: EditableDeal | nu
   const previewImage = image || selectedProduct?.image || "";
   const previewFeatures = featuresText.split(",").map((feature) => feature.trim()).filter(Boolean);
   const claimedPercent = hasValidInventory ? Math.round(((totalUnitsValue - unitsLeftValue) / totalUnitsValue) * 100) : 0;
-  const currentFormState = { productId, title, description, image, dealPrice, compareAtPrice, badge, featuresText, unitsLeft, totalUnits, endsAt, isActive };
+
+  const productPriceNum = parsePriceNumber(selectedProduct?.price);
+  const productPriceFormatted = selectedProduct?.price ? formatINR(Math.round(productPriceNum)) : "";
+  const productMrpFormatted = selectedProduct?.oldPrice ? formatINR(Math.round(parsePriceNumber(selectedProduct.oldPrice))) : "";
+
+  const discountNum = Number(discountPercent);
+  const hasDiscount = discountPercent.trim() !== "" && Number.isFinite(discountNum) && discountNum > 0 && discountNum <= 100;
+  const effectiveDealPriceNum = hasDiscount && productPriceNum > 0
+    ? Math.round(productPriceNum * (1 - discountNum / 100))
+    : productPriceNum;
+  const effectiveDealPriceFormatted = effectiveDealPriceNum > 0 ? formatINR(effectiveDealPriceNum) : productPriceFormatted;
+  const effectiveSavingsAmount = hasDiscount && productPriceNum > 0
+    ? Math.round(productPriceNum * (discountNum / 100))
+    : 0;
+  const effectiveCompareAtFormatted = hasDiscount ? productPriceFormatted : null;
+
+  const currentFormState = {
+    productId,
+    title,
+    description,
+    image,
+    discountPercent,
+    isCustomPricing,
+    customCompareAt,
+    customDealPrice,
+    badge,
+    featuresText,
+    unitsLeft,
+    totalUnits,
+    endsAt,
+    isActive,
+  };
   const [initialFormState, setInitialFormState] = useState(currentFormState);
   const isDirty =
     currentFormState.productId !== initialFormState.productId ||
     currentFormState.title !== initialFormState.title ||
     currentFormState.description !== initialFormState.description ||
     currentFormState.image !== initialFormState.image ||
-    currentFormState.dealPrice !== initialFormState.dealPrice ||
-    currentFormState.compareAtPrice !== initialFormState.compareAtPrice ||
+    currentFormState.discountPercent !== initialFormState.discountPercent ||
+    currentFormState.isCustomPricing !== initialFormState.isCustomPricing ||
+    currentFormState.customCompareAt !== initialFormState.customCompareAt ||
+    currentFormState.customDealPrice !== initialFormState.customDealPrice ||
     currentFormState.badge !== initialFormState.badge ||
     currentFormState.featuresText !== initialFormState.featuresText ||
     currentFormState.unitsLeft !== initialFormState.unitsLeft ||
@@ -200,14 +269,19 @@ export function DealOfTheDayEditor({ deal, products }: { deal: EditableDeal | nu
     currentFormState.isActive !== initialFormState.isActive;
   const canSave = Boolean(productId && title.trim() && description.trim() && hasValidInventory && hasValidEndDate && isDirty && !isSaving && !isUploading);
 
+  function handleDiscountPercentChange(value: string) {
+    const cleaned = value.replace(/[^\d]/g, "");
+    const num = Number(cleaned);
+    if (cleaned !== "" && num > 100) return;
+    setDiscountPercent(cleaned);
+  }
+
   function chooseProduct(nextProductId: string) {
     const nextProduct = products.find((product) => product.id === nextProductId);
     setProductId(nextProductId);
     if (!nextProduct) return;
     if (!title.trim()) setTitle(nextProduct.name);
     if (!description.trim()) setDescription(nextProduct.description);
-    if (!dealPrice.trim()) setDealPrice(nextProduct.price);
-    if (!compareAtPrice.trim() && nextProduct.oldPrice) setCompareAtPrice(nextProduct.oldPrice);
   }
 
   async function uploadDealImage(event: React.ChangeEvent<HTMLInputElement>) {
@@ -233,6 +307,13 @@ export function DealOfTheDayEditor({ deal, products }: { deal: EditableDeal | nu
     setError("");
 
     try {
+      const finalDealPrice = isCustomPricing
+        ? (customDealPrice.trim() || null)
+        : (effectiveDealPriceFormatted || null);
+      const finalCompareAt = isCustomPricing
+        ? (customCompareAt.trim() || null)
+        : (effectiveCompareAtFormatted || null);
+
       const response = await fetch("/api/deal-of-the-day", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -241,8 +322,8 @@ export function DealOfTheDayEditor({ deal, products }: { deal: EditableDeal | nu
           title: title.trim(),
           description: description.trim(),
           image: image || null,
-          dealPrice: dealPrice.trim() || null,
-          compareAtPrice: compareAtPrice.trim() || null,
+          dealPrice: finalDealPrice,
+          compareAtPrice: finalCompareAt,
           badge: badge.trim() || null,
           features: featuresText.split(",").map((feature) => feature.trim()).filter(Boolean),
           unitsLeft: unitsLeftValue,
@@ -296,11 +377,129 @@ export function DealOfTheDayEditor({ deal, products }: { deal: EditableDeal | nu
             </SectionCard>
 
             <SectionCard title="Deal pricing">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-1.5 text-sm font-medium text-black/75">Deal price <input value={dealPrice} onChange={(event) => setDealPrice(event.target.value)} placeholder={selectedProduct?.price || "₹ 14,999"} className={inputClass} /></label>
-                <label className="grid gap-1.5 text-sm font-medium text-black/75">Compare-at price <input value={compareAtPrice} onChange={(event) => setCompareAtPrice(event.target.value)} placeholder={selectedProduct?.oldPrice || "₹ 32,999"} className={inputClass} /></label>
-              </div>
-              <p className="mt-2 text-xs text-black/55">Deal price is shown prominently on the home page. Compare-at price appears crossed out. Leave a field empty to use the selected product&apos;s price.</p>
+              {!isCustomPricing ? (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <label className="grid gap-1.5 text-sm font-medium text-black/75">
+                      <span className="flex items-center justify-between">
+                        <span>Product price</span>
+                        <span className="text-[11px] font-semibold text-[#0a7ae6]">Catalog price</span>
+                      </span>
+                      <div className="relative">
+                        <input
+                          readOnly
+                          value={productPriceFormatted || "Select a product"}
+                          className={`${inputClass} bg-slate-50 font-semibold text-slate-800 cursor-default select-all`}
+                        />
+                      </div>
+                      {productMrpFormatted ? (
+                        <span className="text-[11px] text-slate-400">
+                          MRP: <span className="line-through">{productMrpFormatted}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">Original price from selected product</span>
+                      )}
+                    </label>
+
+                    <label className="grid gap-1.5 text-sm font-medium text-black/75">
+                      <span>Discount percentage (%)</span>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={discountPercent}
+                          onChange={(event) => handleDiscountPercentChange(event.target.value)}
+                          placeholder="e.g. 20"
+                          className={`${inputClass} pr-8 font-semibold text-[#0a7ae6]`}
+                        />
+                        <span className="pointer-events-none absolute right-3 top-2 text-sm font-bold text-black/40">%</span>
+                      </div>
+                      <span className="text-[11px] text-slate-500">Enter discount to apply to product price</span>
+                    </label>
+
+                    <label className="grid gap-1.5 text-sm font-medium text-black/75">
+                      <span>Deal price</span>
+                      <div className="relative">
+                        <input
+                          readOnly
+                          value={effectiveDealPriceFormatted || "—"}
+                          className={`${inputClass} bg-emerald-50/60 font-bold text-emerald-800 cursor-default select-all border-emerald-300/80`}
+                        />
+                      </div>
+                      <span className="text-[11px] text-emerald-700 font-medium">Final customer price on storefront</span>
+                    </label>
+                  </div>
+
+                  {/* Dynamic Offer & Savings Breakdown */}
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#0a7ae6]/20 bg-[#0a7ae6]/[0.04] px-3.5 py-2.5 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-slate-700">Deal offer:</span>
+                      <span className="text-sm font-bold text-slate-950">{effectiveDealPriceFormatted || "—"}</span>
+                      {hasDiscount && (
+                        <span className="text-slate-400 line-through">{productPriceFormatted}</span>
+                      )}
+                      {hasDiscount ? (
+                        <span className="rounded-md bg-emerald-100 px-2 py-0.5 font-bold text-emerald-700">
+                          {discountPercent}% OFF
+                        </span>
+                      ) : null}
+                    </div>
+                    {effectiveSavingsAmount > 0 ? (
+                      <span className="font-medium text-emerald-700">
+                        Customers save {formatINR(effectiveSavingsAmount)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-2.5 flex items-center justify-between text-xs text-black/55">
+                    <p>Price is sourced from the product. You only set the discount percentage.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomCompareAt(productPriceFormatted);
+                        setCustomDealPrice(effectiveDealPriceFormatted);
+                        setIsCustomPricing(true);
+                      }}
+                      className="text-[#0a7ae6] hover:underline font-medium cursor-pointer"
+                    >
+                      Override price manually
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-1.5 text-sm font-medium text-black/75">
+                      <span>Manual deal price</span>
+                      <input
+                        value={customDealPrice}
+                        onChange={(e) => setCustomDealPrice(e.target.value)}
+                        placeholder="₹ 6,990"
+                        className={inputClass}
+                      />
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-medium text-black/75">
+                      <span>Manual compare-at price</span>
+                      <input
+                        value={customCompareAt}
+                        onChange={(e) => setCustomCompareAt(e.target.value)}
+                        placeholder="₹ 21,999"
+                        className={inputClass}
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-2.5 flex items-center justify-between text-xs text-black/55">
+                    <p>Manual pricing override is active.</p>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomPricing(false)}
+                      className="text-[#0a7ae6] hover:underline font-medium cursor-pointer"
+                    >
+                      Revert to automatic product discount
+                    </button>
+                  </div>
+                </>
+              )}
             </SectionCard>
 
             {error ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
@@ -322,7 +521,32 @@ export function DealOfTheDayEditor({ deal, products }: { deal: EditableDeal | nu
                   <h2 className="mt-2 line-clamp-2 text-base font-semibold leading-5 text-slate-950">{title || selectedProduct.name}</h2>
                   <p className="mt-1 line-clamp-3 text-xs leading-5 text-slate-600">{description || selectedProduct.description}</p>
                   {previewFeatures.length > 0 ? <div className="mt-3 flex flex-wrap gap-1.5">{previewFeatures.slice(0, 4).map((feature) => <span key={feature} className="rounded-full border border-[#005BD3]/25 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#005BD3]">{feature}</span>)}</div> : null}
-                  <div className="mt-3 border-t border-slate-200 pt-3"><div className="flex items-baseline gap-2"><span className="text-lg font-semibold text-slate-950">{dealPrice || selectedProduct.price}</span>{compareAtPrice || selectedProduct.oldPrice ? <span className="text-xs text-slate-400 line-through">{compareAtPrice || selectedProduct.oldPrice}</span> : null}</div><div className="mt-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide"><span className="text-[#005BD3]">Selling fast</span><span className="text-slate-500">{claimedPercent}% claimed</span></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-[#005BD3] transition-all" style={{ width: `${claimedPercent}%` }} /></div></div>
+                  <div className="mt-3 border-t border-slate-200 pt-3">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-lg font-semibold text-slate-950">
+                        {isCustomPricing
+                          ? (customDealPrice || selectedProduct?.price)
+                          : (effectiveDealPriceFormatted || selectedProduct?.price)}
+                      </span>
+                      {(isCustomPricing ? customCompareAt : effectiveCompareAtFormatted) ? (
+                        <span className="text-xs text-slate-400 line-through">
+                          {isCustomPricing ? customCompareAt : effectiveCompareAtFormatted}
+                        </span>
+                      ) : null}
+                      {hasDiscount ? (
+                        <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-bold text-emerald-600">
+                          {discountPercent}% OFF
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide">
+                      <span className="text-[#005BD3]">Selling fast</span>
+                      <span className="text-slate-500">{claimedPercent}% claimed</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                      <div className="h-full rounded-full bg-[#005BD3] transition-all" style={{ width: `${claimedPercent}%` }} />
+                    </div>
+                  </div>
                 </div>
               </div> : <div className="rounded-xl border border-dashed border-black/20 bg-black/[0.02] px-4 py-8 text-center"><div className="mx-auto flex size-9 items-center justify-center rounded-lg bg-[#005BD3]/10 text-[#005BD3]"><Sparkles className="size-5" /></div><p className="mt-3 text-sm font-medium">Select a product to preview the deal</p><p className="mt-1 text-xs leading-5 text-black/55">The product image, price, and compare-at price will appear here automatically.</p></div>}
               <div className="mt-4 flex items-center justify-between border-t border-black/10 pt-3 text-xs"><span className={isActive ? "font-medium text-emerald-700" : "font-medium text-black/50"}>{isActive ? "Will show on storefront" : "Hidden from storefront"}</span><Link href="/" className="inline-flex items-center gap-1 font-medium text-[#005BD3] hover:underline">Open home page <ExternalLink className="size-3" /></Link></div>

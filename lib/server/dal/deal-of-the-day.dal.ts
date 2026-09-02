@@ -25,6 +25,7 @@ const dealInclude = {
       oldPrice: true,
       mainImage: true,
       description: true,
+      shippingNotice: true,
     },
   },
 } as const;

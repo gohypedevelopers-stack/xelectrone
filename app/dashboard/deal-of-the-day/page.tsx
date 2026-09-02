@@ -11,7 +11,7 @@ import { defaultDealOfTheDay } from "@/lib/shared/default-deal-of-the-day";
 export const metadata: Metadata = { title: "Deal of the day | Xelectron Admin" };
 
 export default async function DealOfTheDayPage() {
-  const [deal, products] = await Promise.all([dealOfTheDayController.getDealOfTheDay(), productsController.listProducts()]);
+  const [deal, products] = await Promise.all([dealOfTheDayController.getDealOfTheDay(), productsController.listCatalogProducts()]);
   const defaultProduct = products.find((product: any) => product.slug === defaultDealOfTheDay.productSlug);
   const editableDeal = deal
     ? { productId: deal.productId, title: deal.title, description: deal.description, image: deal.image, dealPrice: deal.dealPrice, compareAtPrice: deal.compareAtPrice, badge: deal.badge, features: deal.features, unitsLeft: deal.unitsLeft, totalUnits: deal.totalUnits, endsAt: deal.endsAt.toISOString(), isActive: deal.isActive }

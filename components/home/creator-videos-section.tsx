@@ -5,15 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowRight,
   ChevronLeft,
   ChevronRight,
+  Pause,
+  Play,
   RotateCcw,
   ShoppingBag,
-  Star,
-  ArrowRight,
-  Sparkles,
-  ShieldCheck,
-  Truck,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useCart } from "@/components/providers/cart-provider";
 import { toast } from "sonner";
@@ -60,6 +60,8 @@ export default function CreatorVideosSection() {
   const [videoList, setVideoList] = useState<CreatorVideoType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [flippedCards, setFlippedCards] = useState<Record<string, boolean>>({});
+  const [isMuted, setIsMuted] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -102,7 +104,10 @@ export default function CreatorVideosSection() {
 
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
-    const scrollAmount = direction === "left" ? -340 : 340;
+    const card = scrollRef.current.querySelector(".group");
+    const cardWidth = card ? card.getBoundingClientRect().width : 320;
+    const gap = typeof window !== "undefined" && window.innerWidth >= 640 ? 24 : 14;
+    const scrollAmount = direction === "left" ? -(cardWidth + gap) : (cardWidth + gap);
     scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
   };
 
@@ -110,21 +115,15 @@ export default function CreatorVideosSection() {
     <section className="bg-white pt-2 sm:pt-4 pb-12 md:pb-16 text-slate-900 overflow-hidden">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         {/* HEADER WITH TITLE AND SCROLL CONTROLS */}
-        <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="mb-4 sm:mb-6 flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#0a7ae6] flex items-center gap-1.5">
-              <Sparkles className="size-3.5" /> Real Creator Reviews
-            </p>
-            <h2 className="mt-1 text-2xl font-normal tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-              Influencers Voice
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-950">
+              Approved by Creators
             </h2>
-            <p className="mt-1 text-xs sm:text-sm text-black/50">
-              Click any video card to flip and discover the featured product
-            </p>
           </div>
 
-          {/* CAROUSEL ARROWS */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* DESKTOP-ONLY CAROUSEL ARROWS */}
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => scroll("left")}
@@ -147,7 +146,7 @@ export default function CreatorVideosSection() {
         {/* HORIZONTALLY SCROLLABLE CAROUSEL TRACK */}
         <div
           ref={scrollRef}
-          className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 pt-1 sm:gap-6 scroll-smooth"
+          className="no-scrollbar flex snap-x snap-mandatory gap-3.5 sm:gap-6 overflow-x-auto pb-4 pt-1 scroll-smooth px-1 sm:px-0"
         >
           {videos.map((vid) => {
             const ytId = extractYouTubeId(vid.videoUrl || vid.thumbnailUrl);
@@ -157,7 +156,7 @@ export default function CreatorVideosSection() {
             return (
               <div
                 key={vid.id}
-                className="group [perspective:1000px] aspect-[9/16] w-[260px] sm:w-[290px] md:w-[320px] shrink-0 snap-start select-none cursor-pointer"
+                className="group relative [perspective:1000px] aspect-[9/16] w-[86vw] xs:w-[82vw] max-w-[360px] sm:w-[calc(50%-12px)] md:w-[calc(33.333%-16px)] lg:w-[calc(25%-18px)] shrink-0 snap-center sm:snap-start select-none cursor-pointer"
                 onClick={(e) => toggleFlip(vid.id, e)}
               >
                 {/* 3D FLIPPABLE INNER CONTAINER */}
@@ -167,7 +166,7 @@ export default function CreatorVideosSection() {
                     transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
                     transition: "transform 0.7s cubic-bezier(0.25, 1, 0.5, 1)",
                   }}
-                  className="relative w-full h-full rounded-2xl"
+                  className="relative w-full h-full rounded-[22px] sm:rounded-2xl"
                 >
                   {/* ───────────────── FRONT SIDE: AUTOPLAY VIDEO ───────────────── */}
                   <div
@@ -176,7 +175,7 @@ export default function CreatorVideosSection() {
                       WebkitBackfaceVisibility: "hidden",
                       transform: "rotateY(0deg)",
                     }}
-                    className={`absolute inset-0 w-full h-full rounded-2xl overflow-hidden bg-slate-950 border border-black/10 shadow-xs transition-opacity duration-300 ${
+                    className={`absolute inset-0 w-full h-full rounded-[22px] sm:rounded-2xl overflow-hidden bg-slate-950 border border-black/10 shadow-xs transition-opacity duration-300 ${
                       isFlipped ? "pointer-events-none opacity-0 z-0" : "pointer-events-auto opacity-100 z-10"
                     }`}
                   >
@@ -184,7 +183,7 @@ export default function CreatorVideosSection() {
                     {ytId ? (
                       <div className="absolute inset-0 flex items-center justify-center bg-black overflow-hidden pointer-events-none select-none">
                         <iframe
-                          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&loop=1&playlist=${ytId}&controls=0&showinfo=0&rel=0&modestbranding=1&disablekb=1&fs=0&playsinline=1&iv_load_policy=3&enablejsapi=1`}
+                          src={`https://www.youtube.com/embed/${ytId}?autoplay=${isPlaying ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${ytId}&controls=0&showinfo=0&rel=0&modestbranding=1&disablekb=1&fs=0&playsinline=1&iv_load_policy=3&enablejsapi=1`}
                           title={vid.title || "Creator video"}
                           allow="autoplay; encrypted-media; picture-in-picture"
                           tabIndex={-1}
@@ -194,8 +193,8 @@ export default function CreatorVideosSection() {
                     ) : vid.videoUrl ? (
                       <video
                         src={vid.videoUrl}
-                        autoPlay
-                        muted
+                        autoPlay={isPlaying}
+                        muted={isMuted}
                         loop
                         playsInline
                         className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
@@ -214,9 +213,60 @@ export default function CreatorVideosSection() {
                     {/* TRANSPARENT INTERACTION SHIELD & SUBTLE BOTTOM GRADIENT */}
                     <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-auto cursor-pointer select-none" />
 
+                    {/* IN-CARD NAVIGATION ARROWS (PHONE ONLY: sm:hidden) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        scroll("left");
+                      }}
+                      aria-label="Previous creator video"
+                      className="sm:hidden absolute left-3 top-1/2 -translate-y-1/2 z-20 flex size-9 items-center justify-center rounded-lg bg-black/60 text-white shadow-md backdrop-blur-xs hover:bg-black/80 transition-all cursor-pointer active:scale-95"
+                    >
+                      <ChevronLeft className="size-5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        scroll("right");
+                      }}
+                      aria-label="Next creator video"
+                      className="sm:hidden absolute right-3 top-1/2 -translate-y-1/2 z-20 flex size-9 items-center justify-center rounded-lg bg-black/60 text-white shadow-md backdrop-blur-xs hover:bg-black/80 transition-all cursor-pointer active:scale-95"
+                    >
+                      <ChevronRight className="size-5" />
+                    </button>
+
+                    {/* BOTTOM-LEFT VIDEO CONTROLS: PLAY/PAUSE & MUTE */}
+                    <div className="absolute bottom-3.5 left-3.5 z-20 flex items-center gap-2 pointer-events-auto">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsPlaying((prev) => !prev);
+                        }}
+                        className="flex size-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-xs hover:bg-black/80 transition-colors cursor-pointer shadow-sm"
+                        aria-label="Play or pause video"
+                      >
+                        {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5 fill-current" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsMuted((prev) => !prev);
+                        }}
+                        className="flex size-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-xs hover:bg-black/80 transition-colors cursor-pointer shadow-sm"
+                        aria-label="Mute or unmute video"
+                      >
+                        {isMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+                      </button>
+                    </div>
+
                     {/* BOTTOM TITLE */}
                     {vid.title && (
-                      <div className="absolute bottom-4 left-4 right-4 z-20 text-white pointer-events-auto">
+                      <div className="absolute bottom-12 left-4 right-4 z-20 text-white pointer-events-auto">
                         <p className="text-xs sm:text-sm font-semibold leading-snug drop-shadow-md line-clamp-2">
                           {vid.title}
                         </p>
@@ -246,78 +296,109 @@ export default function CreatorVideosSection() {
                       <RotateCcw className="size-4" />
                     </button>
 
-                    {/* PRODUCT IMAGE (TALL PROPORTIONAL CONTAINER) */}
-                    <div
-                      className="relative h-[58%] w-full rounded-xl bg-[#fbfbfd] overflow-hidden p-3 flex items-center justify-center group/img shrink-0"
-                    >
-                      <Image
-                        src={vid.product?.mainImage || extractYouTubeThumbnail(vid.thumbnailUrl)}
-                        alt={vid.product?.name || vid.title || "Product"}
-                        fill
-                        unoptimized
-                        className="object-contain p-2 transition-transform duration-300 group-hover/img:scale-105"
-                      />
-                    </div>
-
-                    {/* PRODUCT DETAILS BODY */}
-                    <div className="flex flex-1 flex-col justify-between pt-2.5">
-                      <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
-                          XELECTRON
-                        </p>
-                        <h3
-                          className="line-clamp-2 text-[13px] sm:text-[14px] font-bold leading-snug text-slate-900"
-                        >
-                          {vid.product?.name || vid.title || "XElectron Smart Device"}
-                        </h3>
-                        <p className="text-[11px] leading-4 text-slate-500 line-clamp-2">
-                          {vid.product?.description ||
-                            "A compact white digital photo frame for desks, shelves, and bedside tables with crisp image playback."}
-                        </p>
-
-                        {/* PRICE SECTION (DIRECTLY UNDER DESCRIPTION) */}
-                        <div className="flex items-baseline gap-2 pt-1.5">
-                          <span className="text-[16px] sm:text-[18px] font-bold text-slate-900">
-                            {vid.product?.price
-                              ? vid.product.price.startsWith("₹")
-                                ? vid.product.price
-                                : `₹${vid.product.price}`
-                              : "₹2999.00"}
-                          </span>
-                          {vid.product?.oldPrice ? (
-                            <span className="text-[11px] sm:text-[12px] text-slate-400 line-through">
-                              {vid.product.oldPrice.startsWith("₹")
-                                ? vid.product.oldPrice
-                                : `₹${vid.product.oldPrice}`}
-                            </span>
-                          ) : null}
+                    {vid.product ? (
+                      /* ── CASE 1: PRODUCT IS ATTACHED (REAL DATA ONLY) ── */
+                      <>
+                        {/* PRODUCT IMAGE */}
+                        <div className="relative h-[56%] w-full rounded-xl bg-[#fbfbfd] overflow-hidden p-3 flex items-center justify-center group/img shrink-0">
+                          <Image
+                            src={vid.product.mainImage || extractYouTubeThumbnail(vid.thumbnailUrl)}
+                            alt={vid.product.name}
+                            fill
+                            unoptimized
+                            className="object-contain p-2 transition-transform duration-300 group-hover/img:scale-105"
+                          />
                         </div>
-                      </div>
 
-                      {/* SINGLE FULL-WIDTH "BUY" BUTTON */}
-                      <div className="pt-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const numPrice =
-                              parseFloat((vid.product?.price || "2999").replace(/[^\d.]/g, "")) || 2999;
-                            addItem({
-                              id: vid.product?.id || vid.id,
-                              slug: vid.product?.slug || "shop",
-                              name: vid.product?.name || vid.title || "XElectron Product",
-                              price: numPrice,
-                              image: vid.product?.mainImage || extractYouTubeThumbnail(vid.thumbnailUrl),
-                              category: "Electronics",
-                            });
-                            router.push(targetUrl);
-                          }}
-                          className="inline-flex h-9 sm:h-10 w-full cursor-pointer items-center justify-center rounded-xl bg-[#0a7ae6] text-xs sm:text-sm font-bold text-white transition-colors hover:bg-[#0866c2] shadow-xs active:scale-[0.98]"
+                        {/* PRODUCT DETAILS BODY */}
+                        <div className="flex flex-1 flex-col justify-between pt-2.5">
+                          <div className="space-y-1">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
+                              XELECTRON
+                            </p>
+                            <h3 className="line-clamp-2 text-[13px] sm:text-[14px] font-bold leading-snug text-slate-900">
+                              {vid.product.name}
+                            </h3>
+                            {vid.product.description && (
+                              <p className="text-[11px] leading-4 text-slate-500 line-clamp-2">
+                                {vid.product.description}
+                              </p>
+                            )}
+
+                            {/* PRICE SECTION */}
+                            {vid.product.price && (
+                              <div className="flex items-baseline gap-2 pt-1.5">
+                                <span className="text-[16px] sm:text-[18px] font-bold text-slate-900">
+                                  {vid.product.price.startsWith("₹")
+                                    ? vid.product.price
+                                    : `₹${vid.product.price}`}
+                                </span>
+                                {vid.product.oldPrice ? (
+                                  <span className="text-[11px] sm:text-[12px] text-slate-400 line-through">
+                                    {vid.product.oldPrice.startsWith("₹")
+                                      ? vid.product.oldPrice
+                                      : `₹${vid.product.oldPrice}`}
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* BUY BUTTON REDIRECTS TO PRODUCT PAGE */}
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const numPrice =
+                                  parseFloat((vid.product?.price || "0").replace(/[^\d.]/g, "")) || 0;
+                                if (vid.product) {
+                                  addItem({
+                                    id: vid.product.id,
+                                    slug: vid.product.slug,
+                                    name: vid.product.name,
+                                    price: numPrice,
+                                    image: vid.product.mainImage,
+                                    category: "Electronics",
+                                  });
+                                }
+                                router.push(`/product/${vid.product?.slug}`);
+                              }}
+                              className="inline-flex h-9 sm:h-10 w-full cursor-pointer items-center justify-center rounded-xl bg-[#0a7ae6] text-xs sm:text-sm font-bold text-white transition-colors hover:bg-[#0866c2] shadow-xs active:scale-[0.98]"
+                            >
+                              Buy Now
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      /* ── CASE 2: NO PRODUCT ATTACHED (CLEAN SHOP REDIRECT CARD) ── */
+                      <div className="flex flex-1 flex-col items-center justify-between text-center p-3 pt-6">
+                        <div className="flex-1 flex flex-col items-center justify-center">
+                          <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-50 text-[#0a7ae6] mb-3 border border-blue-100">
+                            <ShoppingBag className="size-7" />
+                          </div>
+                          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#0a7ae6]">
+                            XELECTRON STORE
+                          </p>
+                          <h3 className="text-base sm:text-lg font-bold text-slate-900 mt-1">
+                            Explore Catalog
+                          </h3>
+                          <p className="text-xs text-slate-500 leading-relaxed mt-2 max-w-[220px]">
+                            No specific product linked to this video. Explore our full collection of smart projectors and sound systems.
+                          </p>
+                        </div>
+
+                        <Link
+                          href="/shop"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#0a7ae6] text-xs sm:text-sm font-bold text-white transition-colors hover:bg-[#0866c2] shadow-xs active:scale-[0.98]"
                         >
-                          Buy
-                        </button>
+                          <span>Visit Shop</span>
+                          <ArrowRight className="size-4" />
+                        </Link>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>

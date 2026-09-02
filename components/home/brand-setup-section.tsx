@@ -185,28 +185,22 @@ export default function BrandSetupSection({
           })}
         </div>
 
-        {/* TRUSTED PROOF SCROLL REVEAL */}
-        <div className="mt-4 w-full px-5 py-2 sm:mt-6 sm:px-6 sm:py-3 md:mt-8">
-          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0a7ae6]">
-            Trusted proof
-          </p>
+        {/* STATEMENT SCROLL REVEAL (LEFT-ALIGNED, SINGLE LINE 2013) */}
+        <div className="mt-8 w-full sm:mt-12 md:mt-16 flex flex-col items-start text-left">
           <ScrollReveal
-            baseOpacity={0.2}
-            baseRotation={0}
-            blurStrength={3}
-            rotationEnd="bottom 45%"
+            baseOpacity={0.25}
             wordAnimationEnd="bottom 45%"
-            containerClassName="w-full max-w-none"
-            textClassName="w-full text-[clamp(2rem,4.8vw,4.2rem)] leading-[0.95] font-semibold tracking-[-0.08em] text-slate-900"
+            containerClassName="w-full max-w-none text-left flex flex-col items-start"
+            textClassName="w-full text-left text-[clamp(2rem,4.3vw,3.8rem)] leading-[1.1] font-semibold tracking-tight"
           >
-            <span className="block">
+            <span className="block text-left whitespace-normal sm:whitespace-nowrap">
               Trusted by <span className="text-[#0a7ae6]">1 Crore+</span> Indians since 2013.
             </span>
-            <span className="block">Built for India.</span>
-            <span className="block">
-              Tested for Indian <span className="text-slate-500">conditions.</span>
+            <span className="block text-left">Built for India.</span>
+            <span className="block text-left">
+              Tested for Indian conditions.
             </span>
-            <span className="block text-slate-500">
+            <span className="block text-left">
               Serviced across <span className="text-[#0a7ae6]">200+ Cities.</span>
             </span>
           </ScrollReveal>

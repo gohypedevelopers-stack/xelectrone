@@ -223,3 +223,30 @@ html.lenis body {
     animation: none;
   }
 }
+
+/* Hero Banner Zoom Entrance Animation (Runs once when banner changes) */
+@keyframes hero-zoom-entrance {
+  0% {
+    transform: scale(1.10);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-hero-zoom {
+  animation: hero-zoom-entrance 1.8s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-zoom,
+  .animate-hero-zoom-alt {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+

@@ -4,9 +4,12 @@ import gsap from "gsap";
 import ScrollTrigger from "gsap/ScrollTrigger";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { BestSellerItem } from "@/components/home/best-sellers-data";
 import { formatINR } from "@/lib/format-price";
+import { Plus } from "lucide-react";
+import { useCart } from "@/components/providers/cart-provider";
+import { toast } from "sonner";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -18,6 +21,178 @@ function SpecificationRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function MobileBestSellers({ items }: { items: BestSellerItem[] }) {
+  const { addItem } = useCart();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activePageIndex, setActivePageIndex] = useState(0);
+
+  // In phone view, 2 cards per view
+  const totalPages = Math.ceil(items.length / 2);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    if (container.clientWidth === 0) return;
+    const idx = Math.round(container.scrollLeft / container.clientWidth);
+    setActivePageIndex(Math.min(Math.max(idx, 0), totalPages - 1));
+  }, [totalPages]);
+
+  const scrollToPage = (index: number) => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    container.scrollTo({
+      left: index * container.clientWidth,
+      behavior: "smooth",
+    });
+    setActivePageIndex(index);
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <section className="block lg:hidden bg-white py-10 px-4 sm:px-6 text-slate-900 overflow-hidden">
+      <div className="mx-auto max-w-md sm:max-w-xl">
+        {/* SECTION HEADER */}
+        <div className="mb-6 flex flex-col items-center text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#0a7ae6]">
+            Best Sellers
+          </p>
+          <div className="inline-block relative">
+            <h2 className="mt-1.5 text-2xl font-normal tracking-tight text-slate-900 sm:text-3xl">
+              Shop Best Sellers
+            </h2>
+            <div className="mt-2 h-0.5 w-12 rounded-full bg-[#0a7ae6] ml-auto" />
+          </div>
+        </div>
+
+        {/* 2 CARDS PER VIEW SWIPABLE TRACK */}
+        <div
+          ref={scrollRef}
+          className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 pt-1 scroll-smooth"
+        >
+          {items.map((item) => {
+            const cleanPrice = item.price.split(".")[0].replace(/[^\d]/g, "");
+            const numPrice = parseInt(cleanPrice || "3000", 10);
+            const cleanOldPrice = item.oldPrice ? item.oldPrice.split(".")[0].replace(/[^\d]/g, "") : "";
+            const numOld = cleanOldPrice ? parseInt(cleanOldPrice, 10) : 0;
+            const calculatedDiscount =
+              item.discount ||
+              (numOld > numPrice && numPrice > 0
+                ? `${Math.round((1 - numPrice / numOld) * 100)}% off`
+                : null);
+
+            return (
+              <Link
+                key={`mobile-bestseller-${item.id}`}
+                href={`/product/${item.slug || item.id}`}
+                className="mobile-best-seller-card group w-[calc(50%-6px)] shrink-0 snap-start flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-2.5 sm:p-3 text-center transition-all duration-300 hover:-translate-y-0.5 hover:border-[#0a7ae6] hover:shadow-md select-none"
+              >
+                {/* PRODUCT IMAGE CONTAINER */}
+                <div className="relative w-full aspect-square rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-center p-2 mb-2 overflow-hidden">
+                  {/* TOP LEFT: ONLY DISCOUNT (IF ANY) */}
+                  {calculatedDiscount && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <span className="rounded-full bg-[#0a7ae6] px-2 py-0.5 text-[9.5px] font-bold text-white shadow-xs tracking-wide">
+                        {calculatedDiscount}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* TOP RIGHT: ONLY ADD BUTTON */}
+                  <div className="absolute top-2 right-2 z-10">
+                    <button
+                      type="button"
+                      aria-label={`Add ${item.name} to cart`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        addItem({
+                          id: item.id,
+                          slug: item.slug || item.id,
+                          name: item.name,
+                          price: numPrice,
+                          image: item.image,
+                          category: "Electronics",
+                        });
+                        toast.success(`${item.name} added to cart!`);
+                      }}
+                      className="flex size-6 sm:size-7 items-center justify-center rounded-full bg-[#0a7ae6] text-white shadow-xs hover:bg-[#086ac9] transition-transform active:scale-90 cursor-pointer"
+                    >
+                      <Plus className="size-3.5 stroke-[2.5]" />
+                    </button>
+                  </div>
+
+                  {/* CENTER PRODUCT IMAGE */}
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <Image
+                      src={item.image}
+                      alt={item.imageAlt}
+                      fill
+                      className="object-contain p-1.5 group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 768px) 50vw, 200px"
+                    />
+                  </div>
+                </div>
+
+                {/* TEXT CONTENT */}
+                <div className="flex flex-col items-center text-center px-0.5">
+                  {/* PRODUCT TITLE */}
+                  <h4 className="mt-1 text-xs sm:text-sm font-semibold text-slate-800 group-hover:text-[#0a7ae6] line-clamp-1 leading-snug w-full transition-colors">
+                    {item.name}
+                  </h4>
+
+                  {/* PRICING WITH DISCOUNT */}
+                  <div className="mt-1.5 flex items-baseline justify-center gap-1.5 w-full">
+                    {calculatedDiscount && (
+                      <span className="text-[11px] font-semibold text-[#0a7ae6]">
+                        {calculatedDiscount}
+                      </span>
+                    )}
+                    <span className="text-xs sm:text-sm font-bold text-slate-900">
+                      {formatINR(item.price)}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* MOBILE PAGINATION DASHES (THEME BLUE, MATCHING UPPER SECTION) */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1.5 mt-4">
+            {Array.from({ length: totalPages }).map((_, index) => {
+              const isActive = index === activePageIndex;
+              return (
+                <button
+                  key={`bestseller-page-${index}`}
+                  type="button"
+                  aria-label={`Go to best seller page ${index + 1}`}
+                  onClick={() => scrollToPage(index)}
+                  className={`transition-all duration-300 cursor-pointer rounded-full ${
+                    isActive
+                      ? "w-6 h-1 bg-[#0a7ae6] shadow-[0_0_8px_rgba(10,122,230,0.7)]"
+                      : "w-2.5 h-1 bg-slate-300 hover:bg-slate-400 hover:w-3.5"
+                  }`}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+
 
 export default function BestSellersSection({ additionalItems = [] }: { additionalItems?: BestSellerItem[] }) {
   const items = useMemo(() => additionalItems, [additionalItems]);
@@ -217,66 +392,16 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
 
   if (items.length === 0) return null;
 
-  if (reduceMotion) {
-    return (
-      <section className="hidden lg:block bg-white py-12 lg:py-16 text-slate-900">
-        <div className="mx-auto max-w-[1600px] px-6 py-4 sm:px-8 lg:px-12">
-          <p className="text-center text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.1em] text-[#0a7ae6]">
-            Best sellers
-          </p>
-        </div>
-        <div className="mx-auto max-w-[1600px] space-y-10 px-6 pb-12 sm:px-8 lg:px-12">
-          {items.map((item) => (
-            <div key={item.id} className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] items-center">
-              <div className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-6 lg:p-7">
-                <div className="border-b border-slate-200 pb-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0a7ae6]">
-                    XElectron
-                  </p>
-                  <h3 className="mt-1 text-[20px] font-bold text-slate-900 lg:text-[24px]">
-                    {item.name}
-                  </h3>
-                  <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
-                    <span className="text-[24px] font-semibold text-slate-900">{formatINR(item.price)}</span>
-                    {item.oldPrice && (
-                      <span className="text-[14px] text-slate-400 line-through">{formatINR(item.oldPrice)}</span>
-                    )}
-                    {item.discount && (
-                      <span className="text-[15px] font-medium text-[#0a7ae6]">{item.discount}</span>
-                    )}
-                  </div>
-                </div>
-                <p className="mt-4 max-w-[34rem] text-[14px] leading-6 text-slate-700 lg:text-[15px]">
-                  {item.description}
-                </p>
-                <div className="mt-4">
-                  {item.specs.map((spec) => (
-                    <SpecificationRow key={spec.label} label={spec.label} value={spec.value} />
-                  ))}
-                </div>
-                <Link
-                  href={`/product/${item.slug || item.id}`}
-                  className="mt-5 inline-flex h-11 lg:h-12 w-full items-center justify-center rounded-full bg-[#0a7ae6] px-6 text-[14px] lg:text-[15px] font-medium text-white hover:bg-[#086ac9] transition-colors shadow-md shadow-blue-500/15"
-                >
-                  View Details & Buy
-                </Link>
-              </div>
-              <div className="relative min-h-[320px] lg:h-full lg:min-h-[440px]">
-                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,_rgba(10,122,230,0.18)_0%,_rgba(10,122,230,0.08)_30%,_rgba(10,122,230,0)_68%)] blur-3xl" />
-                <Image src={item.image} alt={item.imageAlt} fill className="object-contain scale-100 lg:scale-105" sizes="100vw" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section
-      ref={sectionRef}
-      className="hidden lg:block relative min-h-screen h-screen bg-white text-slate-900 overflow-hidden"
-    >
+    <div className="relative w-full">
+      <MobileBestSellers items={items} />
+      <div className="hidden lg:block w-full">
+        <section
+          ref={sectionRef}
+          className="relative min-h-screen h-screen bg-white text-slate-900 overflow-hidden"
+        >
+
+
       <div
         ref={viewportRef}
         className="mx-auto flex h-full max-w-[1600px] flex-col justify-between px-4 pb-4 pt-20 sm:px-6 sm:pb-5 sm:pt-24 lg:px-10 lg:pb-6 lg:pt-24 xl:px-12 xl:pb-8 xl:pt-28"
@@ -398,5 +523,8 @@ export default function BestSellersSection({ additionalItems = [] }: { additiona
         </div>
       </div>
     </section>
+  </div>
+</div>
   );
 }
+

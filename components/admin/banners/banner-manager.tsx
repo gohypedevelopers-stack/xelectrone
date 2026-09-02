@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner"
 import type { HeroBannerItem } from "@/lib/server/controllers/banners.controller"
 import { uploadProductImage } from "@/lib/client/upload-product-image"
+import { isYouTubeUrl, getYouTubeThumbnail } from "@/lib/banner-media"
 
 type CategoryOption = { id: string; title: string; slug: string }
 
@@ -720,6 +721,7 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
                 {filteredBanners.map((banner) => {
                   const isSelected = selectedIds.has(banner.id)
                   const isDesktopVideo = isVideoUrl(banner.src)
+                  const isDesktopYouTube = isYouTubeUrl(banner.src)
 
                   return (
                     <tr
@@ -749,7 +751,21 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
                       {/* Preview Image / Video */}
                       <td className="px-3 py-3">
                         <div className="group relative aspect-16/9 w-28 overflow-hidden rounded-lg border border-black/10 bg-slate-900 shadow-2xs">
-                          {isDesktopVideo ? (
+                          {isDesktopYouTube ? (
+                            <div className="relative w-full h-full bg-black">
+                              <img
+                                src={getYouTubeThumbnail(banner.src) || "/creator-projector.png"}
+                                alt={banner.alt || banner.title}
+                                className="h-full w-full object-cover opacity-85"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <PlayIcon className="size-4 fill-red-600 text-red-600" />
+                              </div>
+                              <div className="absolute top-1 left-1 rounded bg-black/80 px-1 py-0.5 text-[8px] font-bold text-red-400">
+                                YouTube
+                              </div>
+                            </div>
+                          ) : isDesktopVideo ? (
                             <video
                               src={banner.src}
                               autoPlay
@@ -768,7 +784,7 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
                             />
                           )}
 
-                          {isDesktopVideo ? (
+                          {isDesktopVideo && !isDesktopYouTube ? (
                             <div className="absolute top-1 left-1 rounded bg-black/70 px-1 py-0.5 text-[8px] font-medium text-white flex items-center gap-0.5">
                               <PlayIcon className="size-2 fill-white" />
                               Video
@@ -1028,7 +1044,20 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
                       {formData.src ? (
                         <div className="space-y-2">
                           <div className="relative aspect-16/9 w-full overflow-hidden rounded-lg border border-black/15 bg-slate-900 shadow-2xs group">
-                            {isVideoUrl(formData.src) ? (
+                            {isYouTubeUrl(formData.src) ? (
+                              <div className="relative w-full h-full bg-black flex items-center justify-center">
+                                <img
+                                  src={getYouTubeThumbnail(formData.src) || "/creator-projector.png"}
+                                  alt="YouTube Desktop Preview"
+                                  className="w-full h-full object-cover opacity-85"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="flex size-10 items-center justify-center rounded-full bg-red-600 text-white shadow-lg">
+                                    <PlayIcon className="size-5 fill-white ml-0.5" />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : isVideoUrl(formData.src) ? (
                               <video
                                 src={formData.src}
                                 autoPlay
@@ -1066,7 +1095,12 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
 
                             {/* Type Indicator Badge */}
                             <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-black/75 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-2xs">
-                              {isVideoUrl(formData.src) ? (
+                              {isYouTubeUrl(formData.src) ? (
+                                <>
+                                  <PlayIcon className="size-3 fill-red-500 text-red-500" />
+                                  <span>YouTube Video</span>
+                                </>
+                              ) : isVideoUrl(formData.src) ? (
                                 <>
                                   <FilmIcon className="size-3 text-sky-400" />
                                   <span>Video Banner</span>
@@ -1230,7 +1264,20 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
                       {formData.mobileSrc ? (
                         <div className="space-y-2">
                           <div className="relative aspect-16/9 w-full overflow-hidden rounded-lg border border-black/15 bg-slate-900 shadow-2xs group">
-                            {isVideoUrl(formData.mobileSrc) ? (
+                            {isYouTubeUrl(formData.mobileSrc) ? (
+                              <div className="relative w-full h-full bg-black flex items-center justify-center">
+                                <img
+                                  src={getYouTubeThumbnail(formData.mobileSrc) || "/creator-projector.png"}
+                                  alt="YouTube Mobile Preview"
+                                  className="w-full h-full object-cover opacity-85"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="flex size-10 items-center justify-center rounded-full bg-red-600 text-white shadow-lg">
+                                    <PlayIcon className="size-5 fill-white ml-0.5" />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : isVideoUrl(formData.mobileSrc) ? (
                               <video
                                 src={formData.mobileSrc}
                                 autoPlay
@@ -1268,7 +1315,12 @@ export function BannerManager({ initialBanners }: { initialBanners: HeroBannerIt
 
                             {/* Type Indicator Badge */}
                             <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-black/75 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-2xs">
-                              {isVideoUrl(formData.mobileSrc) ? (
+                              {isYouTubeUrl(formData.mobileSrc) ? (
+                                <>
+                                  <PlayIcon className="size-3 fill-red-500 text-red-500" />
+                                  <span>YouTube Video</span>
+                                </>
+                              ) : isVideoUrl(formData.mobileSrc) ? (
                                 <>
                                   <FilmIcon className="size-3 text-sky-400" />
                                   <span>Mobile Video</span>

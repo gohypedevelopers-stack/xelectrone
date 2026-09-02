@@ -42,7 +42,6 @@ function applyEffectivePrice(product: any) {
       discount = `${Math.round((1 - numPrice / numOld) * 100)}% off`;
     }
   }
-
   return { ...product, price: effectivePrice, oldPrice: effectiveOldPrice, discount: discount || product.discount };
 }
 
@@ -60,6 +59,16 @@ export async function listProducts(searchQuery?: string, categorySlug?: string) 
   return products.map(applyEffectivePrice);
 }
 
+export async function listCatalogProducts(searchQuery?: string, categorySlug?: string) {
+  if (searchQuery) {
+    return productsDal.searchProducts(searchQuery);
+  } else if (categorySlug) {
+    return productsDal.getProductsByCategory(categorySlug);
+  } else {
+    return productsDal.getAllProducts();
+  }
+}
+
 // ─── Get One ─────────────────────────────────────────────────────────────────
 
 export async function getProduct(idOrSlug: string) {
@@ -73,7 +82,6 @@ export async function getProduct(idOrSlug: string) {
 // ─── Create ──────────────────────────────────────────────────────────────────
 
 export async function createProduct(data: CreateProductInput) {
-  // Validate required fields
   if (!data.name || !data.slug || !data.categoryId || !data.price) {
     throw new Error("Missing required fields: name, slug, categoryId, price");
   }

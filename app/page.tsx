@@ -10,6 +10,7 @@ import CreatorVideosSection from "@/components/home/creator-videos-section";
 import VerifiedReviewsSection from "@/components/home/verified-reviews-section";
 import BrandMarqueeSection from "@/components/home/brand-marquee-section";
 import BlogSection from "@/components/home/blog-section";
+import WhatsAppSupportBanner from "@/components/home/whatsapp-support-banner";
 import Footer from "@/components/footer/footer";
 import type { BestSellerItem } from "@/components/home/best-sellers-data";
 import type { StorefrontProduct } from "@/components/home/product-showcase-section";
@@ -18,6 +19,7 @@ import * as categoriesController from "@/lib/server/controllers/categories.contr
 import * as dealOfTheDayController from "@/lib/server/controllers/deal-of-the-day.controller";
 import * as brandShowcaseController from "@/lib/server/controllers/brand-showcase.controller";
 import * as brandMarqueeController from "@/lib/server/controllers/brand-marquee.controller";
+import * as bannersController from "@/lib/server/controllers/banners.controller";
 import { defaultDealOfTheDay } from "@/lib/shared/default-deal-of-the-day";
 import { resolveCategoryImage } from "@/lib/shared/category-utils";
 
@@ -46,6 +48,7 @@ export default async function Home() {
     const products = await productsController.listBestSellerProducts();
     selectedBestSellers = products.map((product: any) => ({
       // The carousel uses the product slug for its link and stable slide key.
+
       id: product.slug,
       slug: product.slug,
       name: product.name,
@@ -64,6 +67,7 @@ export default async function Home() {
           ],
     }));
   } catch {
+
     // The existing Best Sellers content stays visible if the catalog is unavailable.
   }
 
@@ -120,6 +124,8 @@ export default async function Home() {
           name: activeDeal.product.name,
           price: dealPrice,
           oldPrice: compareAtPrice && compareAtPrice !== dealPrice ? compareAtPrice : null,
+          description: activeDeal.product.description || null,
+          shippingNotice: activeDeal.product.shippingNotice || null,
         },
       };
     }
@@ -147,6 +153,13 @@ export default async function Home() {
 
   let brandShowcaseItems: any[] = [];
   let brandMarqueeItems: any[] = [];
+  let heroBanners: any[] = [];
+
+  try {
+    heroBanners = await bannersController.listActiveBanners();
+  } catch {
+    // Falls back to default items
+  }
 
   try {
     brandShowcaseItems = await brandShowcaseController.listBrandShowcaseItems(true);
@@ -163,7 +176,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen w-full overflow-x-clip bg-white text-[#1d1d1f]">
       <Navbar />
-      <HeroShowcase />
+      <HeroShowcase initialBanners={heroBanners} />
       <CategorySection categories={storefrontCategories} />
       <ProductShowcaseSection products={featuredProducts} />
       <BestSellersSection additionalItems={selectedBestSellers} />
@@ -174,6 +187,7 @@ export default async function Home() {
       <VerifiedReviewsSection />
       <FaqSection />
       <BlogSection />
+      <WhatsAppSupportBanner />
       <Footer />
     </main>
   );

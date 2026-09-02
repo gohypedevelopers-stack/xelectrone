@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ProductsPage() {
-  const dbProducts = await productsController.listProducts();
+  const dbProducts = await productsController.listCatalogProducts();
 
   return (
     <TooltipProvider>

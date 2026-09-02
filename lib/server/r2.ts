@@ -126,9 +126,11 @@ export async function uploadProductImage(file: File) {
   return { key, url: `/api/media/${key}` };
 }
 
-export async function getProductMedia(key: string) {
+export async function getProductMedia(key: string, range?: string) {
   return getR2Client().send(new GetObjectCommand({
     Bucket: getR2BucketName(),
     Key: key,
+    ...(range ? { Range: range } : {}),
   }));
 }
+

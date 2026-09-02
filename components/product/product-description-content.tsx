@@ -1,124 +1,179 @@
+import React from "react";
+
 type Specification = {
   label: string;
   value: string;
 };
 
 type ProductDescriptionContentProps = {
-  description: string;
+  description?: string;
+  specs?: Array<{ label: string; value: string }>;
+  title?: string;
 };
 
-const specificationLabels = [
-  "Recommended Uses For Product",
-  "Connectivity Technology",
+const knownLabels = [
+  "Product Type",
+  "Motor Type",
+  "Maximum Speed",
+  "Fan Speed Levels",
+  "Speed Adjustment",
+  "Light Source",
+  "Light Modes",
+  "Number of Light Modes",
+  "Rotation Angle",
+  "Display Type",
+  "Resolution",
   "Display resolution",
-  "Special Feature",
-  "Recommended Uses",
-  "Set name",
+  "Brightness",
+  "Brightness / Lumens",
+  "Speaker / Audio",
+  "Operating System",
+  "Focus / Keystone",
+  "Screen / Projection Size",
+  "Battery Type",
+  "Battery Life",
+  "Charging Type",
   "Connectivity",
-  "Technology",
+  "Connectivity Technology",
+  "Special Feature",
+  "Recommended Uses For Product",
+  "Recommended Uses",
+  "Warranty",
   "Brand",
 ];
 
-function isFeatureStart(line: string) {
-  return /^(?:[•*\-]\s*)?(?:✅\s*)?(?:\[[^\]]+\]\s*:)/.test(line);
-}
+function extractSpecsAndContent(description: string = "", providedSpecs?: Specification[]) {
+  const specifications: Specification[] = [];
+  const bulletFeatures: string[] = [];
+  const textParagraphs: string[] = [];
 
-function splitDescription(description: string) {
+  // If explicit specs are provided, use them first
+  if (providedSpecs && providedSpecs.length > 0) {
+    for (const s of providedSpecs) {
+      if (s.label && s.value) {
+        specifications.push({ label: s.label.trim(), value: s.value.trim() });
+      }
+    }
+  }
+
   const lines = description
     .replace(/\r/g, "")
     .split("\n")
-    .map((line) => line.trim())
+    .map((l) => l.trim())
     .filter(Boolean);
-  const aboutIndex = lines.findIndex((line) => line.toLowerCase() === "about this item");
-  const detailLines = aboutIndex >= 0 ? lines.slice(0, aboutIndex) : lines;
-  const contentLines = aboutIndex >= 0 ? lines.slice(aboutIndex + 1) : [];
-  const specifications: Specification[] = [];
-  const introduction: string[] = [];
 
-  for (const line of detailLines) {
-    const label = specificationLabels.find((candidate) =>
-      line.toLowerCase().startsWith(candidate.toLowerCase())
-    );
-    const value = label ? line.slice(label.length).replace(/^\s*:?\s*/, "") : "";
-
-    if (label && value) {
-      specifications.push({ label, value });
-    } else if (line !== "About this item") {
-      introduction.push(line);
+  for (const line of lines) {
+    if (line.toLowerCase() === "about this item" || line.toLowerCase() === "specifications") {
+      continue;
     }
-  }
 
-  const featureSource = contentLines.length > 0 ? contentLines : introduction.filter(isFeatureStart);
-  const remainingIntroduction = contentLines.length > 0
-    ? introduction
-    : introduction.filter((line) => !isFeatureStart(line));
-  const features: string[] = [];
-  let currentFeature: string[] = [];
+    // Try matching [Label]: Value or [Label] - Value
+    const bracketMatch = line.match(/^(?:[•*\-]\s*)?(?:✅\s*)?\[([^\]]+)\]\s*:?\s*[-–]?\s*(.+)$/);
+    if (bracketMatch) {
+      if (!specifications.some((s) => s.label.toLowerCase() === bracketMatch[1].trim().toLowerCase())) {
+        specifications.push({ label: bracketMatch[1].trim(), value: bracketMatch[2].trim() });
+      }
+      continue;
+    }
 
-  for (const line of featureSource) {
-    if (isFeatureStart(line)) {
-      if (currentFeature.length > 0) features.push(currentFeature.join(" "));
-      currentFeature = [line.replace(/^(?:[•*\-]\s*)?(?:✅\s*)?/, "")];
-    } else if (currentFeature.length > 0) {
-      currentFeature.push(line);
+    // Try matching Label: Value
+    const colonIndex = line.indexOf(":");
+    if (colonIndex > 1 && colonIndex < 40) {
+      const candidateLabel = line.slice(0, colonIndex).replace(/^[•*\-]\s*/, "").replace(/✅\s*/, "").trim();
+      const candidateValue = line.slice(colonIndex + 1).trim();
+
+      // Check if candidateLabel is reasonable (not a full sentence)
+      if (candidateLabel.length > 0 && candidateValue.length > 0 && candidateLabel.split(" ").length <= 5) {
+        if (!specifications.some((s) => s.label.toLowerCase() === candidateLabel.toLowerCase())) {
+          specifications.push({ label: candidateLabel, value: candidateValue });
+        }
+        continue;
+      }
+    }
+
+    // Try known specification prefixes
+    let matchedKnown = false;
+    for (const kl of knownLabels) {
+      if (line.toLowerCase().startsWith(kl.toLowerCase())) {
+        const valuePart = line.slice(kl.length).replace(/^[:\s\-–]+/, "").trim();
+        if (valuePart) {
+          if (!specifications.some((s) => s.label.toLowerCase() === kl.toLowerCase())) {
+            specifications.push({ label: kl, value: valuePart });
+          }
+          matchedKnown = true;
+          break;
+        }
+      }
+    }
+    if (matchedKnown) continue;
+
+    // Bullet points
+    if (/^[•*\-]\s*/.test(line) || /^✅\s*/.test(line)) {
+      bulletFeatures.push(line.replace(/^[•*\-]\s*/, "").replace(/^✅\s*/, "").trim());
     } else {
-      remainingIntroduction.push(line);
+      textParagraphs.push(line);
     }
   }
-  if (currentFeature.length > 0) features.push(currentFeature.join(" "));
 
-  return { specifications, introduction: remainingIntroduction, features };
+  return { specifications, bulletFeatures, textParagraphs };
 }
 
-function FeatureText({ feature }: { feature: string }) {
-  const match = feature.match(/^\[([^\]]+)\]\s*:?\s*(.*)$/);
-  if (!match) return <span>{feature}</span>;
+export function ProductDescriptionContent({ description = "", specs, title }: ProductDescriptionContentProps) {
+  const { specifications, bulletFeatures, textParagraphs } = extractSpecsAndContent(description, specs);
 
   return (
-    <span>
-      <strong className="font-medium text-slate-950">{match[1]}</strong>
-      {match[2] ? `: ${match[2]}` : null}
-    </span>
-  );
-}
+    <div className="space-y-6 text-xs sm:text-sm" aria-label="Product description">
+      {/* KEY-VALUE SPECIFICATIONS SECTION (MATCHING USER REFERENCE) */}
+      {specifications.length > 0 && (
+        <div className="w-full">
+          <h3 className="text-lg sm:text-lg font-bold text-slate-900 tracking-tight mb-3">
+            {title || "Performance, Design & Lighting"}
+          </h3>
 
-export function ProductDescriptionContent({ description }: ProductDescriptionContentProps) {
-  const { specifications, introduction, features } = splitDescription(description);
+          <div className="divide-y divide-slate-100 border-t border-slate-100">
+            {specifications.map((spec, idx) => {
+              const formattedLabel = spec.label.endsWith(":") ? spec.label : `${spec.label}:`;
+              return (
+                <div
+                  key={`${spec.label}-${idx}`}
+                  className="grid grid-cols-[42%_58%] sm:grid-cols-[38%_62%] py-3.5 sm:py-4 items-baseline gap-3 sm:gap-6"
+                >
+                  <span className="text-[14px] sm:text-sm font-bold text-slate-400">
+                    {formattedLabel}
+                  </span>
+                  <span className="text-[15px] sm:text-sm font-semibold text-slate-800 leading-snug whitespace-pre-line">
+                    {spec.value}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-  return (
-    <div className="space-y-4 text-xs sm:text-sm" aria-label="Product description">
-      {specifications.length > 0 ? (
-        <dl className="max-w-3xl divide-y divide-slate-100 border-y border-slate-100">
-          {specifications.map((specification) => (
-            <div key={`${specification.label}-${specification.value}`} className="grid grid-cols-[9rem_1fr] gap-2 py-1.5 text-xs sm:text-sm">
-              <dt className="font-medium text-slate-800">{specification.label}</dt>
-              <dd className="leading-relaxed text-slate-600">{specification.value}</dd>
-            </div>
-          ))}
-        </dl>
-      ) : null}
-
-      {introduction.length > 0 ? (
-        <div className={specifications.length > 0 ? "mt-5" : ""}>
-          {introduction.map((paragraph, index) => (
-            <p key={`${paragraph}-${index}`} className="mt-3 text-sm leading-relaxed text-slate-600">{paragraph}</p>
+      {/* ADDITIONAL PARAGRAPHS */}
+      {textParagraphs.length > 0 && (
+        <div className="space-y-2.5 text-xs sm:text-sm leading-relaxed text-slate-600">
+          {textParagraphs.map((p, idx) => (
+            <p key={idx}>{p}</p>
           ))}
         </div>
-      ) : null}
+      )}
 
-      {features.length > 0 ? (
-        <div className={specifications.length > 0 || introduction.length > 0 ? "mt-7" : ""}>
-          <h2 className="text-lg font-medium tracking-tight text-slate-900 sm:text-xl">About this item</h2>
-          <ul className="mt-3 space-y-1 text-xs leading-relaxed text-slate-600 sm:text-sm">
-            {features.map((feature, index) => (
-              <li key={`${feature}-${index}`} className="flex gap-3">
-                <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 rounded-full bg-[#0a7ae6]" />
-                <FeatureText feature={feature} />
+      {/* ADDITIONAL BULLET FEATURES */}
+      {bulletFeatures.length > 0 && (
+        <div className="pt-2">
+          <h4 className="text-sm sm:text-base font-bold text-slate-900 mb-2">Key Highlights</h4>
+          <ul className="space-y-2 text-xs sm:text-sm text-slate-600">
+            {bulletFeatures.map((feat, idx) => (
+              <li key={idx} className="flex items-start gap-2.5">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#0a7ae6]" />
+                <span>{feat}</span>
               </li>
             ))}
           </ul>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

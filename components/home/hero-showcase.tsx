@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { banners as defaultBanners } from "@/components/home/content";
+import { ChevronRight } from "lucide-react";
+import { isYouTubeUrl, getYouTubeEmbedUrl } from "@/lib/banner-media";
 
 type BannerType = {
   src: string;
@@ -16,8 +18,8 @@ type BannerType = {
   linkUrl?: string | null;
 };
 
-const SLIDE_DURATION = 6000;
-const PROGRESS_STEP = 50;
+const SLIDE_DURATION = 6500;
+
 function isVideoUrl(url?: string | null): boolean {
   if (!url) return false;
   const clean = url.split("?")[0].toLowerCase();
@@ -37,10 +39,75 @@ function isVideoUrl(url?: string | null): boolean {
   );
 }
 
-export default function HeroShowcase() {
-  const [bannerList, setBannerList] = useState<BannerType[]>(defaultBanners);
+function HeroVideo({
+  src,
+  isActive,
+}: {
+  src: string;
+  isActive: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Mobile browsers strictly require muted and defaultMuted to be true in DOM
+    video.defaultMuted = true;
+    video.muted = true;
+
+    if (isActive) {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          video.muted = true;
+          video.play().catch(() => {});
+        });
+      }
+    } else {
+      video.pause();
+    }
+  }, [isActive]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      autoPlay
+      loop
+      muted
+      playsInline
+      preload="auto"
+      className={`h-full w-full object-cover object-center transform-gpu ${
+        isActive ? "animate-hero-zoom" : "scale-100"
+      }`}
+    />
+  );
+}
+
+
+export default function HeroShowcase({ initialBanners }: { initialBanners?: BannerType[] }) {
+  const [bannerList, setBannerList] = useState<BannerType[]>(
+    initialBanners && initialBanners.length > 0 ? initialBanners : defaultBanners
+  );
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Mouse follow cursor with buttery-smooth RAF trailing interpolation
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const targetPos = useRef({ x: 0, y: 0 });
+  const currentPos = useRef({ x: 0, y: 0 });
+  const [renderPos, setRenderPos] = useState<{ x: number; y: number } | null>(null);
+  const [isInRightHalf, setIsInRightHalf] = useState(false);
+  const rafId = useRef<number | null>(null);
+
+  // Swipe handling
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const minSwipeDistance = 45;
+
+  useEffect(() => {
+    if (initialBanners && initialBanners.length > 0) return;
+
     async function fetchBanners() {
       try {
         const res = await fetch("/api/banners");
@@ -55,80 +122,80 @@ export default function HeroShowcase() {
       }
     }
     fetchBanners();
-  }, []);
+  }, [initialBanners]);
 
   const activeBanners = bannerList.length > 0 ? bannerList : defaultBanners;
+  const totalBanners = activeBanners.length;
 
-  // Extended array for seamless forward/backward infinite looping: [Last, ...Banners, First]
-  const extendedBanners = [
-    activeBanners[activeBanners.length - 1],
-    ...activeBanners,
-    activeBanners[0],
-  ];
+  const nextSlide = useCallback(() => {
+    setCurrentIndex((prev) => (prev + 1) % totalBanners);
+  }, [totalBanners]);
 
-  const [currentIndex, setCurrentIndex] = useState(1);
-  const [isTransitioning, setIsTransitioning] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const prevSlide = useCallback(() => {
+    setCurrentIndex((prev) => (prev - 1 + totalBanners) % totalBanners);
+  }, [totalBanners]);
 
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const goToSlide = useCallback((index: number) => {
+    setCurrentIndex(index);
+  }, []);
 
-  const minSwipeDistance = 40;
-
-  // Handle wrap-around seamlessly after transition finishes
+  // Smooth RAF loop for fluid, non-jittery arrow glide
   useEffect(() => {
-    let resetTimer: NodeJS.Timeout;
-    if (currentIndex === extendedBanners.length - 1) {
-      resetTimer = setTimeout(() => {
-        setIsTransitioning(false);
-        setCurrentIndex(1);
-      }, 700);
-    } else if (currentIndex === 0) {
-      resetTimer = setTimeout(() => {
-        setIsTransitioning(false);
-        setCurrentIndex(activeBanners.length);
-      }, 700);
-    }
-    return () => clearTimeout(resetTimer);
-  }, [currentIndex, extendedBanners.length, activeBanners.length]);
+    const animate = () => {
+      if (isInRightHalf) {
+        currentPos.current.x += (targetPos.current.x - currentPos.current.x) * 0.1;
+        currentPos.current.y += (targetPos.current.y - currentPos.current.y) * 0.1;
+        setRenderPos({
+          x: Math.round(currentPos.current.x * 100) / 100,
+          y: Math.round(currentPos.current.y * 100) / 100,
+        });
+      }
+      rafId.current = requestAnimationFrame(animate);
+    };
 
-  // Re-enable transition after position reset
+    rafId.current = requestAnimationFrame(animate);
+    return () => {
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+    };
+  }, [isInRightHalf]);
+
+  // Autoplay timer: keeps changing even on hover, resets on slide change
   useEffect(() => {
-    if (!isTransitioning) {
-      const enableTimer = setTimeout(() => {
-        setIsTransitioning(true);
-      }, 50);
-      return () => clearTimeout(enableTimer);
-    }
-  }, [isTransitioning]);
+    if (totalBanners <= 1) return;
 
-  // Active slide timer & progress bar
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    setProgress(0);
-
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          return 100;
-        }
-        return prev + (PROGRESS_STEP / SLIDE_DURATION) * 100;
-      });
-    }, PROGRESS_STEP);
-
-    const slideTimer = setInterval(() => {
-      setIsTransitioning(true);
-      setCurrentIndex((prev) => prev + 1);
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % totalBanners);
     }, SLIDE_DURATION);
 
-    return () => {
-      clearInterval(progressInterval);
-      clearInterval(slideTimer);
-    };
-  }, [currentIndex, isPlaying]);
+    return () => clearInterval(timer);
+  }, [currentIndex, totalBanners]);
 
+
+  // Mouse move handler for right-half follow arrow
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!viewportRef.current) return;
+    const rect = viewportRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (x >= rect.width * 0.45) {
+      if (!isInRightHalf) {
+        currentPos.current = { x, y };
+        setRenderPos({ x, y });
+        setIsInRightHalf(true);
+      }
+      targetPos.current = { x, y };
+    } else {
+      setIsInRightHalf(false);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsInRightHalf(false);
+  };
+
+
+  // Touch swipe handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
@@ -141,164 +208,164 @@ export default function HeroShowcase() {
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-
-    if (isLeftSwipe) {
-      setIsTransitioning(true);
-      setCurrentIndex((prev) => prev + 1);
-    } else if (isRightSwipe) {
-      setIsTransitioning(true);
-      setCurrentIndex((prev) => prev - 1);
+    if (distance > minSwipeDistance) {
+      nextSlide();
+    } else if (distance < -minSwipeDistance) {
+      prevSlide();
     }
   };
 
-  // Determine active 0-based index for banners
-  const activeDotIndex =
-    currentIndex === 0
-      ? activeBanners.length - 1
-      : currentIndex === extendedBanners.length - 1
-      ? 0
-      : currentIndex - 1;
-
   return (
-    <section className="w-full bg-white overflow-hidden rounded-none pt-0">
-      {/* FULL WIDTH SHARP CAROUSEL TRACK */}
+    <section className="group relative w-full bg-white overflow-hidden select-none">
+      {/* BANNER VIEWPORT */}
       <div
-        className="relative w-full aspect-[9/16] sm:aspect-[1672/941] overflow-hidden touch-pan-y rounded-none bg-white"
+        ref={viewportRef}
+        className="relative w-full aspect-[9/16] sm:aspect-[1672/941] overflow-hidden bg-white touch-pan-y"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div
-          className={`flex h-full ${
-            isTransitioning
-              ? "transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
-              : "transition-none"
-          }`}
-          style={{
-            width: `${extendedBanners.length * 100}%`,
-            transform: `translateX(-${(currentIndex * 100) / extendedBanners.length}%)`,
-          }}
-        >
-          {extendedBanners.map((banner, index) => {
-            const linkHref = banner.linkUrl || "/shop";
-            return (
-              <div
-                key={`${banner.src}-${index}`}
-                className="relative h-full shrink-0 overflow-hidden rounded-none bg-white"
-                style={{ width: `${100 / extendedBanners.length}%` }}
+        {/* SLIDE LAYERS */}
+        {activeBanners.map((banner, index) => {
+          const isActive = index === currentIndex;
+
+          return (
+            <div
+              key={`banner-slide-${index}`}
+              className={`absolute inset-0 transition-opacity duration-300 ease-out ${
+                isActive
+                  ? "opacity-100 z-10 pointer-events-auto"
+                  : "opacity-0 z-0 pointer-events-none"
+              }`}
+            >
+              <Link
+                href={banner.linkUrl || "/shop"}
+                className="block relative h-full w-full overflow-hidden"
               >
-                <Link href={linkHref} className="block relative h-full w-full">
-                  {/* DESKTOP BANNER */}
-                  <div className="hidden sm:block relative h-full w-full">
-                    {isVideoUrl(banner.src) ? (
-                      <video
-                        src={banner.src}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="h-full w-full object-cover object-center"
-                      />
-                    ) : (
+                {/* DESKTOP BANNER MEDIA */}
+                <div className="hidden sm:block relative h-full w-full overflow-hidden">
+                  {isYouTubeUrl(banner.src) ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(banner.src, isActive, true, true)}
+                      title={banner.title}
+                      className="h-full w-full border-0 pointer-events-none"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    />
+                  ) : isVideoUrl(banner.src) ? (
+                    <HeroVideo src={banner.src} isActive={isActive} />
+                  ) : (
+                    <div
+                      key={`img-desktop-${index}`}
+                      className={`relative h-full w-full transform-gpu ${
+                        isActive ? "animate-hero-zoom" : "scale-100"
+                      }`}
+                    >
                       <Image
                         src={banner.src}
                         alt={banner.alt || banner.title}
                         fill
-                        priority={index === 1}
-                        className="object-cover object-center"
+                        priority
+                        className="object-cover object-center pointer-events-none"
                         sizes="100vw"
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
+                </div>
 
-                  {/* MOBILE BANNER */}
-                  <div className="sm:hidden relative h-full w-full">
-                    {isVideoUrl(banner.mobileSrc || banner.src) ? (
-                      <video
-                        key={banner.mobileSrc || banner.src}
-                        src={banner.mobileSrc || banner.src}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        preload="auto"
-                        className="h-full w-full object-cover object-center"
-                      />
-                    ) : (
+                {/* MOBILE BANNER MEDIA */}
+                <div className="sm:hidden relative h-full w-full overflow-hidden">
+                  {isYouTubeUrl(banner.mobileSrc || banner.src) ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(banner.mobileSrc || banner.src, isActive, true, true)}
+                      title={banner.title}
+                      className="h-full w-full border-0 pointer-events-none"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    />
+                  ) : isVideoUrl(banner.mobileSrc || banner.src) ? (
+                    <HeroVideo src={banner.mobileSrc || banner.src} isActive={isActive} />
+                  ) : (
+                    <div
+                      key={`img-mobile-${index}`}
+                      className={`relative h-full w-full transform-gpu ${
+                        isActive ? "animate-hero-zoom" : "scale-100"
+                      }`}
+                    >
                       <Image
                         src={banner.mobileSrc || banner.src}
                         alt={banner.alt || banner.title}
                         fill
-                        priority={index === 1}
-                        className="object-cover object-center"
+                        priority
+                        className="object-cover object-center pointer-events-none"
                         sizes="100vw"
                       />
-                    )}
-                  </div>
-                </Link>
-              </div>
-            );
-          })}
-        </div>
+                    </div>
+                  )}
+                </div>
+              </Link>
+            </div>
+          );
+        })}
 
-        {/* PROGRESS DOT PAGINATION OVERLAY UPWARD ON HERO BANNER */}
-        <div className="absolute inset-x-0 bottom-4 sm:bottom-6 z-20 flex items-center justify-center px-6">
-          <div className="flex items-center gap-2.5">
-            {activeBanners.map((banner, index) => {
-              const isActive = index === activeDotIndex;
+        {/* RIGHT HALF INTERACTIVE CLICK ZONE (ADVANCES TO NEXT SLIDE) */}
+        <div
+          className="absolute right-0 top-0 w-1/2 h-full z-20 cursor-pointer"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            nextSlide();
+          }}
+          aria-label="Next slide"
+        />
 
-              return isActive ? (
+        {/* MOUSE-FOLLOWING BLUE CIRCULAR ARROW (FLOWS SMOOTHLY IN RIGHT HALF OF BANNER) */}
+        {renderPos && (
+          <div
+            className={`pointer-events-none hidden sm:flex absolute z-30 items-center justify-center -translate-x-1/2 -translate-y-1/2 ${
+              isInRightHalf ? "opacity-100 scale-100" : "opacity-0 scale-75"
+            }`}
+            style={{
+              left: `${renderPos.x}px`,
+              top: `${renderPos.y}px`,
+              transition: "opacity 300ms ease-out, scale 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
+            <div className="w-12 h-12 rounded-full bg-[#0a7ae6] text-white flex items-center justify-center shadow-[0_4px_22px_rgba(10,122,230,0.65)] scale-105">
+              <ChevronRight className="w-6 h-6 stroke-[3] text-white ml-0.5" />
+            </div>
+          </div>
+        )}
+
+        {/* VERTICAL INDICATOR PILLS / DASHES (RIGHT CENTER, INCREASED SIZE, WHITE & BLUE THEME) */}
+        {totalBanners > 1 && (
+          <div className="absolute right-4 sm:right-6 md:right-8 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-2 pointer-events-auto">
+            {activeBanners.map((_, index) => {
+              const isActive = index === currentIndex;
+              return (
                 <button
-                  key={`${banner.src}-${index}`}
+                  key={`indicator-${index}`}
                   type="button"
                   aria-label={`Go to slide ${index + 1}`}
-                  onClick={() => {
-                    setIsTransitioning(true);
-                    setCurrentIndex(index + 1);
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    goToSlide(index);
                   }}
-                  className="relative w-8 sm:w-9 h-2 sm:h-2.5 rounded-full bg-neutral-300 overflow-hidden transition-all duration-300 cursor-pointer shadow-md"
-                >
-                  <div
-                    className="absolute left-0 top-0 bottom-0 bg-neutral-900 rounded-full transition-all duration-75 ease-linear"
-                    style={{ width: `${progress}%` }}
-                  />
-                </button>
-              ) : (
-                <button
-                  key={`${banner.src}-${index}`}
-                  type="button"
-                  aria-label={`Go to slide ${index + 1}`}
-                  onClick={() => {
-                    setIsTransitioning(true);
-                    setCurrentIndex(index + 1);
-                  }}
-                  className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-neutral-400/80 hover:bg-neutral-700 transition-all duration-300 cursor-pointer shadow-md"
+                  className={`transition-all duration-300 cursor-pointer rounded-full ${
+                    isActive
+                      ? "w-1 sm:w-1.5 h-6 sm:h-7 bg-[#0a7ae6] shadow-[0_0_10px_rgba(10,122,230,0.85)]"
+                      : "w-1 sm:w-1.5 h-3 sm:h-3.5 bg-white/90 hover:bg-white hover:h-4.5 shadow-[0_1px_3px_rgba(0,0,0,0.35)]"
+                  }`}
                 />
               );
             })}
           </div>
-
-          {/* PLAY / PAUSE CONTROLLER */}
-          <button
-            type="button"
-            aria-label={isPlaying ? "Pause carousel" : "Play carousel"}
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="absolute right-6 sm:right-10 text-neutral-400 hover:text-neutral-700 transition-colors p-1"
-          >
-            {isPlaying ? (
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </button>
-        </div>
+        )}
       </div>
     </section>
   );
 }
+
+
+
