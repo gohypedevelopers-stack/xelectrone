@@ -2,7 +2,7 @@ import "server-only";
 
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
-const maxProductImageSize = 500 * 1024 * 1024; // 500 MB
+const maxProductImageSize = 50 * 1024 * 1024; // 50 MB max
 const allowedImageTypes = new Set([
   "image/avif",
   "image/gif",
@@ -26,6 +26,12 @@ const allowedExtensions = new Set([
   "png", "jpg", "jpeg", "webp", "gif", "svg", "avif",
   "mp4", "webm", "mov", "ogg", "mkv", "avi", "m4v", "flv", "3gp", "ts"
 ]);
+
+export function getR2PublicBaseUrl(): string | null {
+  const url = process.env.R2_PUBLIC_URL || process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+  if (!url) return null;
+  return url.replace(/\/+$/, "");
+}
 
 function inferMimeType(fileName: string, fallbackType: string): string {
   if (fallbackType && fallbackType !== "application/octet-stream") return fallbackType;
@@ -109,7 +115,7 @@ export async function uploadProductImage(file: File) {
 
   if (file.size > maxProductImageSize) {
     const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-    throw new Error(`Media file is ${sizeMB} MB. Maximum allowed size is 500 MB.`);
+    throw new Error(`Media file is ${sizeMB} MB. Maximum allowed size is 50 MB.`);
   }
 
   const contentType = inferMimeType(file.name, file.type);
@@ -123,7 +129,10 @@ export async function uploadProductImage(file: File) {
     CacheControl: "public, max-age=31536000, immutable",
   }));
 
-  return { key, url: `/api/media/${key}` };
+  const publicBase = getR2PublicBaseUrl();
+  const url = publicBase ? `${publicBase}/${key}` : `/api/media/${key}`;
+
+  return { key, url };
 }
 
 export async function getProductMedia(key: string, range?: string) {

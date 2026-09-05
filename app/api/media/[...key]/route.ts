@@ -8,16 +8,25 @@ type RouteParams = { params: Promise<{ key: string[] }> };
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { key } = await params;
-    const rangeHeader = request.headers.get("range") || undefined;
+    const mediaKey = key.join("/");
 
-    const object = await getProductMedia(key.join("/"), rangeHeader);
+    // If R2 Public Domain is configured, redirect directly to Cloudflare R2 CDN ($0 egress, bypasses Vercel Compute)
+    const publicBase = process.env.R2_PUBLIC_URL || process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+    if (publicBase) {
+      return NextResponse.redirect(`${publicBase.replace(/\/+$/, "")}/${mediaKey}`, 307);
+    }
+
+    const rangeHeader = request.headers.get("range") || undefined;
+    const object = await getProductMedia(mediaKey, rangeHeader);
     if (!object.Body) {
       return NextResponse.json({ success: false, error: "Media not found." }, { status: 404 });
     }
 
     const headers = new Headers({
       "Accept-Ranges": "bytes",
-      "Cache-Control": object.CacheControl || "public, max-age=31536000, immutable",
+      "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
+      "CDN-Cache-Control": "public, max-age=31536000",
+      "Vercel-CDN-Cache-Control": "public, max-age=31536000",
       "Content-Type": object.ContentType || "application/octet-stream",
     });
 
@@ -30,7 +39,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const status = rangeHeader && object.ContentRange ? 206 : 200;
 
-    // Stream the body directly for high-performance streaming without buffering 50MB in RAM
+    // Stream the body directly for high-performance streaming without buffering in RAM
     const stream = object.Body.transformToWebStream();
     return new NextResponse(stream, {
       status,

@@ -193,6 +193,8 @@ export default function CreatorVideosSection() {
                     ) : vid.videoUrl ? (
                       <video
                         src={vid.videoUrl}
+                        poster={extractYouTubeThumbnail(vid.thumbnailUrl)}
+                        preload="metadata"
                         autoPlay={isPlaying}
                         muted={isMuted}
                         loop

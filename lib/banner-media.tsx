@@ -126,6 +126,7 @@ export function BannerMediaView({
         <video
           ref={videoRef}
           src={url}
+          preload="metadata"
           autoPlay={autoPlay}
           loop={loop}
           muted={muted}
